@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
-import { listarServicos, criarServico, atualizarServico, excluirServico } from '@/lib/api'
+import { createClient } from '@/lib/supabase'
 
-type Servico = { id:string; nome:string; descricao?:string; valor:number; duracao_min:number; cor:string; status:string }
+type Servico = {
+  id: string; nome: string; descricao: string
+  valor: number; duracao_min: number; cor: string; status: string
+}
 
 const CORES    = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6']
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
@@ -12,20 +15,31 @@ const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px
 export default function ServicosPage() {
   const { empresaAtiva } = useEmpresa()
   const [servicos, setServicos]     = useState<Servico[]>([])
+  const [carregando, setCarregando] = useState(false)
+  const [salvando, setSalvando]     = useState(false)
+  const [erro, setErro]             = useState('')
   const [busca, setBusca]           = useState('')
   const [modalAberto, setModalAberto]   = useState(false)
   const [modoEdicao, setModoEdicao]     = useState(false)
-  const [selecionado, setSelecionado]   = useState<Servico | null>(null)
-  const [carregando, setCarregando]     = useState(false)
-  const [salvando, setSalvando]         = useState(false)
-  const [erro, setErro]           = useState('')
+  const [selecionado, setSelecionado]   = useState<Servico|null>(null)
   const [form, setForm] = useState({ nome:'', descricao:'', valor:'', duracao_min:'60', cor:CORES[0], status:'ativo' })
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
     setCarregando(true)
-    const { data } = await listarServicos(empresaAtiva.id)
-    if (data) setServicos(data as Servico[])
+    const sb = createClient()
+    const { data, error } = await sb
+      .from('servicos')
+      .select('id, nome, descricao, valor, duracao_min, cor, status')
+      .eq('empresa_id', empresaAtiva.id)
+      .order('nome')
+    if (error) { console.error('Erro servicos:', error); setCarregando(false); return }
+    setServicos((data || []).map((s: any) => ({
+      ...s,
+      descricao:   s.descricao || '',
+      valor:       Number(s.valor) || 0,
+      duracao_min: Number(s.duracao_min) || 60,
+    })))
     setCarregando(false)
   }, [empresaAtiva?.id])
 
@@ -41,7 +55,7 @@ export default function ServicosPage() {
 
   function abrirEdicao(s: Servico) {
     setModoEdicao(true); setSelecionado(s); setErro('')
-    setForm({ nome:s.nome, descricao:s.descricao||'', valor:String(s.valor), duracao_min:String(s.duracao_min), cor:s.cor, status:s.status })
+    setForm({ nome:s.nome, descricao:s.descricao, valor:String(s.valor), duracao_min:String(s.duracao_min), cor:s.cor, status:s.status })
     setModalAberto(true)
   }
 
@@ -49,14 +63,24 @@ export default function ServicosPage() {
 
   async function salvar() {
     if (!form.nome.trim()) return setErro('Nome é obrigatório.')
-    if (!empresaAtiva?.id) return
+    if (!empresaAtiva?.id) return setErro('Empresa não identificada.')
     setSalvando(true); setErro('')
-    const payload = { nome:form.nome, descricao:form.descricao, valor:parseFloat(form.valor)||0, duracao_min:parseInt(form.duracao_min)||60, cor:form.cor, status:form.status }
+    const sb = createClient()
+    const payload = {
+      nome:       form.nome.trim(),
+      descricao:  form.descricao || null,
+      valor:      parseFloat(form.valor) || 0,
+      duracao_min: parseInt(form.duracao_min) || 60,
+      cor:        form.cor,
+      status:     form.status,
+    }
     let error: any
     if (modoEdicao && selecionado) {
-      ({ error } = await atualizarServico(selecionado.id, payload))
+      const res = await sb.from('servicos').update(payload).eq('id', selecionado.id)
+      error = res.error
     } else {
-      ({ error } = await criarServico(empresaAtiva.id, payload))
+      const res = await sb.from('servicos').insert({ ...payload, empresa_id: empresaAtiva.id })
+      error = res.error
     }
     if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
     await carregar(); fecharModal(); setSalvando(false)
@@ -64,13 +88,15 @@ export default function ServicosPage() {
 
   async function excluir(id: string) {
     if (!confirm('Excluir este serviço?')) return
-    const { error } = await excluirServico(id)
+    const sb = createClient()
+    const { error } = await sb.from('servicos').delete().eq('id', id)
     if (error) { alert('Erro: ' + error.message); return }
     await carregar(); fecharModal()
   }
 
   async function toggleStatus(s: Servico) {
-    await atualizarServico(s.id, { status: s.status==='ativo'?'inativo':'ativo' })
+    const sb = createClient()
+    await sb.from('servicos').update({ status: s.status==='ativo'?'inativo':'ativo' }).eq('id', s.id)
     await carregar()
   }
 
@@ -106,7 +132,7 @@ export default function ServicosPage() {
                     <p style={{ fontSize:'12px', color:'#9ca3af' }}>{s.duracao_min} min</p>
                   </div>
                 </div>
-                <div onClick={() => toggleStatus(s)} style={{ width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', background:s.status==='ativo'?'#6366f1':'#e5e7eb', position:'relative' }}>
+                <div onClick={() => toggleStatus(s)} style={{ width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', background:s.status==='ativo'?'#6366f1':'#e5e7eb', position:'relative', flexShrink:0 }}>
                   <div style={{ position:'absolute', top:'2px', width:'16px', height:'16px', borderRadius:'50%', background:'white', transition:'left .2s', left:s.status==='ativo'?'18px':'2px' }}/>
                 </div>
               </div>
@@ -120,9 +146,7 @@ export default function ServicosPage() {
               </div>
             </div>
           ))}
-          {filtrados.length === 0 && !carregando && (
-            <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px', color:'#9ca3af', fontSize:'14px' }}>Nenhum serviço cadastrado.</div>
-          )}
+          {filtrados.length === 0 && <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px', color:'#9ca3af', fontSize:'14px' }}>Nenhum serviço cadastrado.</div>}
         </div>
       )}
 

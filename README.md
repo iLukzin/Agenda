@@ -5,167 +5,150 @@ Construído com **Next.js 14 + Supabase + Tailwind CSS**.
 
 ---
 
-## 🚀 Como configurar e rodar
-
-### 1. Pré-requisitos
-- Node.js 18+
-- Conta gratuita no [Supabase](https://supabase.com)
-- Conta gratuita na [Vercel](https://vercel.com) (para deploy)
-
-### 2. Configurar o Supabase
-
-1. Acesse [supabase.com](https://supabase.com) e crie um novo projeto
-2. Vá em **SQL Editor** e execute o arquivo:
-   ```
-   supabase/migrations/001_schema_inicial.sql
-   ```
-3. Vá em **Authentication > Settings** e configure:
-   - Site URL: `http://localhost:3000`
-   - Redirect URLs: `http://localhost:3000/dashboard`
-4. Copie as credenciais em **Settings > API**:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-### 3. Instalar e rodar localmente
-
-```bash
-# Instalar dependências
-npm install
-
-# Criar arquivo de variáveis de ambiente
-cp .env.example .env.local
-# Preencha com suas credenciais do Supabase
-
-# Rodar em desenvolvimento
-npm run dev
-```
-
-Acesse: http://localhost:3000
-
-### 4. Criar o primeiro usuário (Admin Master)
-
-1. No Supabase, vá em **Authentication > Users > Add User**
-2. Crie um usuário com seu e-mail e senha
-3. No SQL Editor, execute:
-
-```sql
-INSERT INTO usuarios (auth_id, nome, email, nivel_acesso, empresa_id, status)
-VALUES (
-  '<UUID_DO_AUTH_CRIADO>',
-  'Seu Nome',
-  'seu@email.com',
-  'master',
-  NULL,
-  'ativo'
-);
-```
-
----
-
-## 📁 Estrutura do projeto
+## 🗂 Estrutura de pastas
 
 ```
 agendapro/
 ├── src/
 │   ├── app/
-│   │   ├── auth/login/          → Tela de login
+│   │   ├── page.tsx                        → Redireciona para /auth/login
+│   │   ├── layout.tsx                      → Layout raiz + Provider
+│   │   ├── globals.css                     → Estilos globais
+│   │   ├── auth/
+│   │   │   └── login/page.tsx              → Tela de login
 │   │   ├── dashboard/
-│   │   │   ├── layout.tsx       → Sidebar + layout principal
-│   │   │   ├── page.tsx         → Dashboard com métricas
-│   │   │   ├── agenda/          → Agenda semanal interativa
-│   │   │   ├── clientes/        → Gestão de clientes
-│   │   │   ├── servicos/        → Cadastro de serviços
-│   │   │   ├── financeiro/      → Módulo financeiro
-│   │   │   ├── usuarios/        → Gestão de usuários
-│   │   │   └── configuracoes/   → Config da empresa
-│   │   └── api/                 → Rotas da API REST
-│   ├── components/              → Componentes reutilizáveis
-│   ├── lib/supabase.ts          → Cliente Supabase + utilitários
-│   └── types/index.ts           → Tipos TypeScript completos
-└── supabase/
-    └── migrations/
-        └── 001_schema_inicial.sql  → Schema completo do banco
+│   │   │   ├── layout.tsx                  → Sidebar + topbar responsiva
+│   │   │   ├── page.tsx                    → Dashboard com métricas
+│   │   │   ├── agenda/page.tsx             → Agenda semanal/dia/período
+│   │   │   ├── clientes/page.tsx           → Gestão de clientes
+│   │   │   ├── profissionais/page.tsx      → Gestão de profissionais
+│   │   │   ├── servicos/page.tsx           → Cadastro de serviços
+│   │   │   ├── financeiro/page.tsx         → Módulo financeiro
+│   │   │   ├── usuarios/page.tsx           → Gestão de usuários
+│   │   │   └── configuracoes/page.tsx      → Configurações da empresa
+│   │   └── master/
+│   │       ├── layout.tsx                  → Proteção de rota master
+│   │       ├── empresas/page.tsx           → Painel master — empresas
+│   │       └── usuarios/page.tsx           → Painel master — usuários
+│   ├── context/
+│   │   └── EmpresaContext.tsx              → Contexto multiempresa
+│   ├── lib/
+│   │   ├── supabase.ts                     → Cliente Supabase + utilitários
+│   │   └── dados.ts                        → Dados compartilhados (profissionais, clientes)
+│   └── types/
+│       └── index.ts                        → Tipos TypeScript
+├── supabase/
+│   └── migrations/
+│       ├── 001_schema_inicial.sql          → Schema completo do banco
+│       ├── 002_usuario_master.sql          → Script para criar usuário master
+│       └── 003_criar_usuario.sql           → Guia para criar usuários
+├── .env.example                            → Modelo de variáveis de ambiente
+├── .gitignore
+├── next.config.js
+├── postcss.config.js
+├── tailwind.config.js
+├── tsconfig.json
+├── vercel.json
+└── package.json
 ```
 
 ---
 
-## 🏗️ Módulos implementados
+## 🚀 Como rodar localmente
 
-| Módulo | Status | Descrição |
-|---|---|---|
-| Autenticação | ✅ | Login, JWT, proteção de rotas |
-| Multiempresa | ✅ | RLS no Supabase, isolamento total |
-| Permissões | ✅ | Master / Admin / Profissional |
-| Dashboard | ✅ | Métricas, gráficos, próximos agendamentos |
-| Agenda | ✅ | Visualização semanal, criar/editar agendamentos |
-| Clientes | ✅ | CRUD completo, busca, filtros, planos |
-| Financeiro | ✅ | Lançamentos, fluxo de caixa, relatórios |
-| Serviços | 🔧 | Estrutura pronta, UI em desenvolvimento |
-| Usuários | 🔧 | Estrutura pronta, UI em desenvolvimento |
-| Configurações | 🔧 | Estrutura pronta, UI em desenvolvimento |
+### 1. Clonar o repositório
+```bash
+git clone https://github.com/seu-usuario/agendapro.git
+cd agendapro
+```
 
----
+### 2. Instalar dependências
+```bash
+npm install
+```
 
-## 🗃️ Banco de dados (tabelas)
+### 3. Configurar variáveis de ambiente
+```bash
+# Copie o arquivo de exemplo
+cp .env.example .env.local
 
-| Tabela | Descrição |
-|---|---|
-| `empresas` | Cadastro de empresas (tenants) |
-| `usuarios` | Usuários com nível de acesso |
-| `clientes` | Clientes de cada empresa |
-| `servicos` | Serviços oferecidos |
-| `planos` | Planos mensais disponíveis |
-| `agendamentos` | Agenda com status e histórico |
-| `lancamentos` | Financeiro (receitas e despesas) |
-| `horarios_profissional` | Grade horária por profissional |
-| `bloqueios` | Folgas e indisponibilidades |
-| `logs` | Auditoria de todas as ações |
-
----
-
-## 🔒 Segurança
-
-- **Row Level Security (RLS)** no Supabase — cada empresa só acessa seus dados
-- **JWT** para autenticação
-- **Senhas criptografadas** pelo Supabase Auth
-- **Logs** de todas as ações dos usuários
-- **Proteção de rotas** no Next.js middleware
-
----
-
-## 🚀 Deploy na Vercel
-
-1. Faça push do projeto para o GitHub
-2. Acesse [vercel.com](https://vercel.com) e importe o repositório
-3. Adicione as variáveis de ambiente:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Clique em Deploy — pronto!
-
----
-
-## 📋 Variáveis de ambiente
-
-```env
-# Supabase
+# Edite o .env.local com suas credenciais do Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 ```
 
+### 4. Configurar o banco de dados
+Execute no **SQL Editor** do Supabase:
+```
+supabase/migrations/001_schema_inicial.sql
+```
+
+### 5. Criar o usuário master
+- Vá em **Authentication → Users → Add User** no Supabase
+- Crie `lucas@fortitude.com` com uma senha
+- Copie o UUID gerado
+- Execute `supabase/migrations/002_usuario_master.sql` com o UUID
+
+### 6. Rodar o projeto
+```bash
+npm run dev
+```
+Acesse: **http://localhost:3000**
+
 ---
 
-## 🛣️ Próximos passos sugeridos
+## ☁️ Deploy na Vercel
 
-1. **Completar páginas** de Serviços, Usuários e Configurações
-2. **Middleware** de proteção de rotas (verificar sessão)
-3. **API Routes** para operações CRUD completas
-4. **Drag & drop** na agenda (já tem @dnd-kit instalado)
-5. **Notificações** com Sonner (já instalado)
-6. **Upload de fotos** de clientes e logo da empresa
-7. **Integração PIX** via Asaas ou Mercado Pago
-8. **WhatsApp** para confirmação de agendamentos
-9. **App mobile** com React Native + Supabase (mesma API)
+### Passo 1 — Subir para o GitHub
+```bash
+git init
+git add .
+git commit -m "primeiro commit"
+git branch -M main
+git remote add origin https://github.com/seu-usuario/agendapro.git
+git push -u origin main
+```
+
+### Passo 2 — Importar na Vercel
+1. Acesse [vercel.com](https://vercel.com) e faça login
+2. Clique em **"Add New Project"**
+3. Selecione o repositório `agendapro`
+4. Na seção **"Environment Variables"** adicione:
+   - `NEXT_PUBLIC_SUPABASE_URL` = sua URL do Supabase
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = sua chave anon do Supabase
+5. Clique em **"Deploy"**
+
+Pronto! A Vercel vai buildar e publicar automaticamente.
 
 ---
 
-Desenvolvido com ❤️ usando Next.js + Supabase
+## 🔒 Variáveis de ambiente necessárias
+
+| Variável | Onde encontrar |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API → anon public |
+
+> ⚠️ **Nunca suba o `.env.local` para o GitHub.** Ele já está no `.gitignore`.
+
+---
+
+## 🧩 Módulos do sistema
+
+| Módulo | Rota |
+|---|---|
+| Login | `/auth/login` |
+| Dashboard | `/dashboard` |
+| Agenda | `/dashboard/agenda` |
+| Clientes | `/dashboard/clientes` |
+| Profissionais | `/dashboard/profissionais` |
+| Serviços | `/dashboard/servicos` |
+| Financeiro | `/dashboard/financeiro` |
+| Usuários | `/dashboard/usuarios` |
+| Configurações | `/dashboard/configuracoes` |
+| Master — Empresas | `/master/empresas` |
+| Master — Usuários | `/master/usuarios` |
+
+---
+
+Desenvolvido com ❤️ — Next.js 14 + Supabase + Tailwind CSS

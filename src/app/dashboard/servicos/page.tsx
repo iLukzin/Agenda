@@ -1,92 +1,87 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useEmpresa } from '@/context/EmpresaContext'
+import { listarServicos, criarServico, atualizarServico, excluirServico } from '@/lib/api'
 
-type Servico = {
-  id: number
-  nome: string
-  descricao: string
-  valor: number
-  duracao: number
-  cor: string
-  status: string
-}
+type Servico = { id:string; nome:string; descricao?:string; valor:number; duracao_min:number; cor:string; status:string }
 
-const servicosIniciais: Servico[] = [
-  { id:1, nome:'Consulta',          descricao:'Consulta padrão',        valor:150, duracao:60, cor:'#6366f1', status:'ativo'   },
-  { id:2, nome:'Retorno',           descricao:'Consulta de retorno',     valor:80,  duracao:30, cor:'#8b5cf6', status:'ativo'   },
-  { id:3, nome:'Avaliação',         descricao:'Avaliação completa',      valor:200, duracao:90, cor:'#06b6d4', status:'ativo'   },
-  { id:4, nome:'Sessão Terapêutica',descricao:'Sessão terapêutica',      valor:120, duracao:50, cor:'#10b981', status:'ativo'   },
-  { id:5, nome:'Retorno Express',   descricao:'Retorno rápido 15 min',   valor:50,  duracao:15, cor:'#f59e0b', status:'inativo' },
-]
-
-const CORES = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6']
+const CORES    = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6']
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 
 export default function ServicosPage() {
-  const [servicos, setServicos] = useState<Servico[]>(servicosIniciais)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [modoEdicao, setModoEdicao] = useState(false)
-  const [selecionado, setSelecionado] = useState<Servico | null>(null)
-  const [busca, setBusca] = useState('')
-  const [form, setForm] = useState({ nome:'', descricao:'', valor:'', duracao:'60', cor:CORES[0], status:'ativo' })
+  const { empresaAtiva } = useEmpresa()
+  const [servicos, setServicos]     = useState<Servico[]>([])
+  const [busca, setBusca]           = useState('')
+  const [modalAberto, setModalAberto]   = useState(false)
+  const [modoEdicao, setModoEdicao]     = useState(false)
+  const [selecionado, setSelecionado]   = useState<Servico | null>(null)
+  const [carregando, setCarregando]     = useState(false)
+  const [salvando, setSalvando]         = useState(false)
+  const [erro, setErro]           = useState('')
+  const [form, setForm] = useState({ nome:'', descricao:'', valor:'', duracao_min:'60', cor:CORES[0], status:'ativo' })
+
+  const carregar = useCallback(async () => {
+    if (!empresaAtiva?.id) return
+    setCarregando(true)
+    const { data } = await listarServicos(empresaAtiva.id)
+    if (data) setServicos(data as Servico[])
+    setCarregando(false)
+  }, [empresaAtiva?.id])
+
+  useEffect(() => { carregar() }, [carregar])
 
   const filtrados = servicos.filter(s => s.nome.toLowerCase().includes(busca.toLowerCase()))
 
   function abrirNovo() {
-    setModoEdicao(false)
-    setSelecionado(null)
-    setForm({ nome:'', descricao:'', valor:'', duracao:'60', cor:CORES[0], status:'ativo' })
+    setModoEdicao(false); setSelecionado(null); setErro('')
+    setForm({ nome:'', descricao:'', valor:'', duracao_min:'60', cor:CORES[0], status:'ativo' })
     setModalAberto(true)
   }
 
   function abrirEdicao(s: Servico) {
-    setModoEdicao(true)
-    setSelecionado(s)
-    setForm({ nome:s.nome, descricao:s.descricao, valor:s.valor.toString(), duracao:s.duracao.toString(), cor:s.cor, status:s.status })
+    setModoEdicao(true); setSelecionado(s); setErro('')
+    setForm({ nome:s.nome, descricao:s.descricao||'', valor:String(s.valor), duracao_min:String(s.duracao_min), cor:s.cor, status:s.status })
     setModalAberto(true)
   }
 
-  function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false) }
+  function fecharModal() { setModalAberto(false); setSelecionado(null); setErro('') }
 
-  function salvar() {
-    if (!form.nome.trim()) return
+  async function salvar() {
+    if (!form.nome.trim()) return setErro('Nome é obrigatório.')
+    if (!empresaAtiva?.id) return
+    setSalvando(true); setErro('')
+    const payload = { nome:form.nome, descricao:form.descricao, valor:parseFloat(form.valor)||0, duracao_min:parseInt(form.duracao_min)||60, cor:form.cor, status:form.status }
+    let error: any
     if (modoEdicao && selecionado) {
-      setServicos(prev => prev.map(s => s.id === selecionado.id ? {
-        ...s, nome:form.nome, descricao:form.descricao,
-        valor:parseFloat(form.valor)||0, duracao:parseInt(form.duracao)||60,
-        cor:form.cor, status:form.status,
-      } : s))
+      ({ error } = await atualizarServico(selecionado.id, payload))
     } else {
-      setServicos(prev => [...prev, { id:Date.now(), nome:form.nome, descricao:form.descricao, valor:parseFloat(form.valor)||0, duracao:parseInt(form.duracao)||60, cor:form.cor, status:form.status }])
+      ({ error } = await criarServico(empresaAtiva.id, payload))
     }
-    fecharModal()
+    if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
+    await carregar(); fecharModal(); setSalvando(false)
   }
 
-  function excluir(id: number) {
-    if (confirm('Deseja excluir este serviço?')) {
-      setServicos(prev => prev.filter(s => s.id !== id))
-      fecharModal()
-    }
+  async function excluir(id: string) {
+    if (!confirm('Excluir este serviço?')) return
+    const { error } = await excluirServico(id)
+    if (error) { alert('Erro: ' + error.message); return }
+    await carregar(); fecharModal()
   }
 
-  function toggleStatus(id: number) {
-    setServicos(prev => prev.map(s => s.id === id ? { ...s, status: s.status==='ativo'?'inativo':'ativo' } : s))
+  async function toggleStatus(s: Servico) {
+    await atualizarServico(s.id, { status: s.status==='ativo'?'inativo':'ativo' })
+    await carregar()
   }
-
-  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm(prev => ({ ...prev, [k]: e.target.value }))
 
   return (
     <div style={{ padding:'24px 16px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Serviços</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{servicos.filter(s=>s.status==='ativo').length} ativos de {servicos.length} cadastrados</p>
+          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{servicos.filter(s=>s.status==='ativo').length} ativos de {servicos.length}</p>
         </div>
-        <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-          + Novo serviço
-        </button>
+        <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>+ Novo serviço</button>
       </div>
 
       <div style={{ position:'relative', maxWidth:'300px', marginBottom:'20px' }}>
@@ -94,77 +89,68 @@ export default function ServicosPage() {
         <input style={{ ...inputStyle, paddingLeft:'36px' }} placeholder="Buscar serviço..." value={busca} onChange={e => setBusca(e.target.value)}/>
       </div>
 
-      {/* Cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(270px, 1fr))', gap:'14px' }}>
-        {filtrados.map(s => (
-          <div key={s.id} style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px', position:'relative', overflow:'hidden', opacity: s.status==='inativo' ? 0.7 : 1 }}>
-            <div style={{ position:'absolute', top:0, left:0, right:0, height:'4px', background:s.cor, borderRadius:'14px 14px 0 0' }}/>
-
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'12px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                <div style={{ width:'38px', height:'38px', borderRadius:'10px', background:s.cor+'20', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:s.cor }}/>
+      {carregando ? (
+        <div style={{ textAlign:'center', padding:'60px', color:'#9ca3af' }}>Carregando...</div>
+      ) : (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(270px, 1fr))', gap:'14px' }}>
+          {filtrados.map(s => (
+            <div key={s.id} style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px', position:'relative', overflow:'hidden', opacity:s.status==='inativo'?0.7:1 }}>
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:'4px', background:s.cor, borderRadius:'14px 14px 0 0' }}/>
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'12px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                  <div style={{ width:'38px', height:'38px', borderRadius:'10px', background:s.cor+'20', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:s.cor }}/>
+                  </div>
+                  <div>
+                    <p style={{ fontSize:'15px', fontWeight:'600', color:'#1a1a2e', marginBottom:'2px' }}>{s.nome}</p>
+                    <p style={{ fontSize:'12px', color:'#9ca3af' }}>{s.duracao_min} min</p>
+                  </div>
                 </div>
-                <div>
-                  <p style={{ fontSize:'15px', fontWeight:'600', color:'#1a1a2e', marginBottom:'2px' }}>{s.nome}</p>
-                  <p style={{ fontSize:'12px', color:'#9ca3af' }}>{s.duracao} min</p>
+                <div onClick={() => toggleStatus(s)} style={{ width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', background:s.status==='ativo'?'#6366f1':'#e5e7eb', position:'relative' }}>
+                  <div style={{ position:'absolute', top:'2px', width:'16px', height:'16px', borderRadius:'50%', background:'white', transition:'left .2s', left:s.status==='ativo'?'18px':'2px' }}/>
                 </div>
               </div>
-              {/* Toggle status */}
-              <div onClick={() => toggleStatus(s.id)} style={{
-                width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', transition:'background .2s', flexShrink:0,
-                background: s.status==='ativo' ? '#6366f1' : '#e5e7eb', position:'relative',
-              }}>
-                <div style={{ position:'absolute', top:'2px', width:'16px', height:'16px', borderRadius:'50%', background:'white', transition:'left .2s', left: s.status==='ativo' ? '18px' : '2px' }}/>
+              <p style={{ fontSize:'13px', color:'#6b7280', marginBottom:'16px', lineHeight:'1.5', minHeight:'20px' }}>{s.descricao}</p>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span style={{ fontSize:'18px', fontWeight:'700', color:'#1a1a2e' }}>R$ {s.valor.toFixed(2).replace('.',',')}</span>
+                <div style={{ display:'flex', gap:'6px' }}>
+                  <button onClick={() => abrirEdicao(s)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>✏️ Editar</button>
+                  <button onClick={() => excluir(s.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
+                </div>
               </div>
             </div>
+          ))}
+          {filtrados.length === 0 && !carregando && (
+            <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px', color:'#9ca3af', fontSize:'14px' }}>Nenhum serviço cadastrado.</div>
+          )}
+        </div>
+      )}
 
-            <p style={{ fontSize:'13px', color:'#6b7280', marginBottom:'16px', lineHeight:'1.5', minHeight:'20px' }}>{s.descricao}</p>
-
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <span style={{ fontSize:'18px', fontWeight:'700', color:'#1a1a2e' }}>
-                R$ {s.valor.toFixed(2).replace('.',',')}
-              </span>
-              <div style={{ display:'flex', gap:'6px' }}>
-                <button onClick={() => abrirEdicao(s)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>
-                  ✏️ Editar
-                </button>
-                <button onClick={() => excluir(s.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>
-                  🗑
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal */}
       {modalAberto && (
         <div onClick={fecharModal} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
           <div onClick={e => e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'500px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 18px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao ? '✏️ Editar serviço' : '+ Novo serviço'}</h2>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'✏️ Editar serviço':'+ Novo serviço'}</h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
             </div>
-
             <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
               <div>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nome do serviço *</label>
-                <input value={form.nome} onChange={f('nome')} style={inputStyle} placeholder="Ex: Consulta padrão"/>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nome *</label>
+                <input value={form.nome} onChange={e => setForm(f=>({...f,nome:e.target.value}))} style={inputStyle} placeholder="Nome do serviço"/>
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Descrição</label>
-                <textarea rows={2} value={form.descricao} onChange={f('descricao')} style={{ ...inputStyle, resize:'none' }} placeholder="Descreva o serviço..."/>
+                <textarea rows={2} value={form.descricao} onChange={e => setForm(f=>({...f,descricao:e.target.value}))} style={{ ...inputStyle, resize:'none' }} placeholder="Descrição do serviço"/>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <div>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Valor (R$)</label>
-                  <input type="number" value={form.valor} onChange={f('valor')} style={inputStyle} placeholder="0,00"/>
+                  <input type="number" value={form.valor} onChange={e => setForm(f=>({...f,valor:e.target.value}))} style={inputStyle} placeholder="0,00"/>
                 </div>
                 <div>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Duração (min)</label>
-                  <select value={form.duracao} onChange={f('duracao')} style={{ ...inputStyle, padding:'9px 12px' }}>
+                  <select value={form.duracao_min} onChange={e => setForm(f=>({...f,duracao_min:e.target.value}))} style={{ ...inputStyle, padding:'9px 12px' }}>
                     {[15,30,45,50,60,90,120].map(d => <option key={d} value={d}>{d} min</option>)}
                   </select>
                 </div>
@@ -173,30 +159,28 @@ export default function ServicosPage() {
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'8px' }}>Cor na agenda</label>
                 <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
                   {CORES.map(cor => (
-                    <button key={cor} onClick={() => setForm(f => ({...f, cor}))} style={{ width:'28px', height:'28px', borderRadius:'50%', background:cor, border: form.cor===cor ? '3px solid #1a1a2e' : '2px solid transparent', cursor:'pointer' }}/>
+                    <button key={cor} onClick={() => setForm(f=>({...f,cor}))} style={{ width:'28px', height:'28px', borderRadius:'50%', background:cor, border:form.cor===cor?'3px solid #1a1a2e':'2px solid transparent', cursor:'pointer' }}/>
                   ))}
                 </div>
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Status</label>
-                <select value={form.status} onChange={f('status')} style={{ ...inputStyle, padding:'9px 12px' }}>
+                <select value={form.status} onChange={e => setForm(f=>({...f,status:e.target.value}))} style={{ ...inputStyle, padding:'9px 12px' }}>
                   <option value="ativo">Ativo</option>
                   <option value="inativo">Inativo</option>
                 </select>
               </div>
-
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'4px' }}>
-                {modoEdicao && selecionado ? (
-                  <button onClick={() => excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>
-                    🗑 Excluir
-                  </button>
-                ) : <div/>}
-                <div style={{ display:'flex', gap:'10px' }}>
-                  <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
-                  <button onClick={salvar} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-                    {modoEdicao ? 'Salvar alterações' : 'Salvar serviço'}
-                  </button>
-                </div>
+            </div>
+            {erro && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 14px', marginTop:'12px', fontSize:'13px', color:'#dc2626' }}>{erro}</div>}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px' }}>
+              {modoEdicao && selecionado
+                ? <button onClick={() => excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>🗑 Excluir</button>
+                : <div/>}
+              <div style={{ display:'flex', gap:'10px' }}>
+                <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
+                <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
+                  {salvando?'Salvando...':modoEdicao?'Salvar alterações':'Salvar serviço'}
+                </button>
               </div>
             </div>
           </div>

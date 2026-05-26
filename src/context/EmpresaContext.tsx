@@ -96,7 +96,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
         // Restaura última empresa selecionada
         try {
-          const salva = localStorage.getItem('empresa_ativa_id')
+          const salva = typeof window !== 'undefined' ? localStorage.getItem('empresa_ativa_id') : null
           const encontrada = salva ? l.find((e: EmpresaResumo) => e.id === salva) : null
           setEmpresaAtiva(encontrada || l[0] || null)
         } catch {
@@ -150,7 +150,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
   function trocarEmpresa(empresa: EmpresaResumo) {
     setEmpresaAtiva(empresa)
-    try { localStorage.setItem('empresa_ativa_id', empresa.id) } catch {}
+    try { if (typeof window !== 'undefined') localStorage.setItem('empresa_ativa_id', empresa.id) } catch {}
   }
 
   return (

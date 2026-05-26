@@ -1,10 +1,8 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,45 +12,34 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(
-  cookiesToSet: {
-    name: string
-    value: string
-    options?: any
-  }[]
-) {
-  cookiesToSet.forEach(({ name, value }) =>
-    request.cookies.set(name, value)
-  )
-
-  supabaseResponse = NextResponse.next({ request })
-
-  cookiesToSet.forEach(({ name, value, options }) =>
-    supabaseResponse.cookies.set(name, value, options)
-  )
-},
+        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options ?? {})
+          )
+        },
       },
     }
   )
 
-  // Atualiza a sessão — NÃO remova esta linha
+  // Atualiza a sessão — não remova esta linha
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isAuthRoute  = pathname.startsWith('/auth')
-  const isRootRoute  = pathname === '/'
-  const isNextAsset  = pathname.startsWith('/_next') || pathname.includes('.')
+  const isAuthRoute = pathname.startsWith('/auth')
+  const isRootRoute = pathname === '/'
 
-  if (isNextAsset) return supabaseResponse
-
-  // Sem sessão tentando acessar área protegida → manda para login
+  // Sem sessão → redireciona para login
   if (!user && !isAuthRoute && !isRootRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 
-  // Com sessão tentando acessar login → manda para dashboard
+  // Com sessão → redireciona login para dashboard
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'

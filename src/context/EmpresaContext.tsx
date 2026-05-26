@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 
 export type EmpresaResumo = {
@@ -17,7 +17,6 @@ export type UsuarioLogado = {
   email: string
   nivel_acesso: 'master' | 'admin' | 'profissional'
   empresa_id?: string
-  avatar?: string
 }
 
 type EmpresaContextType = {
@@ -32,76 +31,136 @@ type EmpresaContextType = {
 
 const EmpresaContext = createContext<EmpresaContextType>({
   usuario: null, empresaAtiva: null, empresas: [],
-  trocarEmpresa: () => {}, carregando: true, isMaster: false, recarregar: () => {},
+  trocarEmpresa: () => {}, carregando: true,
+  isMaster: false, recarregar: () => {},
 })
 
 export function EmpresaProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<UsuarioLogado | null>(null)
+  const [usuario,      setUsuario]      = useState<UsuarioLogado | null>(null)
   const [empresaAtiva, setEmpresaAtiva] = useState<EmpresaResumo | null>(null)
-  const [empresas, setEmpresas] = useState<EmpresaResumo[]>([])
-  const [carregando, setCarregando] = useState(true)
+  const [empresas,     setEmpresas]     = useState<EmpresaResumo[]>([])
+  const [carregando,   setCarregando]   = useState(true)
+  const [iniciou,      setIniciou]      = useState(false)
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     setCarregando(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setCarregando(false); return }
+    try {
+      const supabase = createClient()
 
-    // Busca dados do usuário
-    const { data: u } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('auth_id', user.id)
-      .single()
+      // getUser() é mais confiável que getSession() na Vercel
+      const { data: { user }, error: erroAuth } = await supabase.auth.getUser()
 
-    if (!u) { setCarregando(false); return }
-
-    const usuarioLogado: UsuarioLogado = {
-      id: u.id, nome: u.nome, email: u.email,
-      nivel_acesso: u.nivel_acesso, empresa_id: u.empresa_id,
-    }
-    setUsuario(usuarioLogado)
-
-    // Master vê todas as empresas
-    if (u.nivel_acesso === 'master') {
-      const { data: todasEmpresas } = await supabase
-        .from('empresas')
-        .select('id,nome,logo_url,plano,status')
-        .order('nome')
-      const lista = todasEmpresas || []
-      setEmpresas(lista)
-      // Restaura empresa selecionada do localStorage
-      const salva = localStorage.getItem('empresa_ativa')
-      if (salva) {
-        const encontrada = lista.find((e: EmpresaResumo) => e.id === salva)
-        if (encontrada) { setEmpresaAtiva(encontrada); setCarregando(false); return }
+      if (erroAuth || !user) {
+        setUsuario(null)
+        setCarregando(false)
+        return
       }
-      if (lista.length > 0) setEmpresaAtiva(lista[0])
-    } else {
-      // Admin/profissional vê apenas sua empresa
-      if (u.empresa_id) {
+
+      // Busca dados do usuário na tabela
+      const { data: u } = await supabase
+        .from('usuarios')
+        .select('id, nome, email, nivel_acesso, empresa_id, status')
+        .eq('auth_id', user.id)
+        .single()
+
+      if (!u) {
+        // Autenticado mas sem registro na tabela — usa dados mínimos
+        setUsuario({
+          id: user.id,
+          nome: user.email?.split('@')[0] || 'Usuário',
+          email: user.email || '',
+          nivel_acesso: 'profissional',
+        })
+        setCarregando(false)
+        return
+      }
+
+      setUsuario({
+        id:           u.id,
+        nome:         u.nome,
+        email:        u.email,
+        nivel_acesso: u.nivel_acesso,
+        empresa_id:   u.empresa_id,
+      })
+
+      // Carrega empresas conforme nível
+      if (u.nivel_acesso === 'master') {
+        const { data: lista } = await supabase
+          .from('empresas')
+          .select('id,nome,logo_url,plano,status')
+          .eq('status', 'ativo')
+          .order('nome')
+
+        const l = lista || []
+        setEmpresas(l)
+
+        // Restaura última empresa selecionada
+        try {
+          const salva = localStorage.getItem('empresa_ativa_id')
+          const encontrada = salva ? l.find((e: EmpresaResumo) => e.id === salva) : null
+          setEmpresaAtiva(encontrada || l[0] || null)
+        } catch {
+          setEmpresaAtiva(l[0] || null)
+        }
+
+      } else if (u.empresa_id) {
         const { data: emp } = await supabase
           .from('empresas')
           .select('id,nome,logo_url,plano,status')
           .eq('id', u.empresa_id)
           .single()
-        if (emp) { setEmpresas([emp]); setEmpresaAtiva(emp) }
-      }
-    }
-    setCarregando(false)
-  }
 
-  useEffect(() => { carregar() }, [])
+        if (emp) {
+          setEmpresas([emp])
+          setEmpresaAtiva(emp)
+        }
+      }
+
+    } catch (err) {
+      console.error('Erro EmpresaContext:', err)
+    } finally {
+      setCarregando(false)
+    }
+  }, [])
+
+  // Carrega uma única vez ao montar
+  useEffect(() => {
+    if (!iniciou) {
+      setIniciou(true)
+      carregar()
+    }
+  }, [iniciou, carregar])
+
+  // Escuta mudanças de autenticação
+  useEffect(() => {
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        carregar()
+      }
+      if (event === 'SIGNED_OUT') {
+        setUsuario(null)
+        setEmpresaAtiva(null)
+        setEmpresas([])
+        setCarregando(false)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [carregar])
 
   function trocarEmpresa(empresa: EmpresaResumo) {
     setEmpresaAtiva(empresa)
-    localStorage.setItem('empresa_ativa', empresa.id)
+    try { localStorage.setItem('empresa_ativa_id', empresa.id) } catch {}
   }
 
   return (
     <EmpresaContext.Provider value={{
-      usuario, empresaAtiva, empresas, trocarEmpresa,
-      carregando, isMaster: usuario?.nivel_acesso === 'master',
+      usuario,
+      empresaAtiva,
+      empresas,
+      trocarEmpresa,
+      carregando,
+      isMaster: usuario?.nivel_acesso === 'master',
       recarregar: carregar,
     }}>
       {children}
@@ -109,4 +168,6 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useEmpresa() { return useContext(EmpresaContext) }
+export function useEmpresa() {
+  return useContext(EmpresaContext)
+}

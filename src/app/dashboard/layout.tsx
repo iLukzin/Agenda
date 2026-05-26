@@ -30,6 +30,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [menuMobile, setMenuMobile] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [dropEmpresa, setDropEmpresa] = useState(false)
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
+
+  // Timeout de segurança: se demorar mais de 8s carregando, mostra o sistema mesmo assim
+  useEffect(() => {
+    if (!carregando) return
+    const t = setTimeout(() => setLoadingTimeout(true), 8000)
+    return () => clearTimeout(t)
+  }, [carregando])
 
   useEffect(() => {
     function checar() {
@@ -53,7 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const sidebarW = sidebarAberta ? '240px' : '68px'
 
-  if (carregando) {
+  if (carregando && !loadingTimeout) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#f8f8fc' }}>
         <div style={{ textAlign:'center' }}>

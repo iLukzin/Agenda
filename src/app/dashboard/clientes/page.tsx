@@ -39,7 +39,7 @@ export default function ClientesPage() {
     if (!empresaAtiva?.id) return
     setCarregando(true)
     const { data } = await listarClientes(empresaAtiva.id)
-    if (data) setClientes(data as Cliente[])
+    if (data) setClientes(data.map((c: any) => ({ ...c, plano: Array.isArray(c.plano) ? c.plano[0] : c.plano })) as Cliente[])
     setCarregando(false)
   }, [empresaAtiva?.id])
 

@@ -2,18 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { formatarMoeda, corStatus, labelStatus } from '@/lib/supabase'
-import dynamic from 'next/dynamic'
 
-// Recharts deve ser carregado apenas no cliente para evitar erro de hidratação
-const AreaChart      = dynamic(() => import('recharts').then(m => ({ default: m.AreaChart      })), { ssr: false })
-const Area           = dynamic(() => import('recharts').then(m => ({ default: m.Area           })), { ssr: false })
-const BarChart       = dynamic(() => import('recharts').then(m => ({ default: m.BarChart       })), { ssr: false })
-const Bar            = dynamic(() => import('recharts').then(m => ({ default: m.Bar            })), { ssr: false })
-const XAxis          = dynamic(() => import('recharts').then(m => ({ default: m.XAxis          })), { ssr: false })
-const YAxis          = dynamic(() => import('recharts').then(m => ({ default: m.YAxis          })), { ssr: false })
-const CartesianGrid  = dynamic(() => import('recharts').then(m => ({ default: m.CartesianGrid  })), { ssr: false })
-const Tooltip        = dynamic(() => import('recharts').then(m => ({ default: m.Tooltip        })), { ssr: false })
-const ResponsiveContainer = dynamic(() => import('recharts').then(m => ({ default: m.ResponsiveContainer })), { ssr: false })
+// Recharts importado somente no cliente via useEffect
+let RechartsComponents: any = null
 
 const dadosFaturamento = [
   { dia:'01/01', valor:1200 }, { dia:'02/01', valor:980  }, { dia:'03/01', valor:1500 },
@@ -41,7 +32,7 @@ function CardMetrica({ label, valor, sublabel, cor, icone }: {
   label: string; valor: string; sublabel: string; cor: string; icone: string
 }) {
   return (
-    <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'22px 24px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+    <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'22px 24px' }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
         <div>
           <p style={{ fontSize:'12px', fontWeight:'500', color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'8px' }}>{label}</p>
@@ -56,11 +47,51 @@ function CardMetrica({ label, valor, sublabel, cor, icone }: {
   )
 }
 
-export default function DashboardPage() {
-  const [montado, setMontado] = useState(false)
+function GraficoFaturamento({ recharts }: { recharts: any }) {
+  const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = recharts
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <AreaChart data={dadosFaturamento}>
+        <defs>
+          <linearGradient id="gradFat" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.15}/>
+            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f8"/>
+        <XAxis dataKey="dia" tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false}/>
+        <YAxis tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false}
+          tickFormatter={(v: number) => `R$${(v/1000).toFixed(1)}k`}/>
+        <Tooltip
+          formatter={(v: number) => [formatarMoeda(v), 'Faturamento']}
+          contentStyle={{ borderRadius:'10px', border:'1px solid #f0f0f8', fontSize:'13px' }}/>
+        <Area type="monotone" dataKey="valor" stroke="#6366f1" strokeWidth={2} fill="url(#gradFat)"/>
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
 
-  // Evita hidratação incorreta no servidor
-  useEffect(() => { setMontado(true) }, [])
+function GraficoServicos({ recharts }: { recharts: any }) {
+  const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = recharts
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <BarChart data={servicosTop} layout="vertical">
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f8" horizontal={false}/>
+        <XAxis type="number" tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false}/>
+        <YAxis dataKey="nome" type="category" tick={{ fontSize:11, fill:'#374151' }} axisLine={false} tickLine={false} width={120}/>
+        <Tooltip contentStyle={{ borderRadius:'10px', border:'1px solid #f0f0f8', fontSize:'13px' }}/>
+        <Bar dataKey="total" fill="#6366f1" radius={[0,4,4,0]}/>
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+export default function DashboardPage() {
+  const [recharts, setRecharts] = useState<any>(null)
+
+  useEffect(() => {
+    import('recharts').then(mod => setRecharts(mod))
+  }, [])
 
   const hoje = new Date().toLocaleDateString('pt-BR', {
     weekday:'long', day:'numeric', month:'long', year:'numeric',
@@ -69,69 +100,39 @@ export default function DashboardPage() {
 
   return (
     <div style={{ padding:'32px' }}>
-      {/* Cabeçalho */}
       <div style={{ marginBottom:'28px' }}>
         <h1 style={{ fontSize:'24px', fontWeight:'700', color:'#1a1a2e', letterSpacing:'-0.5px' }}>Dashboard</h1>
         <p style={{ fontSize:'14px', color:'#9ca3af', marginTop:'4px', textTransform:'capitalize' }}>{hoje}</p>
       </div>
 
-      {/* Cards de métricas */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'16px', marginBottom:'24px' }}>
-        <CardMetrica label="Agendamentos hoje"  valor="12"        sublabel="3 confirmados"         cor="#eef2ff" icone="📅" />
-        <CardMetrica label="Clientes ativos"    valor="284"       sublabel="+8 este mês"           cor="#ecfdf5" icone="👥" />
-        <CardMetrica label="Faturamento mensal" valor="R$ 18.4k"  sublabel="↑ 12% vs mês anterior" cor="#fffbeb" icone="💰" />
-        <CardMetrica label="Ticket médio"       valor="R$ 148"    sublabel="Por atendimento"        cor="#fdf4ff" icone="📊" />
+        <CardMetrica label="Agendamentos hoje"  valor="12"       sublabel="3 confirmados"          cor="#eef2ff" icone="📅" />
+        <CardMetrica label="Clientes ativos"    valor="284"      sublabel="+8 este mês"            cor="#ecfdf5" icone="👥" />
+        <CardMetrica label="Faturamento mensal" valor="R$ 18.4k" sublabel="↑ 12% vs mês anterior"  cor="#fffbeb" icone="💰" />
+        <CardMetrica label="Ticket médio"       valor="R$ 148"   sublabel="Por atendimento"         cor="#fdf4ff" icone="📊" />
       </div>
 
-      {/* Gráficos — só renderiza após montar no cliente */}
-      {montado && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'16px', marginBottom:'24px' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 380px', gap:'16px' }}>
-            {/* Faturamento */}
-            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
-                <div>
-                  <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e' }}>Faturamento</h2>
-                  <p style={{ fontSize:'13px', color:'#9ca3af' }}>Últimos 12 dias</p>
-                </div>
-                <span style={{ fontSize:'13px', color:'#10b981', fontWeight:'500', background:'#ecfdf5', padding:'4px 10px', borderRadius:'99px' }}>↑ 12%</span>
+      {recharts && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 380px', gap:'16px', marginBottom:'24px' }}>
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
+              <div>
+                <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e' }}>Faturamento</h2>
+                <p style={{ fontSize:'13px', color:'#9ca3af' }}>Últimos 12 dias</p>
               </div>
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={dadosFaturamento}>
-                  <defs>
-                    <linearGradient id="gradFat" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.15}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f8"/>
-                  <XAxis dataKey="dia" tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false}/>
-                  <YAxis tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `R$${(v/1000).toFixed(1)}k`}/>
-                  <Tooltip formatter={(v: number) => [formatarMoeda(v), 'Faturamento']} contentStyle={{ borderRadius:'10px', border:'1px solid #f0f0f8', fontSize:'13px' }}/>
-                  <Area type="monotone" dataKey="valor" stroke="#6366f1" strokeWidth={2} fill="url(#gradFat)"/>
-                </AreaChart>
-              </ResponsiveContainer>
+              <span style={{ fontSize:'13px', color:'#10b981', fontWeight:'500', background:'#ecfdf5', padding:'4px 10px', borderRadius:'99px' }}>↑ 12%</span>
             </div>
+            <GraficoFaturamento recharts={recharts} />
+          </div>
 
-            {/* Serviços */}
-            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
-              <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'4px' }}>Serviços populares</h2>
-              <p style={{ fontSize:'13px', color:'#9ca3af', marginBottom:'20px' }}>Este mês</p>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={servicosTop} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f8" horizontal={false}/>
-                  <XAxis type="number" tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false}/>
-                  <YAxis dataKey="nome" type="category" tick={{ fontSize:11, fill:'#374151' }} axisLine={false} tickLine={false} width={120}/>
-                  <Tooltip contentStyle={{ borderRadius:'10px', border:'1px solid #f0f0f8', fontSize:'13px' }}/>
-                  <Bar dataKey="total" fill="#6366f1" radius={[0,4,4,0]}/>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
+            <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'4px' }}>Serviços populares</h2>
+            <p style={{ fontSize:'13px', color:'#9ca3af', marginBottom:'20px' }}>Este mês</p>
+            <GraficoServicos recharts={recharts} />
           </div>
         </div>
       )}
 
-      {/* Próximos agendamentos */}
       <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'18px' }}>
           <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e' }}>Próximos agendamentos</h2>
@@ -157,14 +158,14 @@ export default function DashboardPage() {
                   <td style={{ padding:'12px' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
                       <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'600', color:'#6366f1', flexShrink:0 }}>
-                        {a.cliente.split(' ').map(n=>n[0]).slice(0,2).join('')}
+                        {a.cliente.split(' ').map((n:string)=>n[0]).slice(0,2).join('')}
                       </div>
                       <span style={{ fontSize:'14px', color:'#1a1a2e', fontWeight:'500' }}>{a.cliente}</span>
                     </div>
                   </td>
                   <td style={{ padding:'12px', fontSize:'14px', color:'#6b7280' }}>{a.servico}</td>
                   <td style={{ padding:'12px' }}>
-                    <span className={`${corStatus(a.status)}`} style={{ fontSize:'12px', padding:'3px 10px', borderRadius:'99px', fontWeight:'500' }}>
+                    <span className={corStatus(a.status)} style={{ fontSize:'12px', padding:'3px 10px', borderRadius:'99px', fontWeight:'500' }}>
                       {labelStatus(a.status)}
                     </span>
                   </td>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PROFISSIONAIS_CADASTRO, type Profissional } from '@/lib/dados'
+import { PROFISSIONAIS_CADASTRO } from '@/lib/dados'
 
 type Profissional = {
   id: number

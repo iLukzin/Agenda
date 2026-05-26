@@ -2,45 +2,37 @@
 
 import { useState } from 'react'
 import { PROFISSIONAIS_CADASTRO } from '@/lib/dados'
+import type { Profissional as ProfissionalBase } from '@/lib/dados'
 
-type Profissional = {
-  id: number
-  nome: string
-  email: string
-  telefone: string
-  especialidade: string
-  servicos: string[]
-  cor: string
-  status: string
-  atendimentosMes: number
-  horarios: { dia: number; inicio: string; fim: string; ativo: boolean }[]
-}
+// Extende o tipo base com campos de UI
+type Profissional = ProfissionalBase & { atendimentosMes: number }
 
-const DIAS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
-const CORES = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899']
+const DIAS        = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+const CORES       = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899']
 const SERVICOS_LISTA = ['Consulta','Retorno','Avaliação','Sessão Terapêutica','Retorno Express']
-
 const horariosBase = DIAS.map((_, i) => ({ dia:i, inicio:'08:00', fim:'18:00', ativo: i>=1&&i<=5 }))
 
-const profissionaisIniciais: Profissional[] = [
-  { id:1, nome:'Dr. Carlos Souza',    email:'carlos@studio.com',  telefone:'(11) 99999-0010', especialidade:'Terapeuta',      servicos:['Consulta','Retorno','Sessão Terapêutica'], cor:'#6366f1', status:'ativo', atendimentosMes:38, horarios: horariosBase },
-  { id:2, nome:'Dra. Ana Lima',       email:'ana@studio.com',     telefone:'(11) 99999-0011', especialidade:'Fisioterapeuta', servicos:['Consulta','Avaliação'],                    cor:'#06b6d4', status:'ativo', atendimentosMes:25, horarios: horariosBase },
-  { id:3, nome:'Dr. Pedro Costa',     email:'pedro@studio.com',   telefone:'(11) 99999-0012', especialidade:'Psicólogo',      servicos:['Consulta','Sessão Terapêutica'],           cor:'#10b981', status:'ativo', atendimentosMes:31, horarios: horariosBase },
-  { id:4, nome:'Dra. Sofia Mendes',   email:'sofia@studio.com',   telefone:'(11) 99999-0013', especialidade:'Nutricionista',  servicos:['Avaliação','Retorno'],                     cor:'#ec4899', status:'inativo',atendimentosMes:0,  horarios: horariosBase },
-]
+const inputStyle = {
+  width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px',
+  padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const,
+}
 
-const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
+// Converte os profissionais do cadastro para o tipo local
+const profissionaisIniciais: Profissional[] = PROFISSIONAIS_CADASTRO.map(p => ({
+  ...p,
+  atendimentosMes: p.id === '1' ? 38 : p.id === '2' ? 25 : p.id === '3' ? 31 : 0,
+}))
 
 export default function ProfissionaisPage() {
-  const [profissionais, setProfissionais] = useState<Profissional[]>(PROFISSIONAIS_CADASTRO.map(p => ({...p, id: Number(p.id), atendimentosMes: 0})) as any)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [abaModal, setAbaModal] = useState<'dados'|'horarios'|'servicos'>('dados')
-  const [modoEdicao, setModoEdicao] = useState(false)
-  const [selecionado, setSelecionado] = useState<Profissional | null>(null)
-  const [busca, setBusca] = useState('')
-  const [form, setForm] = useState({ nome:'', email:'', telefone:'', especialidade:'', cor:CORES[0], status:'ativo' })
-  const [servicosSel, setServicosSel] = useState<string[]>([])
-  const [horarios, setHorarios] = useState(horariosBase.map(h => ({...h})))
+  const [profissionais, setProfissionais] = useState<Profissional[]>(profissionaisIniciais)
+  const [modalAberto, setModalAberto]   = useState(false)
+  const [abaModal, setAbaModal]         = useState<'dados'|'horarios'|'servicos'>('dados')
+  const [modoEdicao, setModoEdicao]     = useState(false)
+  const [selecionado, setSelecionado]   = useState<Profissional | null>(null)
+  const [busca, setBusca]               = useState('')
+  const [form, setForm]                 = useState({ nome:'', email:'', telefone:'', especialidade:'', cor:CORES[0], status:'ativo' })
+  const [servicosSel, setServicosSel]   = useState<string[]>([])
+  const [horarios, setHorarios]         = useState(horariosBase.map(h => ({...h})))
 
   const filtrados = profissionais.filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||
@@ -70,13 +62,20 @@ export default function ProfissionaisPage() {
         ? { ...p, ...form, servicos:servicosSel, horarios }
         : p))
     } else {
-      setProfissionais(prev => [...prev, { id:Date.now(), ...form, servicos:servicosSel, horarios, atendimentosMes:0 }])
+      const novo: Profissional = {
+        id: Date.now().toString(), ...form,
+        servicos:servicosSel, horarios, atendimentosMes:0,
+      }
+      setProfissionais(prev => [...prev, novo])
     }
     fecharModal()
   }
 
-  function excluir(id: number) {
-    if (confirm('Excluir este profissional?')) { setProfissionais(prev => prev.filter(p => p.id !== id)); fecharModal() }
+  function excluir(id: string) {
+    if (confirm('Excluir este profissional?')) {
+      setProfissionais(prev => prev.filter(p => p.id !== id))
+      fecharModal()
+    }
   }
 
   function toggleServico(s: string) {
@@ -87,8 +86,9 @@ export default function ProfissionaisPage() {
     setHorarios(prev => prev.map((h, idx) => idx===i ? {...h, ativo:!h.ativo} : h))
   }
 
-  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
-    setForm(prev => ({...prev, [k]:e.target.value}))
+  const f = (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
+      setForm(prev => ({...prev, [k]:e.target.value}))
 
   return (
     <div style={{ padding:'24px 16px' }}>
@@ -96,7 +96,9 @@ export default function ProfissionaisPage() {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Profissionais</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{profissionais.filter(p=>p.status==='ativo').length} ativos de {profissionais.length} cadastrados</p>
+          <p style={{ fontSize:'13px', color:'#9ca3af' }}>
+            {profissionais.filter(p=>p.status==='ativo').length} ativos de {profissionais.length} cadastrados
+          </p>
         </div>
         <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
           + Novo profissional
@@ -130,7 +132,7 @@ export default function ProfissionaisPage() {
             </div>
 
             {/* Contato */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'4px', marginBottom:'14px' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:'4px', marginBottom:'12px' }}>
               <p style={{ fontSize:'12px', color:'#9ca3af' }}>📧 {p.email}</p>
               <p style={{ fontSize:'12px', color:'#9ca3af' }}>📱 {p.telefone}</p>
             </div>
@@ -142,7 +144,25 @@ export default function ProfissionaisPage() {
               ))}
             </div>
 
-            {/* Métricas */}
+            {/* Dias que atende */}
+            <div style={{ display:'flex', gap:'4px', marginBottom:'14px' }}>
+              {DIAS.map((dia, i) => {
+                const h = p.horarios.find(h => h.dia === i)
+                return (
+                  <div key={dia} style={{
+                    width:'28px', height:'28px', borderRadius:'50%',
+                    background: h?.ativo ? p.cor+'20' : '#f3f4f6',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:'9px', fontWeight:'600',
+                    color: h?.ativo ? p.cor : '#d1d5db',
+                  }}>
+                    {dia.slice(0,1)}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Métricas e ações */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:'12px', borderTop:'1px solid #f9fafb' }}>
               <div style={{ textAlign:'center' }}>
                 <p style={{ fontSize:'18px', fontWeight:'700', color:'#1a1a2e' }}>{p.atendimentosMes}</p>
@@ -150,7 +170,7 @@ export default function ProfissionaisPage() {
               </div>
               <div style={{ textAlign:'center' }}>
                 <p style={{ fontSize:'18px', fontWeight:'700', color:'#1a1a2e' }}>{p.horarios.filter(h=>h.ativo).length}</p>
-                <p style={{ fontSize:'11px', color:'#9ca3af' }}>dias/semana</p>
+                <p style={{ fontSize:'11px', color:'#9ca3af' }}>dias/sem.</p>
               </div>
               <button onClick={() => abrirEdicao(p)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'8px', padding:'7px 14px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>
                 ✏️ Editar
@@ -166,12 +186,14 @@ export default function ProfissionaisPage() {
           <div onClick={e => e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'560px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'✏️ Editar profissional':'+ Novo profissional'}</h2>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>
+                {modoEdicao ? '✏️ Editar profissional' : '+ Novo profissional'}
+              </h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
             </div>
 
             {/* Abas */}
-            <div style={{ display:'flex', gap:'0', marginBottom:'20px', borderBottom:'2px solid #f3f4f6' }}>
+            <div style={{ display:'flex', marginBottom:'20px', borderBottom:'2px solid #f3f4f6' }}>
               {([['dados','Dados'],['servicos','Serviços'],['horarios','Horários']] as const).map(([v,l]) => (
                 <button key={v} onClick={() => setAbaModal(v)} style={{
                   padding:'8px 16px', border:'none', background:'none', cursor:'pointer', fontSize:'13px',
@@ -206,7 +228,8 @@ export default function ProfissionaisPage() {
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'8px' }}>Cor de identificação</label>
                   <div style={{ display:'flex', gap:'8px' }}>
                     {CORES.map(cor => (
-                      <button key={cor} onClick={() => setForm(prev => ({...prev, cor}))} style={{ width:'28px', height:'28px', borderRadius:'50%', background:cor, border: form.cor===cor?'3px solid #1a1a2e':'2px solid transparent', cursor:'pointer' }}/>
+                      <button key={cor} onClick={() => setForm(prev => ({...prev, cor}))}
+                        style={{ width:'28px', height:'28px', borderRadius:'50%', background:cor, border: form.cor===cor?'3px solid #1a1a2e':'2px solid transparent', cursor:'pointer' }}/>
                     ))}
                   </div>
                 </div>
@@ -251,10 +274,12 @@ export default function ProfissionaisPage() {
                     <span style={{ fontSize:'13px', fontWeight:'500', color: h.ativo?'#1a1a2e':'#9ca3af', minWidth:'30px' }}>{DIAS[h.dia]}</span>
                     {h.ativo ? (
                       <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                        <input type="time" value={h.inicio} onChange={e => setHorarios(prev => prev.map((x,j) => j===i?{...x,inicio:e.target.value}:x))}
+                        <input type="time" value={h.inicio}
+                          onChange={e => setHorarios(prev => prev.map((x,j) => j===i?{...x,inicio:e.target.value}:x))}
                           style={{ border:'1px solid #e5e7eb', borderRadius:'6px', padding:'5px 8px', fontSize:'13px', outline:'none' }}/>
                         <span style={{ color:'#9ca3af', fontSize:'12px' }}>até</span>
-                        <input type="time" value={h.fim} onChange={e => setHorarios(prev => prev.map((x,j) => j===i?{...x,fim:e.target.value}:x))}
+                        <input type="time" value={h.fim}
+                          onChange={e => setHorarios(prev => prev.map((x,j) => j===i?{...x,fim:e.target.value}:x))}
                           style={{ border:'1px solid #e5e7eb', borderRadius:'6px', padding:'5px 8px', fontSize:'13px', outline:'none' }}/>
                       </div>
                     ) : <span style={{ fontSize:'12px', color:'#d1d5db' }}>Não atende</span>}
@@ -271,7 +296,7 @@ export default function ProfissionaisPage() {
               <div style={{ display:'flex', gap:'10px' }}>
                 <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
                 <button onClick={salvar} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-                  {modoEdicao?'Salvar alterações':'Salvar profissional'}
+                  {modoEdicao ? 'Salvar alterações' : 'Salvar profissional'}
                 </button>
               </div>
             </div>

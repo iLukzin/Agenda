@@ -402,12 +402,7 @@ export default function AgendaPage() {
   const profSelecionado = profissionais.find((p: any) => p.nome === form.profissional)
   const diaSemanaForm   = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
 
-  const horarioDoDiaForm: HorarioDB | undefined = profSelecionado
-    ? horariosProfissional.find(h =>
-        h.profissional_id === profSelecionado.id &&
-        h.dia_semana === diaSemanaForm
-      )
-    : undefined
+  const horarioDoDiaForm: HorarioDB | undefined = profSelecionado ? horariosProfissional.find(h => h.profissional_id === profSelecionado.id && h.dia_semana === diaSemanaForm) : undefined
 
   const naoAtende = !!(profSelecionado && form.dataISO && !horarioDoDiaForm)
 
@@ -443,19 +438,13 @@ export default function AgendaPage() {
 
   const horaSel    = form.horaInicio
   const slotSel    = slotsDisponiveis.find(s => s.label === horaSel)
-  const btnBloqueado = (naoAtende && !!profSelecionado) ||
-    (slotSel != null && !slotSel.disponivel) ||
-    !form.profissional || !form.clienteId
+  const btnBloqueado = ((naoAtende && !!profSelecionado) || (slotSel != null && !slotSel.disponivel) || !form.profissional || !form.clienteId)
 
   const diasParaMostrar = visualizacao==='dia'?[diaAtivo]:diasSemana
   const colunas         = diasParaMostrar.length
   const posLinha        = linhaHoraAtual()
 
-  const agendamentosPeriodo = useMemo(()=>
-    agendamentos.filter(a=>a.dataISO>=periodoInicio&&a.dataISO<=periodoFim)
-      .sort((a,b)=>a.dataISO.localeCompare(b.dataISO)||a.horaInicio-b.horaInicio),
-    [agendamentos,periodoInicio,periodoFim]
-  )
+  const agendamentosPeriodo = useMemo(()=>agendamentos.filter(a=>a.dataISO>=periodoInicio&&a.dataISO<=periodoFim).sort((a,b)=>a.dataISO.localeCompare(b.dataISO)||a.horaInicio-b.horaInicio),[agendamentos,periodoInicio,periodoFim])
 
   const labelPeriodoFiltro = (!periodoInicio || !periodoFim) ? 'Período' : (isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) + ' – ' + isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'}))
 

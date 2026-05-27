@@ -1,39 +1,52 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase'
+import { useEmpresa } from '@/context/EmpresaContext'
 
 type Empresa = {
-  id: string
-  nome: string
-  cnpj: string
-  email: string
-  telefone: string
-  plano: string
-  status: string
-  vencimento: string
-  usuarios: number
-  agendamentos: number
+  id: string; nome: string; cnpj: string; email: string
+  telefone: string; endereco: string; plano: string
+  status: string; vencimento: string
 }
 
-const empresasIniciais: Empresa[] = [
-  { id:'1', nome:'Studio Demo',       cnpj:'00.000.000/0001-00', email:'demo@studio.com',      telefone:'(11) 99999-0001', plano:'profissional', status:'ativo',   vencimento:'31/12/2025', usuarios:4, agendamentos:124 },
-  { id:'2', nome:'Clínica Saúde+',    cnpj:'11.111.111/0001-11', email:'contato@saudemais.com', telefone:'(11) 99999-0002', plano:'enterprise',   status:'ativo',   vencimento:'30/06/2025', usuarios:8, agendamentos:312 },
-  { id:'3', nome:'Espaço Terapêutico',cnpj:'22.222.222/0001-22', email:'contato@espaco.com',    telefone:'(11) 99999-0003', plano:'basico',       status:'ativo',   vencimento:'28/02/2025', usuarios:2, agendamentos:45  },
-  { id:'4', nome:'Physio Center',     cnpj:'33.333.333/0001-33', email:'contato@physio.com',    telefone:'(11) 99999-0004', plano:'profissional', status:'inativo', vencimento:'15/01/2025', usuarios:3, agendamentos:0   },
-]
-
-const planoCor: Record<string, string> = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
-const planoBg:  Record<string, string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
+const planoCor:  Record<string,string> = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
+const planoBg:   Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
 
 export default function EmpresasPage() {
-  const [empresas, setEmpresas] = useState<Empresa[]>(empresasIniciais)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [modoEdicao, setModoEdicao] = useState(false)
-  const [selecionada, setSelecionada] = useState<Empresa | null>(null)
-  const [busca, setBusca] = useState('')
-  const [form, setForm] = useState({ nome:'', cnpj:'', email:'', telefone:'', plano:'profissional', status:'ativo', vencimento:'' })
+  const { recarregar } = useEmpresa()
+  const [empresas, setEmpresas]     = useState<Empresa[]>([])
+  const [carregando, setCarregando] = useState(false)
+  const [salvando, setSalvando]     = useState(false)
+  const [erro, setErro]             = useState('')
+  const [busca, setBusca]           = useState('')
+  const [modalAberto, setModalAberto]   = useState(false)
+  const [modoEdicao, setModoEdicao]     = useState(false)
+  const [selecionada, setSelecionada]   = useState<Empresa|null>(null)
+  const [form, setForm] = useState({ nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'' })
+
+  const carregar = useCallback(async () => {
+    setCarregando(true)
+    const sb = createClient()
+    const { data, error } = await sb
+      .from('empresas')
+      .select('id, nome, cnpj, email, telefone, endereco, plano, status, vencimento')
+      .order('nome')
+    if (error) { console.error(error); setCarregando(false); return }
+    setEmpresas((data || []).map((e: any) => ({
+      ...e,
+      cnpj:       e.cnpj || '',
+      email:      e.email || '',
+      telefone:   e.telefone || '',
+      endereco:   e.endereco || '',
+      vencimento: e.vencimento || '',
+    })))
+    setCarregando(false)
+  }, [])
+
+  useEffect(() => { carregar() }, [carregar])
 
   const filtradas = empresas.filter(e =>
     e.nome.toLowerCase().includes(busca.toLowerCase()) ||
@@ -41,54 +54,67 @@ export default function EmpresasPage() {
   )
 
   function abrirNova() {
-    setModoEdicao(false); setSelecionada(null)
-    setForm({ nome:'', cnpj:'', email:'', telefone:'', plano:'profissional', status:'ativo', vencimento:'' })
+    setModoEdicao(false); setSelecionada(null); setErro('')
+    setForm({ nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'' })
     setModalAberto(true)
   }
 
   function abrirEdicao(e: Empresa) {
-    setModoEdicao(true); setSelecionada(e)
-    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, plano:e.plano, status:e.status, vencimento:e.vencimento })
+    setModoEdicao(true); setSelecionada(e); setErro('')
+    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento })
     setModalAberto(true)
   }
 
-  function fecharModal() { setModalAberto(false); setSelecionada(null) }
+  function fecharModal() { setModalAberto(false); setSelecionada(null); setErro('') }
 
-  function salvar() {
-    if (!form.nome.trim()) return
+  async function salvar() {
+    if (!form.nome.trim()) return setErro('Nome é obrigatório.')
+    setSalvando(true); setErro('')
+    const sb = createClient()
+    const payload = {
+      nome:       form.nome.trim(),
+      cnpj:       form.cnpj || null,
+      email:      form.email || null,
+      telefone:   form.telefone || null,
+      endereco:   form.endereco || null,
+      plano:      form.plano,
+      status:     form.status,
+      vencimento: form.vencimento || null,
+    }
+    let error: any
     if (modoEdicao && selecionada) {
-      setEmpresas(prev => prev.map(e => e.id === selecionada.id ? { ...e, ...form } : e))
+      const res = await sb.from('empresas').update(payload).eq('id', selecionada.id)
+      error = res.error
     } else {
-      setEmpresas(prev => [...prev, { id: Date.now().toString(), ...form, usuarios:0, agendamentos:0 }])
+      const res = await sb.from('empresas').insert(payload)
+      error = res.error
     }
+    if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
+    await carregar()
+    recarregar() // Atualiza seletor de empresa na sidebar
     fecharModal()
+    setSalvando(false)
   }
 
-  function excluir(id: string) {
-    if (confirm('Excluir esta empresa? Esta ação não pode ser desfeita.')) {
-      setEmpresas(prev => prev.filter(e => e.id !== id)); fecharModal()
-    }
+  async function toggleStatus(e: Empresa) {
+    const sb = createClient()
+    await sb.from('empresas').update({ status: e.status==='ativo'?'inativo':'ativo' }).eq('id', e.id)
+    await carregar()
+    recarregar()
   }
 
-  function toggleStatus(id: string) {
-    setEmpresas(prev => prev.map(e => e.id === id ? { ...e, status: e.status==='ativo'?'inativo':'ativo' } : e))
-  }
+  const f = (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
+      setForm(p => ({...p, [k]: e.target.value}))
 
-  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
-    setForm(prev => ({...prev, [k]:e.target.value}))
-
-  const ativas   = empresas.filter(e => e.status==='ativo').length
-  const totalUs  = empresas.reduce((s,e) => s+e.usuarios, 0)
-  const totalAg  = empresas.reduce((s,e) => s+e.agendamentos, 0)
+  const ativas  = empresas.filter(e => e.status==='ativo').length
+  const totalUs = 0 // seria uma query separada
 
   return (
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
-      {/* Cabeçalho */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'4px' }}>
-            <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none' }}>← Dashboard</Link>
-          </div>
+          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>← Dashboard</Link>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>🏢 Gerenciar Empresas</h1>
           <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master — todas as empresas do sistema</p>
         </div>
@@ -98,16 +124,14 @@ export default function EmpresasPage() {
       </div>
 
       {/* Métricas */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'14px', marginBottom:'24px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'14px', marginBottom:'24px' }}>
         {[
-          { label:'Empresas ativas',    valor:ativas,            cor:'#ecfdf5', corT:'#10b981' },
-          { label:'Total de usuários',  valor:totalUs,           cor:'#eef2ff', corT:'#6366f1' },
-          { label:'Agendamentos total', valor:totalAg,           cor:'#fffbeb', corT:'#f59e0b' },
-          { label:'Total de empresas',  valor:empresas.length,   cor:'#f3f4f6', corT:'#6b7280' },
+          { label:'Empresas ativas',  valor:ativas,          cor:'#10b981', bg:'#ecfdf5' },
+          { label:'Total empresas',   valor:empresas.length, cor:'#6b7280', bg:'#f3f4f6' },
         ].map(m => (
           <div key={m.label} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'18px 20px' }}>
             <p style={{ fontSize:'11px', color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'6px' }}>{m.label}</p>
-            <p style={{ fontSize:'26px', fontWeight:'700', color:m.corT }}>{m.valor}</p>
+            <p style={{ fontSize:'26px', fontWeight:'700', color:m.cor }}>{m.valor}</p>
           </div>
         ))}
       </div>
@@ -119,51 +143,59 @@ export default function EmpresasPage() {
       </div>
 
       {/* Tabela */}
-      <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', overflow:'auto' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'700px' }}>
-          <thead>
-            <tr style={{ background:'#fafafa', borderBottom:'1px solid #f3f4f6' }}>
-              {['Empresa','CNPJ','Plano','Usuários','Agendamentos','Vencimento','Status',''].map(c => (
-                <th key={c} style={{ padding:'12px 16px', textAlign:'left', fontSize:'11px', fontWeight:'600', color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{c}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtradas.map(e => (
-              <tr key={e.id} style={{ borderBottom:'1px solid #f9fafb', transition:'background .1s', cursor:'pointer' }}
-                onMouseEnter={el => { (el.currentTarget as HTMLElement).style.background='#fafafa' }}
-                onMouseLeave={el => { (el.currentTarget as HTMLElement).style.background='transparent' }}>
-                <td style={{ padding:'14px 16px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                    <div style={{ width:'34px', height:'34px', borderRadius:'8px', background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'700', color:'#6366f1', flexShrink:0 }}>
-                      {e.nome.charAt(0)}
-                    </div>
-                    <div>
-                      <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e' }}>{e.nome}</p>
-                      <p style={{ fontSize:'12px', color:'#9ca3af' }}>{e.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td style={{ padding:'14px 16px', fontSize:'12px', color:'#6b7280', fontFamily:'monospace' }}>{e.cnpj}</td>
-                <td style={{ padding:'14px 16px' }}>
-                  <span style={{ fontSize:'12px', fontWeight:'500', padding:'3px 10px', borderRadius:'99px', background:planoBg[e.plano], color:planoCor[e.plano], textTransform:'capitalize' }}>{e.plano}</span>
-                </td>
-                <td style={{ padding:'14px 16px', fontSize:'14px', fontWeight:'600', color:'#374151', textAlign:'center' }}>{e.usuarios}</td>
-                <td style={{ padding:'14px 16px', fontSize:'14px', fontWeight:'600', color:'#374151', textAlign:'center' }}>{e.agendamentos}</td>
-                <td style={{ padding:'14px 16px', fontSize:'13px', color:'#6b7280' }}>{e.vencimento}</td>
-                <td style={{ padding:'14px 16px' }}>
-                  <div onClick={() => toggleStatus(e.id)} style={{ width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', background: e.status==='ativo'?'#6366f1':'#e5e7eb', position:'relative' }}>
-                    <div style={{ position:'absolute', top:'2px', width:'16px', height:'16px', borderRadius:'50%', background:'white', transition:'left .2s', left: e.status==='ativo'?'18px':'2px' }}/>
-                  </div>
-                </td>
-                <td style={{ padding:'14px 16px' }}>
-                  <button onClick={() => abrirEdicao(e)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>✏️ Editar</button>
-                </td>
+      {carregando ? (
+        <div style={{ textAlign:'center', padding:'60px', color:'#9ca3af' }}>Carregando...</div>
+      ) : (
+        <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', overflow:'auto' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'700px' }}>
+            <thead>
+              <tr style={{ background:'#fafafa', borderBottom:'1px solid #f3f4f6' }}>
+                {['Empresa','Plano','Vencimento','Status',''].map(c => (
+                  <th key={c} style={{ padding:'12px 16px', textAlign:'left', fontSize:'11px', fontWeight:'600', color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{c}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtradas.map(e => (
+                <tr key={e.id} style={{ borderBottom:'1px solid #f9fafb' }}
+                  onMouseEnter={el => { (el.currentTarget as HTMLElement).style.background='#fafafa' }}
+                  onMouseLeave={el => { (el.currentTarget as HTMLElement).style.background='transparent' }}>
+                  <td style={{ padding:'14px 16px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                      <div style={{ width:'34px', height:'34px', borderRadius:'8px', background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'700', color:'#6366f1', flexShrink:0 }}>
+                        {e.nome.charAt(0)}
+                      </div>
+                      <div>
+                        <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e' }}>{e.nome}</p>
+                        <p style={{ fontSize:'12px', color:'#9ca3af' }}>{e.email || e.cnpj || '—'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding:'14px 16px' }}>
+                    <span style={{ fontSize:'12px', fontWeight:'500', padding:'3px 10px', borderRadius:'99px', background:planoBg[e.plano]||'#f3f4f6', color:planoCor[e.plano]||'#6b7280', textTransform:'capitalize' }}>
+                      {e.plano}
+                    </span>
+                  </td>
+                  <td style={{ padding:'14px 16px', fontSize:'13px', color:'#6b7280' }}>
+                    {e.vencimento ? new Date(e.vencimento).toLocaleDateString('pt-BR') : '—'}
+                  </td>
+                  <td style={{ padding:'14px 16px' }}>
+                    <div onClick={() => toggleStatus(e)} style={{ width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', background:e.status==='ativo'?'#6366f1':'#e5e7eb', position:'relative' }}>
+                      <div style={{ position:'absolute', top:'2px', width:'16px', height:'16px', borderRadius:'50%', background:'white', transition:'left .2s', left:e.status==='ativo'?'18px':'2px' }}/>
+                    </div>
+                  </td>
+                  <td style={{ padding:'14px 16px' }}>
+                    <button onClick={() => abrirEdicao(e)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>✏️ Editar</button>
+                  </td>
+                </tr>
+              ))}
+              {filtradas.length === 0 && (
+                <tr><td colSpan={5} style={{ padding:'40px', textAlign:'center', color:'#9ca3af', fontSize:'14px' }}>Nenhuma empresa cadastrada.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Modal */}
       {modalAberto && (
@@ -191,6 +223,10 @@ export default function EmpresasPage() {
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>E-mail</label>
                 <input type="email" value={form.email} onChange={f('email')} style={inputStyle} placeholder="contato@empresa.com"/>
               </div>
+              <div style={{ gridColumn:'1/-1' }}>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereço</label>
+                <input value={form.endereco} onChange={f('endereco')} style={inputStyle} placeholder="Rua, número, bairro, cidade"/>
+              </div>
               <div>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Plano</label>
                 <select value={form.plano} onChange={f('plano')} style={{ ...inputStyle, padding:'9px 12px' }}>
@@ -212,16 +248,12 @@ export default function EmpresasPage() {
                 </select>
               </div>
             </div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px' }}>
-              {modoEdicao && selecionada
-                ? <button onClick={() => excluir(selecionada.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>🗑 Excluir</button>
-                : <div/>}
-              <div style={{ display:'flex', gap:'10px' }}>
-                <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
-                <button onClick={salvar} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-                  {modoEdicao?'Salvar alterações':'Criar empresa'}
-                </button>
-              </div>
+            {erro && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 14px', marginTop:'12px', fontSize:'13px', color:'#dc2626' }}>{erro}</div>}
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:'10px', marginTop:'20px' }}>
+              <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
+              <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
+                {salvando?'Salvando...':modoEdicao?'Salvar alterações':'Criar empresa'}
+              </button>
             </div>
           </div>
         </div>

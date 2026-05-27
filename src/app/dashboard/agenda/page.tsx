@@ -1,4 +1,5 @@
 'use client'
+// v13
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { corStatus, labelStatus, createClient } from '@/lib/supabase'
@@ -9,7 +10,7 @@ import {
 
 const HORA_INICIO = 7
 const ALTURA_HORA = 60
-const HORAS = Array.from({length:14}, (_,i) => `${(i+7).toString().padStart(2,'0')}:00`)
+const HORAS = Array.from({length:14}, (_,i) => (i+7).toString().padStart(2,'0') + ':00')
 
 // ── Helpers fuso Brasil ──────────────────────────────────────
 function hojeNoBrasil(): Date {
@@ -22,7 +23,7 @@ function inicioSemana(ref: Date): Date {
 }
 function addDias(d: Date, n: number): Date { const r=new Date(d); r.setDate(r.getDate()+n); return r }
 function toISO(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
 }
 function isoParaDate(iso: string): Date { const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d) }
 function isMesmoISO(a: Date, b: Date): boolean { return toISO(a)===toISO(b) }
@@ -36,8 +37,8 @@ function labelPeriodoSemana(seg: Date): string {
   const mI=seg.toLocaleDateString('pt-BR',{month:'short',timeZone:'America/Sao_Paulo'}).replace('.','')
   const mF=sab.toLocaleDateString('pt-BR',{month:'short',timeZone:'America/Sao_Paulo'}).replace('.','')
   return mI===mF
-    ? `${numeroDia(seg)} – ${numeroDia(sab)} de ${mI} ${sab.getFullYear()}`
-    : `${numeroDia(seg)} ${mI} – ${numeroDia(sab)} ${mF} ${sab.getFullYear()}`
+    ? numeroDia(seg) + ' – ' + numeroDia(sab) + ' de ' + mI + ' ' + sab.getFullYear()
+    : numeroDia(seg) + ' ' + mI + ' – ' + numeroDia(sab) + ' ' + mF + ' ' + sab.getFullYear()
 }
 function labelDia(d: Date): string {
   return d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'America/Sao_Paulo'})
@@ -334,7 +335,7 @@ export default function AgendaPage() {
     if (!empresaAtiva?.id) return
     setSalvando(true)
     const [h, m] = form.horaInicio.split(':').map(Number)
-    const dataInicio = `${form.dataISO}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`
+    const dataInicio = form.dataISO + 'T' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00'
     const servico = servicos.find((s: any)=>s.nome===form.servico)
     const prof    = profissionais.find((p: any)=>p.nome===form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao)*60000).toISOString()

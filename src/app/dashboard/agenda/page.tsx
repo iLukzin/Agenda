@@ -161,6 +161,7 @@ export default function AgendaPage() {
   const [profissionais, setProfissionais] = useState<any[]>([])
   const [servicos, setServicos]           = useState<any[]>([])
   const [horariosProfissional, setHorariosProfissional] = useState<HorarioDB[]>([])
+  const [statusList, setStatusList] = useState<{id:string;nome:string;cor:string;icone:string}[]>([])
   const [carregando, setCarregando]       = useState(false)
 
   const [visualizacao, setVisualizacao]   = useState<'semana'|'dia'|'periodo'>('semana')
@@ -197,8 +198,16 @@ export default function AgendaPage() {
       listarServicos(empresaAtiva.id),
     ])
 
-    // Carrega horários dos profissionais
+    // Carrega status e horários dos profissionais
     const sb = createClient()
+
+    const { data: sts } = await sb
+      .from('status_agendamento')
+      .select('id, nome, cor, icone')
+      .eq('empresa_id', empresaAtiva.id)
+      .order('ordem')
+    setStatusList(sts || [])
+
     const { data: hors } = await sb
       .from('horarios_profissional')
       .select('usuario_id, dia_semana, hora_inicio, hora_fim, ativo')
@@ -210,7 +219,7 @@ export default function AgendaPage() {
       setAgendamentos(ags.data.map((a: any) => ({
         id:           a.id,
         dataISO:      a.data_inicio?.slice(0,10),
-        horaInicio:   new Date(a.data_inicio).getHours(),
+        horaInicio:   a.data_inicio ? parseInt(a.data_inicio.slice(11,13)) : 0,
         duracao:      a.servico?.duracao_min || 60,
         cliente:      a.cliente?.nome || '',
         clienteId:    a.cliente_id,
@@ -653,12 +662,18 @@ export default function AgendaPage() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Status">
                   <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={selectStyle}>
-                    <option value="agendado">Agendado</option>
-                    <option value="confirmado">Confirmado</option>
-                    <option value="em_atendimento">Em atendimento</option>
-                    <option value="finalizado">Finalizado</option>
-                    <option value="cancelado">Cancelado</option>
-                    <option value="nao_compareceu">Não compareceu</option>
+                    {statusList.length > 0 ? (
+                      statusList.map(s => <option key={s.id} value={s.nome}>{s.icone} {s.nome}</option>)
+                    ) : (
+                      <>
+                        <option value="Agendado">📅 Agendado</option>
+                        <option value="Confirmado">✅ Confirmado</option>
+                        <option value="Em atendimento">🔄 Em atendimento</option>
+                        <option value="Finalizado">⭐ Finalizado</option>
+                        <option value="Cancelado">❌ Cancelado</option>
+                        <option value="Não compareceu">👤 Não compareceu</option>
+                      </>
+                    )}
                   </select>
                 </InputField>
                 <InputField label="Valor (R$)">

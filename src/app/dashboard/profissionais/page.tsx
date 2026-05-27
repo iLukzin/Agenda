@@ -31,6 +31,7 @@ export default function ProfissionaisPage() {
   const [salvando, setSalvando]     = useState(false)
   const [erro, setErro]             = useState('')
   const [busca, setBusca]           = useState('')
+  const [servicosCadastrados, setServicosCadastrados] = useState<{id:string;nome:string}[]>([])
   const [modalAberto, setModalAberto]   = useState(false)
   const [abaModal, setAbaModal]         = useState<'dados'|'servicos'|'horarios'>('dados')
   const [modoEdicao, setModoEdicao]     = useState(false)
@@ -43,6 +44,15 @@ export default function ProfissionaisPage() {
     if (!empresaAtiva?.id) return
     setCarregando(true)
     const sb = createClient()
+
+    // Busca serviços cadastrados
+    const { data: servs } = await sb
+      .from('servicos')
+      .select('id, nome')
+      .eq('empresa_id', empresaAtiva.id)
+      .eq('status', 'ativo')
+      .order('nome')
+    setServicosCadastrados(servs || [])
 
     // Busca usuários da empresa que são profissionais ou admins
     const { data, error } = await sb
@@ -354,12 +364,17 @@ export default function ProfissionaisPage() {
             {abaModal === 'servicos' && (
               <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
                 <p style={{ fontSize:'13px', color:'#9ca3af', marginBottom:'4px' }}>Selecione os serviços que este profissional realiza:</p>
-                {SERVICOS_LISTA.map(s => (
-                  <div key={s} onClick={() => setServicosSel(p => p.includes(s) ? p.filter(x=>x!==s) : [...p,s])} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'10px', border:servicosSel.includes(s)?'1.5px solid #6366f1':'1px solid #e5e7eb', background:servicosSel.includes(s)?'#eef2ff':'white', cursor:'pointer' }}>
-                    <div style={{ width:'20px', height:'20px', borderRadius:'50%', border:servicosSel.includes(s)?'none':'1.5px solid #d1d5db', background:servicosSel.includes(s)?'#6366f1':'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      {servicosSel.includes(s) && <span style={{ color:'white', fontSize:'12px' }}>✓</span>}
+                {servicosCadastrados.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'30px', color:'#9ca3af', fontSize:'13px' }}>
+                    Nenhum serviço cadastrado.<br/>
+                    <span style={{ fontSize:'12px' }}>Cadastre serviços na tela de Serviços primeiro.</span>
+                  </div>
+                ) : servicosCadastrados.map(s => (
+                  <div key={s.id} onClick={() => setServicosSel(p => p.includes(s.nome) ? p.filter(x=>x!==s.nome) : [...p,s.nome])} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'10px', border:servicosSel.includes(s.nome)?'1.5px solid #6366f1':'1px solid #e5e7eb', background:servicosSel.includes(s.nome)?'#eef2ff':'white', cursor:'pointer' }}>
+                    <div style={{ width:'20px', height:'20px', borderRadius:'50%', border:servicosSel.includes(s.nome)?'none':'1.5px solid #d1d5db', background:servicosSel.includes(s.nome)?'#6366f1':'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      {servicosSel.includes(s.nome) && <span style={{ color:'white', fontSize:'12px' }}>✓</span>}
                     </div>
-                    <span style={{ fontSize:'14px', color:'#1a1a2e', fontWeight:servicosSel.includes(s)?'500':'400' }}>{s}</span>
+                    <span style={{ fontSize:'14px', color:'#1a1a2e', fontWeight:servicosSel.includes(s.nome)?'500':'400' }}>{s.nome}</span>
                   </div>
                 ))}
               </div>

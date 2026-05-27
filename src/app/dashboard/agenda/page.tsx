@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { corStatus, labelStatus } from '@/lib/supabase'
+import { corStatus, labelStatus, createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
 import {
   listarAgendamentos, criarAgendamento, atualizarAgendamento, excluirAgendamento,

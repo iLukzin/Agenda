@@ -46,7 +46,7 @@ function labelDia(d: Date): string {
 function linhaHoraAtual(): number|null {
   const s=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})
   const [h,m]=s.split(':').map(Number)
-  if(h<HORA_INICIO||h>HORA_INICIO+13) return null
+  if((h < HORA_INICIO) || (h > HORA_INICIO+13)) return null
   return (h-HORA_INICIO)*ALTURA_HORA+(m/60)*ALTURA_HORA
 }
 
@@ -289,9 +289,9 @@ export default function AgendaPage() {
   const diasSemana = useMemo(()=>Array.from({length:6},(_,i)=>addDias(semanaBase,i)),[semanaBase])
 
   // -- Navegação ----------------------------------------------
-  function semanaAnterior() { setSemanaBase(d=>{const n=addDias(d,-7);const h=inicioSemana(hojeNoBrasil());return n<h?h:n}) }
+  function semanaAnterior() { setSemanaBase(d=>{const n=addDias(d,-7);const h=inicioSemana(hojeNoBrasil());return (n < h) ? h : n}) }
   function semanaSeguinte() { setSemanaBase(d=>addDias(d,7)) }
-  function diaAnterior()    { setDiaAtivo(d=>{const n=addDias(d,-1);const h=hojeNoBrasil();const f=n<h?h:n;setSemanaBase(inicioSemana(f));return f}) }
+  function diaAnterior()    { setDiaAtivo(d=>{const n=addDias(d,-1);const h=hojeNoBrasil();const f=(n < h)?h:n;setSemanaBase(inicioSemana(f));return f}) }
   function diaSeguinte()    { setDiaAtivo(d=>{const n=addDias(d,1);setSemanaBase(inicioSemana(n));return n}) }
   function irParaHoje()     { const h=hojeNoBrasil();setSemanaBase(inicioSemana(h));setDiaAtivo(h);setCalAberto(false) }
   function irParaData(d: Date) { setSemanaBase(inicioSemana(d));setDiaAtivo(d);setCalAberto(false) }
@@ -414,7 +414,8 @@ export default function AgendaPage() {
     const inicioMin = hIni*60 + mIni
     const fimMin    = hFim*60 + mFim
     const durMin    = parseInt(form.duracao) || 60
-    for (let min = inicioMin; min + durMin <= fimMin; min += intervaloMin) {
+    let min = inicioMin
+    while (min + durMin <= fimMin) {
       const hora  = Math.floor(min / 60)
       const resto = min % 60
       const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
@@ -429,9 +430,11 @@ export default function AgendaPage() {
         const agFimMin    = agInicioMin + ag.duracao  // duração real do agendamento existente
         const slotFimMin  = min + durMin
         // Sobreposição: slot começa antes do fim do existente E termina depois do início
-        return min < agFimMin && slotFimMin > agInicioMin
+        const naoSobrepoe = (min + durMin <= agInicioMin) || (min >= agFimMin)
+        return !naoSobrepoe
       })
       slots.push({ hora, min, label, disponivel:!conflito, clienteOcupa:conflito?.cliente })
+      min += intervaloMin
     }
     return slots
   }, [horarioDoDiaForm, form.dataISO, form.profissional, form.duracao, intervaloMin, agendamentos, modoEdicao, selecionado])
@@ -444,9 +447,19 @@ export default function AgendaPage() {
   const colunas         = diasParaMostrar.length
   const posLinha        = linhaHoraAtual()
 
-  const agendamentosPeriodo = useMemo(()=>agendamentos.filter(a=>a.dataISO>=periodoInicio&&a.dataISO<=periodoFim).sort((a,b)=>a.dataISO.localeCompare(b.dataISO)||a.horaInicio-b.horaInicio),[agendamentos,periodoInicio,periodoFim])
+  const agendamentosPeriodo = useMemo(() => {
+    return agendamentos
+      .filter(a => a.dataISO.localeCompare(periodoInicio) >= 0 && a.dataISO.localeCompare(periodoFim) <= 0)
+      .sort((a,b) => a.dataISO.localeCompare(b.dataISO) || a.horaInicio - b.horaInicio)
+  }, [agendamentos, periodoInicio, periodoFim])
 
-  const labelPeriodoFiltro = (!periodoInicio || !periodoFim) ? 'Período' : (isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) + ' - ' + isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'}))
+  function getLabelPeriodo() {
+    if (!periodoInicio || !periodoFim) return 'Periodo'
+    const ini = isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'})
+    const fim = isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'})
+    return ini + ' - ' + fim
+  }
+  const labelPeriodoFiltro = getLabelPeriodo()
 
   return (
     <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>

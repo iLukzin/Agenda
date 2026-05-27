@@ -4,8 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { corStatus, labelStatus, createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
 import {
-  listarAgendamentos, criarAgendamento, atualizarAgendamento, excluirAgendamento,
-  listarClientes, listarProfissionais, listarServicos,
+  criarAgendamento, atualizarAgendamento, excluirAgendamento,
 } from '@/lib/api'
 
 const HORA_INICIO = 7
@@ -191,50 +190,84 @@ export default function AgendaPage() {
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
     setCarregando(true)
-    const [ags, cls, profs, servs] = await Promise.all([
-      listarAgendamentos(empresaAtiva.id),
-      listarClientes(empresaAtiva.id),
-      listarProfissionais(empresaAtiva.id),
-      listarServicos(empresaAtiva.id),
-    ])
-
-    // Carrega status e horários dos profissionais
     const sb = createClient()
 
-    const { data: sts } = await sb
-      .from('status_agendamento')
-      .select('id, nome, cor, icone')
-      .eq('empresa_id', empresaAtiva.id)
-      .order('ordem')
+    // Busca tudo em paralelo com queries simples (sem join aninhado)
+    const [
+      { data: agsRaw,  error: errAgs },
+      { data: clsRaw },
+      { data: profsRaw },
+      { data: servsRaw },
+      { data: sts },
+      { data: hors },
+    ] = await Promise.all([
+      sb.from('agendamentos')
+        .select('id, data_inicio, status, valor, forma_pagamento, observacoes, cliente_id, servico_id, profissional_id')
+        .eq('empresa_id', empresaAtiva.id)
+        .order('data_inicio'),
+      sb.from('clientes')
+        .select('id, nome, telefone, whatsapp')
+        .eq('empresa_id', empresaAtiva.id),
+      sb.from('usuarios')
+        .select('id, nome')
+        .eq('empresa_id', empresaAtiva.id),
+      sb.from('servicos')
+        .select('id, nome, cor, duracao_min')
+        .eq('empresa_id', empresaAtiva.id),
+      sb.from('status_agendamento')
+        .select('id, nome, cor, icone')
+        .eq('empresa_id', empresaAtiva.id)
+        .order('ordem'),
+      sb.from('horarios_profissional')
+        .select('usuario_id, dia_semana, hora_inicio, hora_fim, ativo')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('ativo', true),
+    ])
+
+    if (errAgs) console.error('[Agenda] Erro ao buscar agendamentos:', errAgs)
+
+    // Mapas para join manual
+    const cliMap:  Record<string,string> = {}
+    const profMap: Record<string,string> = {}
+    const servNom: Record<string,string> = {}
+    const servCor: Record<string,string> = {}
+    const servDur: Record<string,number> = {}
+
+    ;(clsRaw   || []).forEach((c: any) => { cliMap[c.id]  = c.nome })
+    ;(profsRaw || []).forEach((p: any) => { profMap[p.id] = p.nome })
+    ;(servsRaw || []).forEach((s: any) => {
+      servNom[s.id] = s.nome
+      servCor[s.id] = s.cor || '#6366f1'
+      servDur[s.id] = s.duracao_min || 60
+    })
+
     setStatusList(sts || [])
-
-    const { data: hors } = await sb
-      .from('horarios_profissional')
-      .select('usuario_id, dia_semana, hora_inicio, hora_fim, ativo')
-      .eq('empresa_id', empresaAtiva.id)
-      .eq('ativo', true)
     setHorariosProfissional((hors || []) as HorarioDB[])
+    setClientes(clsRaw || [])
+    setProfissionais(profsRaw || [])
+    setServicos(servsRaw || [])
 
-    if (ags.data) {
-      setAgendamentos(ags.data.map((a: any) => ({
-        id:           a.id,
-        dataISO:      a.data_inicio?.slice(0,10),
-        horaInicio:   a.data_inicio ? parseInt(a.data_inicio.slice(11,13)) : 0,
-        duracao:      a.servico?.duracao_min || 60,
-        cliente:      a.cliente?.nome || '',
-        clienteId:    a.cliente_id,
-        servico:      a.servico?.nome || '',
-        profissional: a.profissional?.nome || '',
-        cor:          a.servico?.cor || '#6366f1',
-        status:       a.status,
-        observacoes:  a.observacoes || '',
-        forma_pagamento: a.forma_pagamento || '',
-        valor:        a.valor || 0,
-      })))
-    }
-    if (cls.data)   setClientes(cls.data)
-    if (profs.data) setProfissionais(profs.data)
-    if (servs.data) setServicos(servs.data)
+    const mapped = (agsRaw || []).map((a: any) => {
+      const dataISO  = a.data_inicio ? a.data_inicio.slice(0, 10) : toISO(hojeNoBrasil())
+      const horaNum  = a.data_inicio ? parseInt(a.data_inicio.slice(11, 13)) : 0
+      return {
+        id:              a.id,
+        dataISO,
+        horaInicio:      horaNum,
+        duracao:         servDur[a.servico_id]  || 60,
+        cliente:         cliMap[a.cliente_id]   || '',
+        clienteId:       a.cliente_id           || '',
+        servico:         servNom[a.servico_id]  || '',
+        profissional:    profMap[a.profissional_id] || '',
+        cor:             servCor[a.servico_id]  || '#6366f1',
+        status:          a.status              || '',
+        observacoes:     a.observacoes         || '',
+        forma_pagamento: a.forma_pagamento     || '',
+        valor:           a.valor               || 0,
+      }
+    })
+
+    setAgendamentos(mapped)
     setCarregando(false)
   }, [empresaAtiva?.id])
 

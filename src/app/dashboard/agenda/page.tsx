@@ -89,9 +89,9 @@ function MiniCalendario({ dataSel, onChange, onFechar }: { dataSel:Date; onChang
   return (
     <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:'calc(100% + 8px)', left:0, zIndex:200, background:'white', borderRadius:'14px', border:'1px solid #e5e7eb', boxShadow:'0 8px 30px rgba(0,0,0,0.12)', padding:'16px', width:'268px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
-        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}><</button>
+        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}>{'<'}</button>
         <span style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e' }}>{nomeMes}</span>
-        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}>></button>
+        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}>{'>'}</button>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:'4px' }}>
         {['S','T','Q','Q','S','S','D'].map((d,i)=><div key={i} style={{ textAlign:'center', fontSize:'10px', fontWeight:'600', color:'#9ca3af', padding:'3px 0' }}>{d}</div>)}
@@ -496,9 +496,9 @@ export default function AgendaPage() {
 
           {visualizacao!=='periodo' && (
             <div style={{ display:'flex', gap:'4px' }}>
-              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}><</button>
+              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>{'<'}</button>
               <button onClick={irParaHoje} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', color:'#6366f1' }}>Hoje</button>
-              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>></button>
+              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>{'>'}</button>
             </div>
           )}
 
@@ -528,7 +528,7 @@ export default function AgendaPage() {
         <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px', flexShrink:0, flexWrap:'wrap' }}>
             <span style={{ fontSize:'13px', color:'#6b7280' }}>{agendamentosPeriodo.length} agendamento{agendamentosPeriodo.length!==1?'s':''}</span>
-            <button onClick={()=>setVisualizacao('semana')} style={{ marginLeft:'auto', background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}><- Voltar</button>
+            <button onClick={()=>setVisualizacao('semana')} style={{ marginLeft:'auto', background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>{'<-'} Voltar</button>
           </div>
           <ListaPeriodo agendamentos={agendamentosPeriodo} onEditar={abrirEdicao}/>
         </div>

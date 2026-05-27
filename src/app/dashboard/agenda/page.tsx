@@ -353,7 +353,7 @@ export default function AgendaPage() {
   async function excluir(id: string) {
     if (!confirm('Cancelar este agendamento?')) return
     const sb2 = createClient()
-    const { error } = await sb2.from('agendamentos').update({ status:'Cancelado' }).eq('id', id)
+    const { error } = await sb2.from('agendamentos').update({ status:'cancelado' }).eq('id', id)
     if (error) { alert('Erro: ' + error.message); return }
     await carregar(); fecharModal()
   }
@@ -362,7 +362,7 @@ export default function AgendaPage() {
     if (!confirm('Finalizar este atendimento? Não será possível alterar depois.')) return
     setFinalizando(true)
     const sb2 = createClient()
-    const { error } = await sb2.from('agendamentos').update({ status:'Finalizado' }).eq('id', id)
+    const { error } = await sb2.from('agendamentos').update({ status:'finalizado' }).eq('id', id)
     if (error) { alert('Erro: ' + error.message) }
     else {
       await carregar()
@@ -400,7 +400,7 @@ export default function AgendaPage() {
         if (ag.dataISO !== form.dataISO) return false
         if (ag.profissional !== form.profissional) return false
         // Ignora cancelados e finalizados (finalizados liberam o horário visualmente)
-        if (ag.status === 'Cancelado' || ag.status === 'cancelado') return false
+        if (ag.status === 'cancelado' || ag.status === 'cancelado') return false
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
         // Bloqueia apenas sobreposição real — não mais agFimMin, usa só duracao do ag existente
         const agInicioMin = ag.horaInicio * 60
@@ -740,15 +740,15 @@ export default function AgendaPage() {
                 <InputField label="Status">
                   <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={selectStyle}>
                     {statusList.length > 0 ? (
-                      statusList.map(s => <option key={s.id} value={s.nome}>{s.icone} {s.nome}</option>)
+                      statusList.map(s => <option key={s.id} value={s.nome.toLowerCase().replace(/ /g,'_')}>{s.icone} {s.nome}</option>)
                     ) : (
                       <>
-                        <option value="Agendado">📅 Agendado</option>
-                        <option value="Confirmado">✅ Confirmado</option>
-                        <option value="Em atendimento">🔄 Em atendimento</option>
-                        <option value="Finalizado">⭐ Finalizado</option>
-                        <option value="Cancelado">❌ Cancelado</option>
-                        <option value="Não compareceu">👤 Não compareceu</option>
+                        <option value="agendado">📅 Agendado</option>
+                        <option value="confirmado">✅ Confirmado</option>
+                        <option value="em_atendimento">🔄 Em atendimento</option>
+                        <option value="finalizado">⭐ Finalizado</option>
+                        <option value="cancelado">❌ Cancelado</option>
+                        <option value="nao_compareceu">👤 Não compareceu</option>
                       </>
                     )}
                   </select>
@@ -769,7 +769,7 @@ export default function AgendaPage() {
               </InputField>
 
               {/* Agendamento finalizado — somente leitura */}
-              {modoEdicao && selecionado?.status === 'Finalizado' && (
+              {modoEdicao && selecionado?.status === 'finalizado' && (
                 <div style={{ background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'10px 14px', fontSize:'13px', color:'#065f46', display:'flex', alignItems:'center', gap:'8px' }}>
                   <span style={{ fontSize:'18px' }}>✅</span>
                   <p>Atendimento finalizado. Este agendamento não pode ser alterado.</p>
@@ -777,7 +777,7 @@ export default function AgendaPage() {
               )}
 
               <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'4px', flexWrap:'wrap' }}>
-                {modoEdicao && selecionado && selecionado.status !== 'Finalizado' ? (
+                {modoEdicao && selecionado && selecionado.status !== 'finalizado' ? (
                   <div style={{ display:'flex', gap:'8px' }}>
                     <button onClick={()=>excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>
                       🚫 Cancelar
@@ -789,7 +789,7 @@ export default function AgendaPage() {
                 ) : <div/>}
                 <div style={{ display:'flex', gap:'10px' }}>
                   <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
-                  {(!modoEdicao || (modoEdicao && selecionado?.status !== 'Finalizado')) && (
+                  {(!modoEdicao || (modoEdicao && selecionado?.status !== 'finalizado')) && (
                     <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando}
                       style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
                       {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}

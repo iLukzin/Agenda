@@ -20,12 +20,12 @@ const ICONES = ['📅','✅','🔄','⏳','❌','👤','💬','🏃','⭐']
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 
 const STATUS_PADRAO = [
-  { nome:'Agendado',       cor:'#3b82f6', icone:'📅', ordem:1, padrao:true },
-  { nome:'Confirmado',     cor:'#10b981', icone:'✅', ordem:2, padrao:true },
-  { nome:'Em atendimento', cor:'#f59e0b', icone:'🔄', ordem:3, padrao:true },
-  { nome:'Finalizado',     cor:'#6b7280', icone:'⭐', ordem:4, padrao:true },
-  { nome:'Cancelado',      cor:'#ef4444', icone:'❌', ordem:5, padrao:true },
-  { nome:'Não compareceu', cor:'#8b5cf6', icone:'👤', ordem:6, padrao:true },
+  { nome:'agendado',       cor:'#3b82f6', icone:'📅', ordem:1, padrao:true },
+  { nome:'confirmado',     cor:'#10b981', icone:'✅', ordem:2, padrao:true },
+  { nome:'em_atendimento', cor:'#f59e0b', icone:'🔄', ordem:3, padrao:true },
+  { nome:'finalizado',     cor:'#6b7280', icone:'⭐', ordem:4, padrao:true },
+  { nome:'cancelado',      cor:'#ef4444', icone:'❌', ordem:5, padrao:true },
+  { nome:'nao_compareceu', cor:'#8b5cf6', icone:'👤', ordem:6, padrao:true },
 ]
 
 export default function StatusPage() {

@@ -72,7 +72,7 @@ export default function FinanceiroPage() {
       sb.from('agendamentos')
         .select('id, data_inicio, valor, status, cliente_id, servico_id')
         .eq('empresa_id', empresaAtiva.id)
-        .eq('status', 'Finalizado')
+        .eq('status', 'finalizado')
         .gte('data_inicio', ini + 'T00:00:00')
         .lte('data_inicio', fim + 'T23:59:59')
         .order('data_inicio', { ascending: false }),
@@ -267,7 +267,7 @@ export default function FinanceiroPage() {
                     </p>
                   </div>
                   <span style={{ fontSize:'12px', fontWeight:'500', padding:'3px 10px', borderRadius:'99px', background:l.status==='pago'?'#ecfdf5':l.status==='cancelado'?'#f9fafb':'#fffbeb', color:l.status==='pago'?'#10b981':l.status==='cancelado'?'#9ca3af':'#f59e0b' }}>
-                    {l.status==='pago'?'Pago':l.status==='cancelado'?'Cancelado':'Pendente'}
+                    {l.status==='pago'?'Pago':l.status==='cancelado'?'cancelado':'Pendente'}
                   </span>
                   <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
                     {l.status==='pendente' && (

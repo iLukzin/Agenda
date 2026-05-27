@@ -100,7 +100,7 @@ export default function DashboardPage() {
       .eq('empresa_id', empresaAtiva.id)
       .gte('data_inicio', ini + 'T00:00:00')
       .lte('data_inicio', fim + 'T23:59:59')
-      .eq('status', 'Finalizado')
+      .eq('status', 'finalizado')
 
     // Lançamentos pagos do mês
     const { data: lansRec } = await sb
@@ -116,7 +116,7 @@ export default function DashboardPage() {
     const fatLancamentos   = (lansRec  || []).reduce((s: number, l: any) => s + (l.valor||0), 0)
     const faturamento      = fatAgendamentos + fatLancamentos
     const ticket = agsMes && agsMes.length > 0 ? fatAgendamentos / agsMes.length : 0
-    const confirmados = (agsHoje || []).filter((a: any) => a.status === 'Confirmado').length
+    const confirmados = (agsHoje || []).filter((a: any) => a.status === 'confirmado').length
 
     // Últimos 7 dias para gráfico
     const { data: agsGrafico } = await sb

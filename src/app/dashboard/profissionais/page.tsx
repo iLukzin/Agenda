@@ -153,42 +153,29 @@ export default function ProfissionaisPage() {
       // Cria novo usuário no Auth + tabela
       if (!form.email.trim()) return setErro('E-mail é obrigatório.')
 
-      // Gera senha temporária
-      const senhaTemp = 'Agenda@' + Math.random().toString(36).slice(2, 8)
-
-      const { data: authData, error: authErr } = await sb.auth.signUp({
-        email: form.email.trim(),
-        password: senhaTemp,
-      })
-
-      if (authErr) {
-        setErro('Erro ao criar acesso: ' + authErr.message)
-        setSalvando(false)
-        return
-      }
-
-      const { data: novoUsuario, error: insErr } = await sb
-        .from('usuarios')
-        .insert({
-          auth_id:      authData.user?.id,
+      // Usa API route que cria sem confirmação de email
+      const senhaGerada = 'Agenda@' + Math.random().toString(36).slice(2, 10)
+      const res = await fetch('/api/usuarios/criar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           nome:         form.nome.trim(),
           email:        form.email.trim(),
+          senha:        senhaGerada,
           telefone:     form.telefone || null,
           cargo:        form.cargo || null,
           nivel_acesso: 'profissional',
-          empresa_id:   empresaAtiva.id,
-          status:       'ativo',
-        })
-        .select('id')
-        .single()
-
-      if (insErr) {
-        setErro('Erro ao salvar: ' + insErr.message)
+          empresa_id:   empresaAtiva?.id,
+        }),
+      })
+      const result = await res.json()
+      if (!result.success) {
+        setErro(result.error || 'Erro ao criar usuário.')
         setSalvando(false)
         return
       }
-
-      usuarioId = novoUsuario?.id
+      usuarioId = result.data?.id
+      alert(`Profissional criado!\nSenha temporária: ${senhaGerada}\nPeça para ele alterar no primeiro acesso.`)
     }
 
     // Salva horários

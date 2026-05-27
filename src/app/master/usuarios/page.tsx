@@ -97,25 +97,22 @@ export default function UsuariosMasterPage() {
         if (error) throw new Error(error.message)
 
       } else {
-        // Cria no Auth
-        const { data: authData, error: authErr } = await sb.auth.signUp({
-          email: form.email.trim(),
-          password: form.senha,
+        // Usa API route que cria sem confirmação de email
+        const res = await fetch('/api/usuarios/criar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome:         form.nome.trim(),
+            email:        form.email.trim(),
+            senha:        form.senha,
+            telefone:     form.telefone || null,
+            cargo:        form.cargo || null,
+            nivel_acesso: form.nivel_acesso,
+            empresa_id:   form.empresa_id || null,
+          }),
         })
-        if (authErr) throw new Error(authErr.message)
-
-        // Insere na tabela
-        const { error: insErr } = await sb.from('usuarios').insert({
-          auth_id:      authData.user?.id,
-          nome:         form.nome.trim(),
-          email:        form.email.trim(),
-          telefone:     form.telefone || null,
-          cargo:        form.cargo || null,
-          nivel_acesso: form.nivel_acesso,
-          empresa_id:   form.empresa_id || null,
-          status:       'ativo',
-        })
-        if (insErr) throw new Error(insErr.message)
+        const result = await res.json()
+        if (!result.success) throw new Error(result.error)
       }
 
       await carregar()

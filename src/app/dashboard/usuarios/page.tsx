@@ -76,26 +76,22 @@ export default function UsuariosPage() {
         })
         if (error) throw new Error(error.message)
       } else {
-        // Cria no Supabase Auth + insere na tabela
-        const sb = createClient()
-        const { data: authData, error: authErr } = await sb.auth.signUp({
-          email: form.email.trim(),
-          password: form.senha,
-          options: { emailRedirectTo: undefined },
+        // Usa API route que cria sem confirmação de email
+        const res = await fetch('/api/usuarios/criar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome:         form.nome,
+            email:        form.email.trim(),
+            senha:        form.senha,
+            telefone:     form.telefone || null,
+            cargo:        form.cargo || null,
+            nivel_acesso: form.nivel_acesso,
+            empresa_id:   empresaAtiva.id,
+          }),
         })
-        if (authErr) throw new Error(authErr.message)
-
-        const { error: insErr } = await sb.from('usuarios').insert({
-          auth_id:      authData.user?.id,
-          nome:         form.nome,
-          email:        form.email.trim(),
-          telefone:     form.telefone || null,
-          cargo:        form.cargo || null,
-          nivel_acesso: form.nivel_acesso,
-          empresa_id:   empresaAtiva.id,
-          status:       'ativo',
-        })
-        if (insErr) throw new Error(insErr.message)
+        const result = await res.json()
+        if (!result.success) throw new Error(result.error)
       }
 
       await carregar(); fecharModal()

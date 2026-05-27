@@ -456,12 +456,10 @@ export default function AgendaPage() {
     [agendamentos,periodoInicio,periodoFim]
   )
 
-  const labelPeriodoFiltro = (() => {
-    if (!periodoInicio||!periodoFim) return 'Período'
-    const ini=isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'})
-    const fim=isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'})
-    return `${ini} – ${fim}`
-  })()
+  const labelPeriodoFiltro = !periodoInicio || !periodoFim ? 'Período' :
+    isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) +
+    ' – ' +
+    isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'})
 
   return (
     <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>

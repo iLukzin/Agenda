@@ -58,6 +58,13 @@ export function labelStatus(status: string): string {
     finalizado:     'Finalizado',
     cancelado:      'Cancelado',
     nao_compareceu: 'Não compareceu',
+    // compatibilidade com status com inicial maiúscula
+    'Agendado':        'Agendado',
+    'Confirmado':      'Confirmado',
+    'Em atendimento':  'Em atendimento',
+    'Finalizado':      'Finalizado',
+    'Cancelado':       'Cancelado',
+    'Não compareceu':  'Não compareceu',
   }
   return labels[status] ?? status
 }

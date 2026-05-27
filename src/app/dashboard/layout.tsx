@@ -20,7 +20,8 @@ const navItems = [
 
 const navMaster = [
   { href:'/master/empresas', icon:'🏢', label:'Empresas'  },
-  { href:'/master/usuarios', icon:'👑', label:'Usuários Master' },
+  { href:'/master/usuarios',   icon:'👑', label:'Usuários Master' },
+  { href:'/master/permissoes', icon:'🔐', label:'Permissões'       },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

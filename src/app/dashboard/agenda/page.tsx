@@ -27,15 +27,22 @@ function toISO(d: Date): string {
 }
 function isoParaDate(iso: string): Date { const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d) }
 function isMesmoISO(a: Date, b: Date): boolean { return toISO(a)===toISO(b) }
-function nomeDiaCurto(d: Date): string { return d.toLocaleDateString('pt-BR',{weekday:'short',timeZone:'America/Sao_Paulo'}).replace('.','').replace(/^\w/,c=>c.toUpperCase()) }
+function nomeDiaCurto(d: Date): string {
+  return d.toLocaleDateString('pt-BR',{weekday:'short',timeZone:'America/Sao_Paulo'})
+    .replace('.','').replace(/^\w/,c=>c.toUpperCase())
+}
 function numeroDia(d: Date): number { return d.getDate() }
 function labelPeriodoSemana(seg: Date): string {
   const sab=addDias(seg,5)
   const mI=seg.toLocaleDateString('pt-BR',{month:'short',timeZone:'America/Sao_Paulo'}).replace('.','')
   const mF=sab.toLocaleDateString('pt-BR',{month:'short',timeZone:'America/Sao_Paulo'}).replace('.','')
-  return mI===mF?`${numeroDia(seg)} – ${numeroDia(sab)} de ${mI} ${sab.getFullYear()}`:`${numeroDia(seg)} ${mI} – ${numeroDia(sab)} ${mF} ${sab.getFullYear()}`
+  return mI===mF
+    ? `${numeroDia(seg)} – ${numeroDia(sab)} de ${mI} ${sab.getFullYear()}`
+    : `${numeroDia(seg)} ${mI} – ${numeroDia(sab)} ${mF} ${sab.getFullYear()}`
 }
-function labelDia(d: Date): string { return d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'America/Sao_Paulo'}) }
+function labelDia(d: Date): string {
+  return d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'America/Sao_Paulo'})
+}
 function linhaHoraAtual(): number|null {
   const s=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})
   const [h,m]=s.split(':').map(Number)
@@ -47,6 +54,10 @@ type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
   cor: string; status: string; observacoes: string; forma_pagamento: string; valor: number
+}
+
+type HorarioDB = {
+  usuario_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
 }
 
 const FORMAS_PAG = [
@@ -67,7 +78,7 @@ function InputField({ label, children }: { label:string; children:React.ReactNod
 const inputStyle  = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 const selectStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none' }
 
-// Mini calendário
+// ── Mini calendário ──────────────────────────────────────────
 function MiniCalendario({ dataSel, onChange, onFechar }: { dataSel:Date; onChange:(d:Date)=>void; onFechar:()=>void }) {
   const hoje = hojeNoBrasil()
   const [mes, setMes] = useState(new Date(dataSel.getFullYear(), dataSel.getMonth(), 1))
@@ -98,10 +109,12 @@ function MiniCalendario({ dataSel, onChange, onFechar }: { dataSel:Date; onChang
   )
 }
 
-// Vista lista período
-function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLocal[], onEditar:(ag:AgendamentoLocal)=>void }) {
+// ── Vista lista período ──────────────────────────────────────
+function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLocal[]; onEditar:(ag:AgendamentoLocal)=>void }) {
   if (agendamentos.length===0) return <div style={{ textAlign:'center', padding:'48px 0', color:'#9ca3af', fontSize:'14px' }}>Nenhum agendamento neste período.</div>
-  const porData = agendamentos.reduce<Record<string,AgendamentoLocal[]>>((acc,ag)=>{ acc[ag.dataISO]=acc[ag.dataISO]||[]; acc[ag.dataISO].push(ag); return acc },{})
+  const porData = agendamentos.reduce<Record<string,AgendamentoLocal[]>>((acc,ag)=>{
+    acc[ag.dataISO]=acc[ag.dataISO]||[]; acc[ag.dataISO].push(ag); return acc
+  },{})
   return (
     <div style={{ flex:1, overflowY:'auto', padding:'4px 2px' }}>
       {Object.keys(porData).sort().map(iso=>{
@@ -116,7 +129,8 @@ function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLoca
               <span style={{ fontSize:'12px', color:'#9ca3af' }}>{ags.length} agend.</span>
             </div>
             {ags.map(ag=>(
-              <div key={ag.id} onClick={()=>onEditar(ag)} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', background:'white', borderRadius:'10px', border:`1px solid ${ag.cor}30`, borderLeft:`4px solid ${ag.cor}`, cursor:'pointer', marginBottom:'6px', transition:'all .15s' }}
+              <div key={ag.id} onClick={()=>onEditar(ag)}
+                style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', background:'white', borderRadius:'10px', border:`1px solid ${ag.cor}30`, borderLeft:`4px solid ${ag.cor}`, cursor:'pointer', marginBottom:'6px', transition:'all .15s' }}
                 onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=ag.cor+'10'}}
                 onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='white'}}>
                 <div style={{ width:'46px', textAlign:'center', flexShrink:0 }}>
@@ -137,23 +151,25 @@ function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLoca
   )
 }
 
+// ── Componente principal ─────────────────────────────────────
 export default function AgendaPage() {
   const { empresaAtiva } = useEmpresa()
   const hoje = useMemo(()=>hojeNoBrasil(),[])
 
-  const [agendamentos, setAgendamentos] = useState<AgendamentoLocal[]>([])
-  const [clientes, setClientes]         = useState<any[]>([])
+  const [agendamentos, setAgendamentos]   = useState<AgendamentoLocal[]>([])
+  const [clientes, setClientes]           = useState<any[]>([])
   const [profissionais, setProfissionais] = useState<any[]>([])
-  const [servicos, setServicos]         = useState<any[]>([])
-  const [carregando, setCarregando]     = useState(false)
+  const [servicos, setServicos]           = useState<any[]>([])
+  const [horariosProfissional, setHorariosProfissional] = useState<HorarioDB[]>([])
+  const [carregando, setCarregando]       = useState(false)
 
-  const [visualizacao, setVisualizacao] = useState<'semana'|'dia'|'periodo'>('semana')
-  const [semanaBase, setSemanaBase]     = useState<Date>(()=>inicioSemana(hojeNoBrasil()))
-  const [diaAtivo, setDiaAtivo]         = useState<Date>(()=>hojeNoBrasil())
-  const [calAberto, setCalAberto]       = useState(false)
+  const [visualizacao, setVisualizacao]   = useState<'semana'|'dia'|'periodo'>('semana')
+  const [semanaBase, setSemanaBase]       = useState<Date>(()=>inicioSemana(hojeNoBrasil()))
+  const [diaAtivo, setDiaAtivo]           = useState<Date>(()=>hojeNoBrasil())
+  const [calAberto, setCalAberto]         = useState(false)
   const [periodoInicio, setPeriodoInicio] = useState(toISO(hojeNoBrasil()))
-  const [periodoFim, setPeriodoFim]     = useState(toISO(addDias(hojeNoBrasil(),30)))
-  const [filtroAberto, setFiltroAberto] = useState(false)
+  const [periodoFim, setPeriodoFim]       = useState(toISO(addDias(hojeNoBrasil(),30)))
+  const [filtroAberto, setFiltroAberto]   = useState(false)
 
   const [modalAberto, setModalAberto]   = useState(false)
   const [modoEdicao, setModoEdicao]     = useState(false)
@@ -162,15 +178,15 @@ export default function AgendaPage() {
   const [buscaCliente, setBuscaCliente] = useState('')
   const [clienteSel, setClienteSel]     = useState<any>(null)
   const [dropCliente, setDropCliente]   = useState(false)
+  const [intervaloMin, setIntervaloMin] = useState(30)
+
   const [form, setForm] = useState({
     clienteId:'', cliente:'', servico:'', profissional:'',
     dataISO:toISO(hojeNoBrasil()), horaInicio:'09:00', duracao:'60',
     status:'agendado', forma_pagamento:'', valor:'', observacoes:'',
   })
-  const [intervaloMin, setIntervaloMin] = useState(30)
-  const [horariosProfissional, setHorariosProfissional] = useState<{usuario_id:string;dia_semana:number;hora_inicio:string;hora_fim:string}[]>([])
 
-  // Carrega dados do Supabase
+  // ── Carrega dados ──────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
     setCarregando(true)
@@ -180,16 +196,15 @@ export default function AgendaPage() {
       listarProfissionais(empresaAtiva.id),
       listarServicos(empresaAtiva.id),
     ])
-    // Carrega horários dos profissionais do banco
-    if (profs.data) {
-      const sb2 = createClient()
-      const { data: hors } = await sb2
-        .from('horarios_profissional')
-        .select('usuario_id, dia_semana, hora_inicio, hora_fim, ativo')
-        .eq('empresa_id', empresaAtiva.id)
-        .eq('ativo', true)
-      if (hors) setHorariosProfissional(hors)
-    }
+
+    // Carrega horários dos profissionais
+    const sb = createClient()
+    const { data: hors } = await sb
+      .from('horarios_profissional')
+      .select('usuario_id, dia_semana, hora_inicio, hora_fim, ativo')
+      .eq('empresa_id', empresaAtiva.id)
+      .eq('ativo', true)
+    setHorariosProfissional((hors || []) as HorarioDB[])
 
     if (ags.data) {
       setAgendamentos(ags.data.map((a: any) => ({
@@ -218,16 +233,19 @@ export default function AgendaPage() {
 
   const diasSemana = useMemo(()=>Array.from({length:6},(_,i)=>addDias(semanaBase,i)),[semanaBase])
 
-  function semanaAnterior() { setSemanaBase(d=>{const n=addDias(d,-7); const h=inicioSemana(hojeNoBrasil()); return n<h?h:n}) }
+  // ── Navegação ──────────────────────────────────────────────
+  function semanaAnterior() { setSemanaBase(d=>{const n=addDias(d,-7);const h=inicioSemana(hojeNoBrasil());return n<h?h:n}) }
   function semanaSeguinte() { setSemanaBase(d=>addDias(d,7)) }
-  function diaAnterior()    { setDiaAtivo(d=>{const n=addDias(d,-1); const h=hojeNoBrasil(); const f=n<h?h:n; setSemanaBase(inicioSemana(f)); return f}) }
-  function diaSeguinte()    { setDiaAtivo(d=>{const n=addDias(d,1); setSemanaBase(inicioSemana(n)); return n}) }
-  function irParaHoje()     { const h=hojeNoBrasil(); setSemanaBase(inicioSemana(h)); setDiaAtivo(h); setCalAberto(false) }
-  function irParaData(d: Date) { setSemanaBase(inicioSemana(d)); setDiaAtivo(d); setCalAberto(false) }
+  function diaAnterior()    { setDiaAtivo(d=>{const n=addDias(d,-1);const h=hojeNoBrasil();const f=n<h?h:n;setSemanaBase(inicioSemana(f));return f}) }
+  function diaSeguinte()    { setDiaAtivo(d=>{const n=addDias(d,1);setSemanaBase(inicioSemana(n));return n}) }
+  function irParaHoje()     { const h=hojeNoBrasil();setSemanaBase(inicioSemana(h));setDiaAtivo(h);setCalAberto(false) }
+  function irParaData(d: Date) { setSemanaBase(inicioSemana(d));setDiaAtivo(d);setCalAberto(false) }
 
+  // ── Modal ──────────────────────────────────────────────────
   function abrirNovo() {
     const dataRef = visualizacao==='dia'?diaAtivo:hoje
     setModoEdicao(false); setSelecionado(null); setClienteSel(null); setBuscaCliente('')
+    setIntervaloMin(30)
     setForm({ clienteId:'', cliente:'', servico:servicos[0]?.nome||'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'agendado', forma_pagamento:'', valor:'', observacoes:'' })
     setModalAberto(true)
   }
@@ -246,12 +264,11 @@ export default function AgendaPage() {
     if (!form.clienteId || !form.profissional || !form.servico) return
     if (!empresaAtiva?.id) return
     setSalvando(true)
-    const hora = parseInt(form.horaInicio.split(':')[0])
-    const dataInicio = `${form.dataISO}T${String(hora).padStart(2,'0')}:00:00`
-    const servico = servicos.find(s=>s.nome===form.servico)
-    const prof = profissionais.find(p=>p.nome===form.profissional)
+    const [h, m] = form.horaInicio.split(':').map(Number)
+    const dataInicio = `${form.dataISO}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`
+    const servico = servicos.find((s: any)=>s.nome===form.servico)
+    const prof    = profissionais.find((p: any)=>p.nome===form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao)*60000).toISOString()
-
     const payload = {
       cliente_id:      form.clienteId,
       servico_id:      servico?.id || null,
@@ -264,7 +281,6 @@ export default function AgendaPage() {
       forma_pagamento: form.forma_pagamento||null,
       observacoes:     form.observacoes||null,
     }
-
     let error: any
     if (modoEdicao && selecionado) {
       ({ error } = await atualizarAgendamento(selecionado.id, payload))
@@ -284,9 +300,54 @@ export default function AgendaPage() {
     await carregar(); fecharModal()
   }
 
+  // ── Lógica de horários ─────────────────────────────────────
+  const profSelecionado = profissionais.find((p: any) => p.nome === form.profissional)
+  const diaSemanaForm   = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
+
+  const horarioDoDiaForm: HorarioDB | undefined = profSelecionado
+    ? horariosProfissional.find(h =>
+        h.usuario_id === profSelecionado.id &&
+        h.dia_semana === diaSemanaForm
+      )
+    : undefined
+
+  const naoAtende = !!(profSelecionado && form.dataISO && !horarioDoDiaForm)
+
+  const slotsDisponiveis = useMemo(() => {
+    if (!horarioDoDiaForm || !form.dataISO || !profSelecionado) return []
+    const slots: { hora:number; min:number; label:string; disponivel:boolean; clienteOcupa?:string }[] = []
+    const [hIni, mIni] = horarioDoDiaForm.hora_inicio.split(':').map(Number)
+    const [hFim, mFim] = horarioDoDiaForm.hora_fim.split(':').map(Number)
+    const inicioMin = hIni*60 + mIni
+    const fimMin    = hFim*60 + mFim
+    const durMin    = parseInt(form.duracao) || 60
+    for (let min = inicioMin; min + durMin <= fimMin; min += intervaloMin) {
+      const hora  = Math.floor(min / 60)
+      const resto = min % 60
+      const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
+      const conflito = agendamentos.find(ag => {
+        if (ag.dataISO !== form.dataISO) return false
+        if (ag.profissional !== form.profissional) return false
+        if (ag.status === 'cancelado') return false
+        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
+        const agInicioMin = ag.horaInicio*60
+        const agFimMin    = agInicioMin + ag.duracao
+        return min < agFimMin && (min + durMin) > agInicioMin
+      })
+      slots.push({ hora, min, label, disponivel:!conflito, clienteOcupa:conflito?.cliente })
+    }
+    return slots
+  }, [horarioDoDiaForm, form.dataISO, form.profissional, form.duracao, intervaloMin, agendamentos, modoEdicao, selecionado])
+
+  const horaSel    = form.horaInicio
+  const slotSel    = slotsDisponiveis.find(s => s.label === horaSel)
+  const btnBloqueado = (naoAtende && !!profSelecionado) ||
+    (slotSel != null && !slotSel.disponivel) ||
+    !form.profissional || !form.clienteId
+
   const diasParaMostrar = visualizacao==='dia'?[diaAtivo]:diasSemana
-  const colunas = diasParaMostrar.length
-  const posLinha = linhaHoraAtual()
+  const colunas         = diasParaMostrar.length
+  const posLinha        = linhaHoraAtual()
 
   const agendamentosPeriodo = useMemo(()=>
     agendamentos.filter(a=>a.dataISO>=periodoInicio&&a.dataISO<=periodoFim)
@@ -301,65 +362,6 @@ export default function AgendaPage() {
     return `${ini} – ${fim}`
   })()
 
-  // Horários do profissional baseados no banco
-  const profSelecionado = profissionais.find(p => p.nome === form.profissional)
-  
-  // Pega o dia da semana da data selecionada (0=Dom, 6=Sáb)
-  const diaSemanaForm = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
-  
-  // Busca o horário do profissional naquele dia da semana
-  const horarioDoDiaForm = profSelecionado
-    ? horariosProfissional.find(h => 
-        h.usuario_id === profSelecionado.id && 
-        h.dia_semana === diaSemanaForm
-      )
-    : null
-
-  const naoAtende = profSelecionado && form.dataISO && !horarioDoDiaForm
-
-  // Gera slots de horário disponíveis baseado no horário cadastrado
-  const slotsDisponiveis = useMemo(() => {
-    if (!horarioDoDiaForm || !form.dataISO || !profSelecionado) return []
-    
-    const slots: { hora: number; min: number; label: string; disponivel: boolean; clienteOcupa?: string }[] = []
-    
-    const [hIni, mIni] = horarioDoDiaForm.hora_inicio.split(':').map(Number)
-    const [hFim, mFim] = horarioDoDiaForm.hora_fim.split(':').map(Number)
-    const inicioMin = hIni * 60 + mIni
-    const fimMin    = hFim * 60 + mFim
-    const durMin    = parseInt(form.duracao) || 60
-    
-    for (let min = inicioMin; min + durMin <= fimMin; min += intervaloMin) {
-      const hora  = Math.floor(min / 60)
-      const resto = min % 60
-      const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
-      
-      // Verifica conflito com agendamentos existentes
-      const conflito = agendamentos.find(ag => {
-        if (ag.dataISO !== form.dataISO) return false
-        if (ag.profissional !== form.profissional) return false
-        if (ag.status === 'cancelado') return false
-        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        const agInicioMin = ag.horaInicio * 60
-        const agFimMin    = agInicioMin + ag.duracao
-        return min < agFimMin && (min + durMin) > agInicioMin
-      })
-      
-      slots.push({
-        hora, min, label,
-        disponivel: !conflito,
-        clienteOcupa: conflito?.cliente,
-      })
-    }
-    return slots
-  }, [horarioDoDiaForm, form.dataISO, form.profissional, form.duracao, intervaloMin, agendamentos, modoEdicao, selecionado])
-
-  const horaSel = form.horaInicio
-  const slotSel = slotsDisponiveis.find(s => s.label === horaSel)
-  const btnBloqueado = (naoAtende && !!profSelecionado) || 
-    (slotSel != null && !slotSel.disponivel) || 
-    !form.profissional || !form.clienteId
-
   return (
     <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
@@ -373,10 +375,13 @@ export default function AgendaPage() {
             </p>
           </button>
           {calAberto && (
-            <><div onClick={()=>setCalAberto(false)} style={{ position:'fixed', inset:0, zIndex:199 }}/><MiniCalendario dataSel={diaAtivo} onChange={d=>{irParaData(d);setVisualizacao('dia')}} onFechar={()=>setCalAberto(false)}/></>
+            <><div onClick={()=>setCalAberto(false)} style={{ position:'fixed', inset:0, zIndex:199 }}/>
+            <MiniCalendario dataSel={diaAtivo} onChange={d=>{irParaData(d);setVisualizacao('dia')}} onFechar={()=>setCalAberto(false)}/></>
           )}
         </div>
+
         <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+          {/* Filtro período */}
           <div style={{ position:'relative' }}>
             <button onClick={()=>setFiltroAberto(f=>!f)} style={{ display:'flex', alignItems:'center', gap:'6px', background:'white', border:visualizacao==='periodo'?'1.5px solid #6366f1':'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'500', color:visualizacao==='periodo'?'#6366f1':'#374151' }}>
               🔍 Filtrar período
@@ -402,6 +407,7 @@ export default function AgendaPage() {
               </div></>
             )}
           </div>
+
           {visualizacao!=='periodo' && (
             <div style={{ display:'flex', gap:'4px' }}>
               <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>‹</button>
@@ -409,12 +415,14 @@ export default function AgendaPage() {
               <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>›</button>
             </div>
           )}
+
           <div style={{ display:'flex', background:'#f3f4f6', borderRadius:'8px', padding:'3px' }}>
             {(['semana','dia'] as const).map(v=>(
               <button key={v} onClick={()=>setVisualizacao(v)} style={{ padding:'5px 12px', borderRadius:'6px', border:'none', cursor:'pointer', fontSize:'12px', fontWeight:'500', background:visualizacao===v?'white':'transparent', color:visualizacao===v?'#1a1a2e':'#9ca3af', boxShadow:visualizacao===v?'0 1px 3px rgba(0,0,0,0.1)':'none' }}>{v==='semana'?'Semana':'Dia'}</button>
             ))}
             {visualizacao==='periodo' && <button style={{ padding:'5px 12px', borderRadius:'6px', border:'none', cursor:'default', fontSize:'12px', fontWeight:'600', background:'white', color:'#6366f1', boxShadow:'0 1px 3px rgba(0,0,0,0.1)' }}>Lista</button>}
           </div>
+
           <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'7px 14px', fontSize:'13px', fontWeight:'500', cursor:'pointer' }}>+ Novo</button>
         </div>
       </div>
@@ -429,13 +437,11 @@ export default function AgendaPage() {
         </div>
       )}
 
-      {/* Vista lista período */}
+      {/* Lista período */}
       {visualizacao==='periodo' && (
         <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px', flexShrink:0, flexWrap:'wrap' }}>
             <span style={{ fontSize:'13px', color:'#6b7280' }}>{agendamentosPeriodo.length} agendamento{agendamentosPeriodo.length!==1?'s':''}</span>
-            <span style={{ fontSize:'13px', color:'#9ca3af' }}>·</span>
-            <span style={{ fontSize:'13px', color:'#9ca3af' }}>{isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'})} a {isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'})}</span>
             <button onClick={()=>setVisualizacao('semana')} style={{ marginLeft:'auto', background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>← Voltar</button>
           </div>
           <ListaPeriodo agendamentos={agendamentosPeriodo} onEditar={abrirEdicao}/>
@@ -529,8 +535,9 @@ export default function AgendaPage() {
                     {dropCliente && (
                       <><div onClick={()=>setDropCliente(false)} style={{ position:'fixed', inset:0, zIndex:99 }}/>
                       <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'white', borderRadius:'10px', border:'1px solid #e5e7eb', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', zIndex:100, maxHeight:'200px', overflowY:'auto' }}>
-                        {clientes.filter(c=>c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).map(c=>(
-                          <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome}));setBuscaCliente('');setDropCliente(false)}} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
+                        {clientes.filter((c: any)=>c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).map((c: any)=>(
+                          <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome}));setBuscaCliente('');setDropCliente(false)}}
+                            style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
                             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#f8f8fc'}}
                             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent'}}>
                             <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'700', color:'#6366f1', flexShrink:0 }}>
@@ -542,7 +549,7 @@ export default function AgendaPage() {
                             </div>
                           </div>
                         ))}
-                        {clientes.filter(c=>c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).length===0 && (
+                        {clientes.filter((c: any)=>c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).length===0 && (
                           <div style={{ padding:'16px', textAlign:'center', color:'#9ca3af', fontSize:'13px' }}>Nenhum cliente encontrado.</div>
                         )}
                       </div></>
@@ -555,13 +562,13 @@ export default function AgendaPage() {
                 <InputField label="Serviço">
                   <select value={form.servico} onChange={e=>setForm(f=>({...f,servico:e.target.value}))} style={selectStyle}>
                     <option value="">Selecione...</option>
-                    {servicos.filter(s=>s.status==='ativo').map(s=><option key={s.id} value={s.nome}>{s.nome}</option>)}
+                    {servicos.filter((s: any)=>s.status==='ativo').map((s: any)=><option key={s.id} value={s.nome}>{s.nome}</option>)}
                   </select>
                 </InputField>
                 <InputField label="Profissional">
                   <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,horaInicio:'09:00'}))} style={selectStyle}>
                     <option value="">Selecione...</option>
-                    {profissionais.filter(p=>p.status==='ativo').map(p=><option key={p.id} value={p.nome}>{p.nome}</option>)}
+                    {profissionais.filter((p: any)=>p.status==='ativo').map((p: any)=><option key={p.id} value={p.nome}>{p.nome}</option>)}
                   </select>
                 </InputField>
               </div>
@@ -583,8 +590,7 @@ export default function AgendaPage() {
                 </div>
               )}
 
-              {/* Seletor horários */}
-              {/* Seletor de horários baseado nos horários do profissional */}
+              {/* Seletor de horários */}
               {form.dataISO && form.profissional && (
                 <div>
                   {naoAtende ? (
@@ -592,81 +598,53 @@ export default function AgendaPage() {
                       <span style={{ fontSize:'18px' }}>🚫</span>
                       <div>
                         <p style={{ fontWeight:'600', marginBottom:'2px' }}>{form.profissional} não atende neste dia</p>
-                        <p style={{ fontSize:'12px', color:'#b45309' }}>
-                          Verifique os horários cadastrados para este profissional.
-                        </p>
+                        <p style={{ fontSize:'12px', color:'#b45309' }}>Configure os horários na tela de Profissionais.</p>
                       </div>
                     </div>
                   ) : slotsDisponiveis.length > 0 ? (
                     <div>
-                      {/* Cabeçalho com info + controle de intervalo */}
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px', flexWrap:'wrap', gap:'8px' }}>
                         <div>
                           <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Horário de início</label>
                           {horarioDoDiaForm && (
                             <span style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'8px' }}>
                               {horarioDoDiaForm.hora_inicio} – {horarioDoDiaForm.hora_fim}
-                              {' · '}
-                              <span style={{ color:'#10b981', fontWeight:'500' }}>{slotsDisponiveis.filter(s=>s.disponivel).length} disponíveis</span>
-                              {slotsDisponiveis.some(s=>!s.disponivel) && <span style={{ color:'#ef4444', fontWeight:'500' }}> · {slotsDisponiveis.filter(s=>!s.disponivel).length} ocupados</span>}
+                              {' · '}<span style={{ color:'#10b981', fontWeight:'500' }}>{slotsDisponiveis.filter(s=>s.disponivel).length} disponíveis</span>
+                              {slotsDisponiveis.some(s=>!s.disponivel)&&<span style={{ color:'#ef4444', fontWeight:'500' }}> · {slotsDisponiveis.filter(s=>!s.disponivel).length} ocupados</span>}
                             </span>
                           )}
                         </div>
-                        {/* Controle de intervalo */}
                         <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                           <span style={{ fontSize:'11px', color:'#9ca3af' }}>Intervalo:</span>
-                          {[15,30,60].map(min => (
-                            <button key={min} onClick={() => setIntervaloMin(min)} style={{
-                              padding:'3px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:'500',
-                              border: intervaloMin===min ? '1.5px solid #6366f1' : '1px solid #e5e7eb',
-                              background: intervaloMin===min ? '#eef2ff' : 'white',
-                              color: intervaloMin===min ? '#6366f1' : '#6b7280',
-                              cursor:'pointer',
-                            }}>{min}min</button>
+                          {[15,30,60].map(min=>(
+                            <button key={min} onClick={()=>setIntervaloMin(min)} style={{ padding:'3px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:'500', border:intervaloMin===min?'1.5px solid #6366f1':'1px solid #e5e7eb', background:intervaloMin===min?'#eef2ff':'white', color:intervaloMin===min?'#6366f1':'#6b7280', cursor:'pointer' }}>{min}min</button>
                           ))}
                         </div>
                       </div>
-
-                      {/* Grid de horários */}
                       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px' }}>
-                        {slotsDisponiveis.map(slot => {
-                          const estaSel = horaSel === slot.label
+                        {slotsDisponiveis.map(slot=>{
+                          const estaSel = horaSel===slot.label
                           return (
-                            <button
-                              key={slot.label}
-                              type="button"
-                              disabled={!slot.disponivel}
-                              title={!slot.disponivel ? `Ocupado: ${slot.clienteOcupa}` : slot.label}
-                              onClick={() => setForm(f => ({...f, horaInicio: slot.label}))}
-                              style={{
-                                padding:'8px 4px', borderRadius:'8px', fontSize:'12px',
-                                fontWeight: estaSel ? '700' : '400', cursor: slot.disponivel ? 'pointer' : 'not-allowed',
-                                border:      estaSel ? '2px solid #6366f1' : !slot.disponivel ? '1px solid #fca5a5' : '1px solid #e5e7eb',
-                                background:  !slot.disponivel ? '#fee2e2' : estaSel ? '#6366f1' : 'white',
-                                color:       !slot.disponivel ? '#fca5a5' : estaSel ? 'white' : '#374151',
-                                textDecoration: !slot.disponivel ? 'line-through' : 'none',
-                                position: 'relative',
-                              }}
-                            >
+                            <button key={slot.label} type="button" disabled={!slot.disponivel}
+                              title={!slot.disponivel?`Ocupado: ${slot.clienteOcupa}`:slot.label}
+                              onClick={()=>setForm(f=>({...f,horaInicio:slot.label}))}
+                              style={{ padding:'8px 4px', borderRadius:'8px', fontSize:'12px', fontWeight:estaSel?'700':'400', cursor:slot.disponivel?'pointer':'not-allowed', border:estaSel?'2px solid #6366f1':!slot.disponivel?'1px solid #fca5a5':'1px solid #e5e7eb', background:!slot.disponivel?'#fee2e2':estaSel?'#6366f1':'white', color:!slot.disponivel?'#fca5a5':estaSel?'white':'#374151', textDecoration:!slot.disponivel?'line-through':'none', position:'relative' }}>
                               {slot.label}
-                              {!slot.disponivel && <span style={{ position:'absolute', top:'2px', right:'3px', fontSize:'9px' }}>🔒</span>}
+                              {!slot.disponivel&&<span style={{ position:'absolute', top:'2px', right:'3px', fontSize:'9px' }}>🔒</span>}
                             </button>
                           )
                         })}
                       </div>
-
-                      {/* Aviso se slot selecionado está ocupado */}
-                      {slotSel && !slotSel.disponivel && (
+                      {slotSel&&!slotSel.disponivel&&(
                         <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 12px', marginTop:'8px', fontSize:'13px', color:'#dc2626', display:'flex', gap:'8px', alignItems:'center' }}>
-                          <span>⚠️</span>
-                          <p>{slotSel.clienteOcupa} já está agendado neste horário. Escolha outro.</p>
+                          <span>⚠️</span><p>{slotSel.clienteOcupa} já está agendado neste horário.</p>
                         </div>
                       )}
                     </div>
                   ) : profSelecionado ? (
                     <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'12px', fontSize:'13px', color:'#9ca3af', textAlign:'center' }}>
-                      Nenhum horário cadastrado para este profissional neste dia.<br/>
-                      <span style={{ fontSize:'12px' }}>Configure os horários na tela de Profissionais.</span>
+                      Sem horários cadastrados para este dia.<br/>
+                      <span style={{ fontSize:'12px' }}>Configure em Profissionais → Horários.</span>
                     </div>
                   ) : null}
                 </div>
@@ -687,11 +665,13 @@ export default function AgendaPage() {
                   <input type="number" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} style={inputStyle} placeholder="0,00"/>
                 </InputField>
               </div>
+
               <InputField label="Forma de pagamento">
                 <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
                   {FORMAS_PAG.map(fp=><option key={fp.value} value={fp.value}>{fp.label}</option>)}
                 </select>
               </InputField>
+
               <InputField label="Observações">
                 <textarea rows={2} value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))} style={{ ...inputStyle, resize:'none' }} placeholder="Anotações..."/>
               </InputField>
@@ -702,7 +682,8 @@ export default function AgendaPage() {
                   : <div/>}
                 <div style={{ display:'flex', gap:'10px' }}>
                   <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
-                  <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando} style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
+                  <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando}
+                    style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
                     {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}
                   </button>
                 </div>

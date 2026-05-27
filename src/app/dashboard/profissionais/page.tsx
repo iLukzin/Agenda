@@ -27,6 +27,7 @@ const inputStyle   = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8
 
 export default function ProfissionaisPage() {
   const { empresaAtiva } = useEmpresa()
+  const perm = usePermissao('profissionais')
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)

@@ -32,6 +32,7 @@ const formVazio = {
 
 export default function ClientesPage() {
   const { empresaAtiva } = useEmpresa()
+  const perm = usePermissao('clientes')
   const [clientes, setClientes]     = useState<Cliente[]>([])
   const [planos, setPlanos]         = useState<{id:string;nome:string}[]>([])
   const [busca, setBusca]           = useState('')

@@ -56,7 +56,7 @@ type AgendamentoLocal = {
 }
 
 type HorarioDB = {
-  usuario_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
+  profissional_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
 }
 
 const FORMAS_PAG = [
@@ -209,9 +209,11 @@ export default function AgendaPage() {
       sb.from('clientes')
         .select('id, nome, telefone, whatsapp')
         .eq('empresa_id', empresaAtiva.id),
-      sb.from('usuarios')
-        .select('id, nome')
-        .eq('empresa_id', empresaAtiva.id),
+      sb.from('profissionais')
+        .select('id, nome, cargo, cor, status')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('status', 'ativo')
+        .order('nome'),
       sb.from('servicos')
         .select('id, nome, cor, duracao_min')
         .eq('empresa_id', empresaAtiva.id),
@@ -219,8 +221,8 @@ export default function AgendaPage() {
         .select('id, nome, cor, icone')
         .eq('empresa_id', empresaAtiva.id)
         .order('ordem'),
-      sb.from('horarios_profissional')
-        .select('usuario_id, dia_semana, hora_inicio, hora_fim, ativo')
+      sb.from('horarios_prof')
+        .select('profissional_id, dia_semana, hora_inicio, hora_fim, ativo')
         .eq('empresa_id', empresaAtiva.id)
         .eq('ativo', true),
     ])
@@ -330,7 +332,8 @@ export default function AgendaPage() {
     const payload = {
       cliente_id:      form.clienteId,
       servico_id:      servico?.id || null,
-      profissional_id: prof?.id || null,
+      profissional_id: prof?.id || null, // mantém FK antiga para compatibilidade
+      prof_id:         prof?.id || null, // nova FK para tabela profissionais
       data_inicio:     dataInicio,
       data_fim:        dataFim,
       status:          form.status,
@@ -378,7 +381,7 @@ export default function AgendaPage() {
 
   const horarioDoDiaForm: HorarioDB | undefined = profSelecionado
     ? horariosProfissional.find(h =>
-        h.usuario_id === profSelecionado.id &&
+        h.profissional_id === profSelecionado.id &&
         h.dia_semana === diaSemanaForm
       )
     : undefined

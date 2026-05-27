@@ -684,7 +684,16 @@ export default function AgendaPage() {
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>✕</button>
             </div>
 
+
+            <fieldset disabled={modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado')} style={{ border:'none', padding:0, margin:0 }}>
             <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+              {/* Aviso somente leitura */}
+              {modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado') && (
+                <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', color:'#6b7280', display:'flex', alignItems:'center', gap:'8px' }}>
+                  <span>🔒</span>
+                  <span>Este agendamento está <b>{selecionado?.status === 'fechado' ? 'finalizado' : 'cancelado'}</b> — somente visualização.</span>
+                </div>
+              )}
               {/* Busca cliente */}
               <div style={{ position:'relative' }}>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Cliente *</label>
@@ -906,6 +915,9 @@ export default function AgendaPage() {
                   </div>
                 </div>
               )}
+
+            </div>
+            </fieldset>
 
               <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'4px', flexWrap:'wrap' }}>
                 {modoEdicao && selecionado && (selecionado.status !== 'fechado' && selecionado.status !== 'cancelado') ? (

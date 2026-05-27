@@ -68,8 +68,8 @@ export default function DashboardPage() {
       .order('data_inicio')
 
     // Busca nomes de clientes e serviços separadamente
-    const cliIds  = [...new Set((agsHojeRaw||[]).map((a:any)=>a.cliente_id).filter(Boolean))]
-    const servIds = [...new Set((agsHojeRaw||[]).map((a:any)=>a.servico_id).filter(Boolean))]
+    const cliIds  = Array.from(new Set((agsHojeRaw||[]).map((a:any)=>a.cliente_id).filter(Boolean)))
+    const servIds = Array.from(new Set((agsHojeRaw||[]).map((a:any)=>a.servico_id).filter(Boolean)))
     const cliMapD: Record<string,string>  = {}
     const servMapD: Record<string,string> = {}
     if (cliIds.length > 0) {

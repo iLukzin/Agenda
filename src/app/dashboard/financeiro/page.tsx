@@ -90,7 +90,7 @@ export default function FinanceiroPage() {
 
     // Busca nomes de serviços para os agendamentos
     if (ags && ags.length > 0) {
-      const servIds = [...new Set(ags.map((a: any) => a.servico_id).filter(Boolean))]
+      const servIds = Array.from(new Set(ags.map((a: any) => a.servico_id).filter(Boolean)))
       if (servIds.length > 0) {
         const { data: servs } = await sb.from('servicos').select('id, nome').in('id', servIds as string[])
         ;(servs || []).forEach((s: any) => { servMap[s.id] = s.nome })

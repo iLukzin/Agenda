@@ -175,6 +175,7 @@ export default function AgendaPage() {
   const [modoEdicao, setModoEdicao]     = useState(false)
   const [selecionado, setSelecionado]   = useState<AgendamentoLocal|null>(null)
   const [salvando, setSalvando]         = useState(false)
+  const [finalizando, setFinalizando]   = useState(false)
   const [buscaCliente, setBuscaCliente] = useState('')
   const [clienteSel, setClienteSel]     = useState<any>(null)
   const [dropCliente, setDropCliente]   = useState(false)
@@ -294,9 +295,23 @@ export default function AgendaPage() {
 
   function abrirEdicao(ag: AgendamentoLocal) {
     setModoEdicao(true); setSelecionado(ag)
-    const cl = clientes.find(c=>c.id===ag.clienteId)||null
+    const cl = clientes.find((c:any) => c.id === ag.clienteId) || null
     setClienteSel(cl); setBuscaCliente('')
-    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:`${String(ag.horaInicio).padStart(2,'0')}:00`, duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(ag.valor), observacoes:ag.observacoes })
+    // Preenche todos os campos com os dados reais do agendamento
+    setForm({
+      clienteId:       ag.clienteId,
+      cliente:         ag.cliente,
+      servico:         ag.servico,
+      profissional:    ag.profissional,
+      dataISO:         ag.dataISO,
+      horaInicio:      String(ag.horaInicio).padStart(2,'0') + ':00',
+      duracao:         String(ag.duracao),
+      status:          ag.status,
+      forma_pagamento: ag.forma_pagamento,
+      valor:           String(ag.valor),
+      observacoes:     ag.observacoes,
+    })
+    setIntervaloMin(30)
     setModalAberto(true)
   }
 
@@ -337,9 +352,23 @@ export default function AgendaPage() {
 
   async function excluir(id: string) {
     if (!confirm('Cancelar este agendamento?')) return
-    const { error } = await excluirAgendamento(id)
+    const sb2 = createClient()
+    const { error } = await sb2.from('agendamentos').update({ status:'Cancelado' }).eq('id', id)
     if (error) { alert('Erro: ' + error.message); return }
     await carregar(); fecharModal()
+  }
+
+  async function finalizar(id: string) {
+    if (!confirm('Finalizar este atendimento? Não será possível alterar depois.')) return
+    setFinalizando(true)
+    const sb2 = createClient()
+    const { error } = await sb2.from('agendamentos').update({ status:'Finalizado' }).eq('id', id)
+    if (error) { alert('Erro: ' + error.message) }
+    else {
+      await carregar()
+      fecharModal()
+    }
+    setFinalizando(false)
   }
 
   // ── Lógica de horários ─────────────────────────────────────
@@ -370,11 +399,15 @@ export default function AgendaPage() {
       const conflito = agendamentos.find(ag => {
         if (ag.dataISO !== form.dataISO) return false
         if (ag.profissional !== form.profissional) return false
-        if (ag.status === 'cancelado') return false
+        // Ignora cancelados e finalizados (finalizados liberam o horário visualmente)
+        if (ag.status === 'Cancelado' || ag.status === 'cancelado') return false
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        const agInicioMin = ag.horaInicio*60
-        const agFimMin    = agInicioMin + ag.duracao
-        return min < agFimMin && (min + durMin) > agInicioMin
+        // Bloqueia apenas sobreposição real — não mais agFimMin, usa só duracao do ag existente
+        const agInicioMin = ag.horaInicio * 60
+        const agFimMin    = agInicioMin + ag.duracao  // duração real do agendamento existente
+        const slotFimMin  = min + durMin
+        // Sobreposição: slot começa antes do fim do existente E termina depois do início
+        return min < agFimMin && slotFimMin > agInicioMin
       })
       slots.push({ hora, min, label, disponivel:!conflito, clienteOcupa:conflito?.cliente })
     }
@@ -602,9 +635,20 @@ export default function AgendaPage() {
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Serviço">
-                  <select value={form.servico} onChange={e=>setForm(f=>({...f,servico:e.target.value}))} style={selectStyle}>
+                  <select value={form.servico} onChange={e=>{
+                    const nome = e.target.value
+                    const serv = servicos.find((s:any) => s.nome === nome)
+                    setForm(f=>({
+                      ...f,
+                      servico: nome,
+                      duracao: serv?.duracao_min ? String(serv.duracao_min) : f.duracao,
+                      valor:   serv?.valor && !modoEdicao ? String(serv.valor) : f.valor,
+                    }))
+                  }} style={selectStyle}>
                     <option value="">Selecione...</option>
-                    {servicos.filter((s: any)=>s.status==='ativo').map((s: any)=><option key={s.id} value={s.nome}>{s.nome}</option>)}
+                    {servicos.filter((s: any)=>s.status==='ativo').map((s: any)=>(
+                      <option key={s.id} value={s.nome}>{s.nome}{s.valor?' — R$ '+Number(s.valor).toFixed(2).replace('.',','):''}</option>
+                    ))}
                   </select>
                 </InputField>
                 <InputField label="Profissional">
@@ -724,16 +768,33 @@ export default function AgendaPage() {
                 <textarea rows={2} value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))} style={{ ...inputStyle, resize:'none' }} placeholder="Anotações..."/>
               </InputField>
 
-              <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'4px' }}>
-                {modoEdicao&&selecionado
-                  ? <button onClick={()=>excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>🗑 Cancelar agend.</button>
-                  : <div/>}
+              {/* Agendamento finalizado — somente leitura */}
+              {modoEdicao && selecionado?.status === 'Finalizado' && (
+                <div style={{ background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'10px 14px', fontSize:'13px', color:'#065f46', display:'flex', alignItems:'center', gap:'8px' }}>
+                  <span style={{ fontSize:'18px' }}>✅</span>
+                  <p>Atendimento finalizado. Este agendamento não pode ser alterado.</p>
+                </div>
+              )}
+
+              <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'4px', flexWrap:'wrap' }}>
+                {modoEdicao && selecionado && selecionado.status !== 'Finalizado' ? (
+                  <div style={{ display:'flex', gap:'8px' }}>
+                    <button onClick={()=>excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>
+                      🚫 Cancelar
+                    </button>
+                    <button onClick={()=>finalizar(selecionado.id)} disabled={finalizando} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                      {finalizando ? 'Finalizando...' : '✅ Finalizar atendimento'}
+                    </button>
+                  </div>
+                ) : <div/>}
                 <div style={{ display:'flex', gap:'10px' }}>
                   <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
-                  <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando}
-                    style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
-                    {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}
-                  </button>
+                  {(!modoEdicao || (modoEdicao && selecionado?.status !== 'Finalizado')) && (
+                    <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando}
+                      style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
+                      {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
+import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
 
 type Profissional = {
@@ -233,9 +234,11 @@ export default function ProfissionaisPage() {
             {profissionais.filter(p=>p.status==='ativo').length} ativos de {profissionais.length}
           </p>
         </div>
-        <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-          + Novo profissional
-        </button>
+        {perm.criar && (
+          <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
+            + Novo profissional
+          </button>
+        )}
       </div>
 
       <div style={{ position:'relative', maxWidth:'300px', marginBottom:'20px' }}>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
+import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
 
 type Cliente = {
@@ -176,9 +177,11 @@ export default function ClientesPage() {
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Clientes</h1>
           <p style={{ fontSize:'13px', color:'#9ca3af' }}>{clientes.length} cadastrados</p>
         </div>
-        <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-          + Novo cliente
-        </button>
+        {perm.criar && (
+          <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
+            + Novo cliente
+          </button>
+        )}
       </div>
 
       {/* Filtros */}

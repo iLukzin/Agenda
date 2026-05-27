@@ -58,14 +58,33 @@ export default function DashboardPage() {
     const ini  = inicioMesISO()
     const fim  = fimMesISO()
 
-    // Agendamentos de hoje
-    const { data: agsHoje } = await sb
+    // Agendamentos de hoje — query simples sem join aninhado
+    const { data: agsHojeRaw } = await sb
       .from('agendamentos')
-      .select('id, data_inicio, status, cliente:clientes(nome), servico:servicos(nome,cor)')
+      .select('id, data_inicio, status, cliente_id, servico_id, valor')
       .eq('empresa_id', empresaAtiva.id)
       .gte('data_inicio', hoje + 'T00:00:00')
       .lte('data_inicio', hoje + 'T23:59:59')
       .order('data_inicio')
+
+    // Busca nomes de clientes e serviços separadamente
+    const cliIds  = [...new Set((agsHojeRaw||[]).map((a:any)=>a.cliente_id).filter(Boolean))]
+    const servIds = [...new Set((agsHojeRaw||[]).map((a:any)=>a.servico_id).filter(Boolean))]
+    const cliMapD: Record<string,string>  = {}
+    const servMapD: Record<string,string> = {}
+    if (cliIds.length > 0) {
+      const { data: cls } = await sb.from('clientes').select('id, nome').in('id', cliIds as string[])
+      ;(cls||[]).forEach((c:any) => { cliMapD[c.id] = c.nome })
+    }
+    if (servIds.length > 0) {
+      const { data: servs } = await sb.from('servicos').select('id, nome').in('id', servIds as string[])
+      ;(servs||[]).forEach((s:any) => { servMapD[s.id] = s.nome })
+    }
+    const agsHoje = (agsHojeRaw||[]).map((a:any) => ({
+      ...a,
+      cliente: { nome: cliMapD[a.cliente_id]||'—' },
+      servico: { nome: servMapD[a.servico_id]||'—' },
+    }))
 
     // Total clientes
     const { count: totalClientes } = await sb
@@ -74,7 +93,7 @@ export default function DashboardPage() {
       .eq('empresa_id', empresaAtiva.id)
       .eq('status', 'ativo')
 
-    // Agendamentos do mês para faturamento
+    // Agendamentos finalizados do mês
     const { data: agsMes } = await sb
       .from('agendamentos')
       .select('valor, status')
@@ -83,8 +102,20 @@ export default function DashboardPage() {
       .lte('data_inicio', fim + 'T23:59:59')
       .eq('status', 'Finalizado')
 
-    const faturamento = (agsMes || []).reduce((s: number, a: any) => s + (a.valor||0), 0)
-    const ticket = agsMes && agsMes.length > 0 ? faturamento / agsMes.length : 0
+    // Lançamentos pagos do mês
+    const { data: lansRec } = await sb
+      .from('lancamentos')
+      .select('valor, tipo, status')
+      .eq('empresa_id', empresaAtiva.id)
+      .eq('tipo', 'receita')
+      .eq('status', 'pago')
+      .gte('data_vencimento', ini)
+      .lte('data_vencimento', fim)
+
+    const fatAgendamentos  = (agsMes   || []).reduce((s: number, a: any) => s + (a.valor||0), 0)
+    const fatLancamentos   = (lansRec  || []).reduce((s: number, l: any) => s + (l.valor||0), 0)
+    const faturamento      = fatAgendamentos + fatLancamentos
+    const ticket = agsMes && agsMes.length > 0 ? fatAgendamentos / agsMes.length : 0
     const confirmados = (agsHoje || []).filter((a: any) => a.status === 'Confirmado').length
 
     // Últimos 7 dias para gráfico
@@ -119,7 +150,7 @@ export default function DashboardPage() {
       id:      a.id,
       hora:    a.data_inicio ? a.data_inicio.slice(11,16) : '--:--',
       cliente: a.cliente?.nome || '—',
-      servico: (a.servico as any)?.nome || '—',
+      servico: a.servico?.nome || '—',
       status:  a.status || '—',
     })))
 

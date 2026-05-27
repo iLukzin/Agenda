@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
+import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
 
 type Servico = {
@@ -14,6 +15,7 @@ const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px
 
 export default function ServicosPage() {
   const { empresaAtiva } = useEmpresa()
+  const perm = usePermissao('servicos')
   const [servicos, setServicos]     = useState<Servico[]>([])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)
@@ -107,7 +109,7 @@ export default function ServicosPage() {
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Serviços</h1>
           <p style={{ fontSize:'13px', color:'#9ca3af' }}>{servicos.filter(s=>s.status==='ativo').length} ativos de {servicos.length}</p>
         </div>
-        <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>+ Novo serviço</button>
+        <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer', display:perm.criar?'inline-block':'none' }}>+ Novo serviço</button>
       </div>
 
       <div style={{ position:'relative', maxWidth:'300px', marginBottom:'20px' }}>

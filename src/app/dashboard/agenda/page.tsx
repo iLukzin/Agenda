@@ -289,7 +289,8 @@ export default function AgendaPage() {
     const dataRef = visualizacao==='dia'?diaAtivo:hoje
     setModoEdicao(false); setSelecionado(null); setClienteSel(null); setBuscaCliente('')
     setIntervaloMin(30)
-    setForm({ clienteId:'', cliente:'', servico:servicos[0]?.nome||'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'agendado', forma_pagamento:'', valor:'', observacoes:'' })
+    // Não pré-seleciona serviço nem profissional — usuário escolhe
+    setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'agendado', forma_pagamento:'', valor:'', observacoes:'' })
     setModalAberto(true)
   }
 
@@ -645,7 +646,10 @@ export default function AgendaPage() {
                       valor:   serv?.valor && !modoEdicao ? String(serv.valor) : f.valor,
                     }))
                   }} style={selectStyle}>
-                    <option value="">Selecione...</option>
+                    <option value="">Selecione o serviço...</option>
+                    {servicos.filter((s: any)=>s.status==='ativo').length === 0 && (
+                      <option disabled value="">— Nenhum serviço cadastrado —</option>
+                    )}
                     {servicos.filter((s: any)=>s.status==='ativo').map((s: any)=>(
                       <option key={s.id} value={s.nome}>{s.nome}{s.valor?' — R$ '+Number(s.valor).toFixed(2).replace('.',','):''}</option>
                     ))}
@@ -653,8 +657,13 @@ export default function AgendaPage() {
                 </InputField>
                 <InputField label="Profissional">
                   <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,horaInicio:'09:00'}))} style={selectStyle}>
-                    <option value="">Selecione...</option>
-                    {profissionais.filter((p: any)=>p.status==='ativo').map((p: any)=><option key={p.id} value={p.nome}>{p.nome}</option>)}
+                    <option value="">Selecione o profissional...</option>
+                    {profissionais.filter((p: any)=>p.status==='ativo').length === 0 && (
+                      <option disabled value="">— Nenhum profissional cadastrado —</option>
+                    )}
+                    {profissionais.filter((p: any)=>p.status==='ativo').map((p: any)=>(
+                      <option key={p.id} value={p.nome}>{p.nome}{p.cargo ? ' — '+p.cargo : ''}</option>
+                    ))}
                   </select>
                 </InputField>
               </div>
@@ -768,16 +777,42 @@ export default function AgendaPage() {
                 <textarea rows={2} value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))} style={{ ...inputStyle, resize:'none' }} placeholder="Anotações..."/>
               </InputField>
 
-              {/* Agendamento finalizado — somente leitura */}
+              {/* Banner de status especial */}
               {modoEdicao && selecionado?.status === 'finalizado' && (
-                <div style={{ background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'10px 14px', fontSize:'13px', color:'#065f46', display:'flex', alignItems:'center', gap:'8px' }}>
-                  <span style={{ fontSize:'18px' }}>✅</span>
-                  <p>Atendimento finalizado. Este agendamento não pode ser alterado.</p>
+                <div style={{ borderRadius:'12px', overflow:'hidden', border:'1px solid #6ee7b7' }}>
+                  <div style={{ background:'linear-gradient(135deg, #10b981, #059669)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>✅</div>
+                    <div>
+                      <p style={{ color:'white', fontWeight:'700', fontSize:'15px', marginBottom:'2px' }}>Atendimento Finalizado</p>
+                      <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px' }}>Este agendamento foi concluído e não pode ser alterado.</p>
+                    </div>
+                  </div>
+                  <div style={{ background:'#f0fdf4', padding:'10px 18px', display:'flex', gap:'16px' }}>
+                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.cliente}</p></div>
+                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Serviço</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.servico}</p></div>
+                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Valor</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>R$ {Number(selecionado.valor).toFixed(2).replace('.',',')}</p></div>
+                  </div>
+                </div>
+              )}
+              {modoEdicao && selecionado?.status === 'cancelado' && (
+                <div style={{ borderRadius:'12px', overflow:'hidden', border:'1px solid #fca5a5' }}>
+                  <div style={{ background:'linear-gradient(135deg, #ef4444, #dc2626)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>🚫</div>
+                    <div>
+                      <p style={{ color:'white', fontWeight:'700', fontSize:'15px', marginBottom:'2px' }}>Agendamento Cancelado</p>
+                      <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px' }}>Este agendamento foi cancelado.</p>
+                    </div>
+                  </div>
+                  <div style={{ background:'#fef2f2', padding:'10px 18px', display:'flex', gap:'16px' }}>
+                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{selecionado.cliente}</p></div>
+                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Serviço</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{selecionado.servico}</p></div>
+                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Data</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{isoParaDate(selecionado.dataISO).toLocaleDateString('pt-BR')}</p></div>
+                  </div>
                 </div>
               )}
 
               <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'4px', flexWrap:'wrap' }}>
-                {modoEdicao && selecionado && selecionado.status !== 'finalizado' ? (
+                {modoEdicao && selecionado && (selecionado.status !== 'finalizado' && selecionado.status !== 'cancelado') ? (
                   <div style={{ display:'flex', gap:'8px' }}>
                     <button onClick={()=>excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>
                       🚫 Cancelar
@@ -789,7 +824,7 @@ export default function AgendaPage() {
                 ) : <div/>}
                 <div style={{ display:'flex', gap:'10px' }}>
                   <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
-                  {(!modoEdicao || (modoEdicao && selecionado?.status !== 'finalizado')) && (
+                  {(!modoEdicao || (modoEdicao && selecionado?.status !== 'finalizado' && selecionado?.status !== 'cancelado')) && (
                     <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando}
                       style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
                       {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}

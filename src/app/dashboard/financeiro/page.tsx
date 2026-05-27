@@ -139,7 +139,7 @@ export default function FinanceiroPage() {
   function abrirEdicao(l: Lancamento) {
     if (l.origem === 'agendamento') return // Não edita lançamentos de agendamento
     setModoEdicao(true); setSelecionado(l); setErro('')
-    setForm({ tipo:l.tipo, descricao:l.descricao, valor:String(l.valor), categoria:l.categoria, data_vencimento:l.data_vencimento, data_pagamento:l.data_pagamento||'', status:l.status, forma_pagamento:l.forma_pagamento||'', cliente_id:l.cliente_id||'' })
+    setForm({ tipo:l.tipo, descricao:l.descricao, valor:String(l.valor), categoria:l.categoria, data_vencimento:l.data_vencimento, data_pagamento:l.data_pagamento||'', status:(l.status === 'pago' ? 'pago' : 'pendente') as 'pago'|'pendente', forma_pagamento:l.forma_pagamento||'', cliente_id:l.cliente_id||'' })
     setModalAberto(true)
   }
 

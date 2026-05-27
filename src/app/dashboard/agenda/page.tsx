@@ -685,11 +685,10 @@ export default function AgendaPage() {
             </div>
 
 
-            <fieldset disabled={modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado')} style={{ border:'none', padding:0, margin:0 }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:'14px', opacity: modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado') ? 0.85 : 1, pointerEvents: modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado') ? 'none' : undefined }}>
               {/* Aviso somente leitura */}
               {modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado') && (
-                <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', color:'#6b7280', display:'flex', alignItems:'center', gap:'8px' }}>
+                <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', color:'#6b7280', display:'flex', alignItems:'center', gap:'8px', pointerEvents:'none', opacity:1 }}>
                   <span>🔒</span>
                   <span>Este agendamento está <b>{selecionado?.status === 'fechado' ? 'finalizado' : 'cancelado'}</b> — somente visualização.</span>
                 </div>
@@ -917,7 +916,6 @@ export default function AgendaPage() {
               )}
 
             </div>
-            </fieldset>
 
               <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'4px', flexWrap:'wrap' }}>
                 {modoEdicao && selecionado && (selecionado.status !== 'fechado' && selecionado.status !== 'cancelado') ? (

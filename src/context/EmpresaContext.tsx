@@ -138,7 +138,14 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const sb = createClient()
     const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN')  carregar()
+      // Só recarrega no SIGNED_IN se ainda não tem usuário (primeiro login)
+      // Evita recarregar toda vez que o usuário troca de aba no navegador
+      if (event === 'SIGNED_IN') {
+        setUsuario(prev => {
+          if (!prev) carregar()  // só carrega se não tinha usuário
+          return prev
+        })
+      }
       if (event === 'SIGNED_OUT') {
         setUsuario(null); setEmpresaAtiva(null); setEmpresas([]); setCarregando(false)
       }

@@ -53,6 +53,7 @@ type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
   cor: string; status: string; observacoes: string; forma_pagamento: string; valor: number
+  motivoCancelamento?: string
 }
 
 type HorarioDB = {
@@ -175,7 +176,10 @@ export default function AgendaPage() {
   const [modoEdicao, setModoEdicao]     = useState(false)
   const [selecionado, setSelecionado]   = useState<AgendamentoLocal|null>(null)
   const [salvando, setSalvando]         = useState(false)
-  const [finalizando, setFinalizando]   = useState(false)
+  const [finalizando, setFinalizando]     = useState(false)
+  const [modalCancelar, setModalCancelar] = useState(false)
+  const [motivoCancelamento, setMotivoCancelamento] = useState('')
+  const [cancelando, setCancelando]       = useState(false)
   const [buscaCliente, setBuscaCliente] = useState('')
   const [clienteSel, setClienteSel]     = useState<any>(null)
   const [dropCliente, setDropCliente]   = useState(false)
@@ -203,7 +207,7 @@ export default function AgendaPage() {
       { data: hors },
     ] = await Promise.all([
       sb.from('agendamentos')
-        .select('id, data_inicio, status, valor, forma_pagamento, observacoes, cliente_id, servico_id, profissional_id')
+        .select('id, data_inicio, status, valor, forma_pagamento, observacoes, cliente_id, servico_id, profissional_id, prof_id, motivo_cancelamento')
         .eq('empresa_id', empresaAtiva.id)
         .order('data_inicio'),
       sb.from('clientes')
@@ -270,7 +274,8 @@ export default function AgendaPage() {
         status:          a.status              || '',
         observacoes:     a.observacoes         || '',
         forma_pagamento: a.forma_pagamento     || '',
-        valor:           a.valor               || 0,
+        valor:               a.valor               || 0,
+        motivoCancelamento:  a.motivo_cancelamento || undefined,
       }
     })
 
@@ -296,7 +301,7 @@ export default function AgendaPage() {
     setModoEdicao(false); setSelecionado(null); setClienteSel(null); setBuscaCliente('')
     setIntervaloMin(30)
     // Não pré-seleciona serviço nem profissional — usuário escolhe
-    setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'agendado', forma_pagamento:'', valor:'', observacoes:'' })
+    setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
     setModalAberto(true)
   }
 
@@ -322,7 +327,7 @@ export default function AgendaPage() {
     setModalAberto(true)
   }
 
-  function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false) }
+  function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento('') }
 
   async function salvar() {
     if (!form.clienteId || !form.profissional || !form.servico) return
@@ -336,11 +341,11 @@ export default function AgendaPage() {
     const payload = {
       cliente_id:      form.clienteId,
       servico_id:      servico?.id || null,
-      profissional_id: prof?.id || null, // mantém FK antiga para compatibilidade
-      prof_id:         prof?.id || null, // nova FK para tabela profissionais
+      profissional_id: null,          // removido FK para usuarios
+      prof_id:         prof?.id || null, // FK para tabela profissionais
       data_inicio:     dataInicio,
       data_fim:        dataFim,
-      status:          form.status,
+      status:          'aberto',      // sempre abre como 'aberto'
       tipo_cobranca:   'avulso',
       valor:           parseFloat(form.valor)||0,
       forma_pagamento: form.forma_pagamento||null,
@@ -359,18 +364,31 @@ export default function AgendaPage() {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Cancelar este agendamento?')) return
+    // Abre modal de cancelamento em vez de window.confirm
+    setMotivoCancelamento('')
+    setModalCancelar(true)
+  }
+
+  async function confirmarCancelamento() {
+    if (!selecionado) return
+    setCancelando(true)
     const sb2 = createClient()
-    const { error } = await sb2.from('agendamentos').update({ status:'cancelado' }).eq('id', id)
-    if (error) { alert('Erro: ' + error.message); return }
-    await carregar(); fecharModal()
+    const { error } = await sb2.from('agendamentos').update({
+      status: 'cancelado',
+      motivo_cancelamento: motivoCancelamento || null,
+    }).eq('id', selecionado.id)
+    if (error) { alert('Erro: ' + error.message); setCancelando(false); return }
+    setCancelando(false)
+    setModalCancelar(false)
+    await carregar()
+    fecharModal()
   }
 
   async function finalizar(id: string) {
     if (!confirm('Finalizar este atendimento? Não será possível alterar depois.')) return
     setFinalizando(true)
     const sb2 = createClient()
-    const { error } = await sb2.from('agendamentos').update({ status:'finalizado' }).eq('id', id)
+    const { error } = await sb2.from('agendamentos').update({ status:'fechado' }).eq('id', id)
     if (error) { alert('Erro: ' + error.message) }
     else {
       await carregar()
@@ -568,7 +586,7 @@ export default function AgendaPage() {
                       </div>
                     )}
                     {ags.map(ag=>{
-                      const isFinalizado = ag.status === 'finalizado'
+                      const isFinalizado = ag.status === 'fechado'
                       const isCancelado  = ag.status === 'cancelado'
                       const bgBase  = isFinalizado ? '#ecfdf5' : isCancelado ? '#fef2f2' : ag.cor+'18'
                       const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : ag.cor+'35'
@@ -623,6 +641,34 @@ export default function AgendaPage() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmação de cancelamento */}
+      {modalCancelar && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div style={{ background:'white', borderRadius:'18px', padding:'28px 24px', maxWidth:'400px', width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ textAlign:'center', marginBottom:'20px' }}>
+              <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px', fontSize:'24px' }}>🚫</div>
+              <h3 style={{ fontSize:'17px', fontWeight:'700', color:'#1a1a2e', marginBottom:'6px' }}>Cancelar agendamento?</h3>
+              <p style={{ fontSize:'13px', color:'#9ca3af' }}>Informe o motivo do cancelamento (opcional)</p>
+            </div>
+            <textarea
+              value={motivoCancelamento}
+              onChange={e => setMotivoCancelamento(e.target.value)}
+              placeholder="Ex: Cliente solicitou cancelamento, imprevisto..."
+              rows={3}
+              style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'10px 12px', fontSize:'14px', outline:'none', resize:'none', boxSizing:'border-box', marginBottom:'16px' }}
+            />
+            <div style={{ display:'flex', gap:'10px' }}>
+              <button onClick={()=>setModalCancelar(false)} style={{ flex:1, background:'#f3f4f6', color:'#374151', border:'none', borderRadius:'10px', padding:'12px', fontSize:'14px', cursor:'pointer', fontWeight:'500' }}>
+                Voltar
+              </button>
+              <button onClick={confirmarCancelamento} disabled={cancelando} style={{ flex:1, background:cancelando?'#fca5a5':'#ef4444', color:'white', border:'none', borderRadius:'10px', padding:'12px', fontSize:'14px', fontWeight:'600', cursor:cancelando?'not-allowed':'pointer' }}>
+                {cancelando ? 'Cancelando...' : 'Confirmar cancelamento'}
+              </button>
             </div>
           </div>
         </div>
@@ -798,19 +844,10 @@ export default function AgendaPage() {
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Status">
-                  <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={selectStyle}>
-                    {statusList.length > 0 ? (
-                      statusList.map(s => <option key={s.id} value={s.nome.toLowerCase().replace(/ /g,'_')}>{s.icone} {s.nome}</option>)
-                    ) : (
-                      <>
-                        <option value="agendado">📅 Agendado</option>
-                        <option value="confirmado">✅ Confirmado</option>
-                        <option value="em_atendimento">🔄 Em atendimento</option>
-                        <option value="finalizado">⭐ Finalizado</option>
-                        <option value="cancelado">❌ Cancelado</option>
-                        <option value="nao_compareceu">👤 Não compareceu</option>
-                      </>
-                    )}
+                  <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={selectStyle} disabled={true}>
+                    <option value="aberto">📅 Aberto</option>
+                    <option value="fechado">✅ Fechado</option>
+                    <option value="cancelado">❌ Cancelado</option>
                   </select>
                 </InputField>
                 <InputField label="Valor (R$)">
@@ -829,7 +866,7 @@ export default function AgendaPage() {
               </InputField>
 
               {/* Banner de status especial */}
-              {modoEdicao && selecionado?.status === 'finalizado' && (
+              {modoEdicao && selecionado?.status === 'fechado' && (
                 <div style={{ borderRadius:'12px', overflow:'hidden', border:'1px solid #6ee7b7' }}>
                   <div style={{ background:'linear-gradient(135deg, #10b981, #059669)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
                     <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>✅</div>
@@ -851,19 +888,27 @@ export default function AgendaPage() {
                     <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>🚫</div>
                     <div>
                       <p style={{ color:'white', fontWeight:'700', fontSize:'15px', marginBottom:'2px' }}>Agendamento Cancelado</p>
-                      <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px' }}>Este agendamento foi cancelado.</p>
+                      <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px' }}>Este agendamento foi cancelado e não pode ser alterado.</p>
                     </div>
                   </div>
-                  <div style={{ background:'#fef2f2', padding:'10px 18px', display:'flex', gap:'16px' }}>
-                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{selecionado.cliente}</p></div>
-                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Serviço</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{selecionado.servico}</p></div>
-                    <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Data</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{isoParaDate(selecionado.dataISO).toLocaleDateString('pt-BR')}</p></div>
+                  <div style={{ background:'#fef2f2', padding:'12px 18px', display:'flex', flexDirection:'column', gap:'8px' }}>
+                    <div style={{ display:'flex', gap:'16px' }}>
+                      <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{selecionado.cliente}</p></div>
+                      <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Serviço</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{selecionado.servico}</p></div>
+                      <div><p style={{ fontSize:'11px', color:'#9ca3af' }}>Data</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#991b1b' }}>{isoParaDate(selecionado.dataISO).toLocaleDateString('pt-BR')}</p></div>
+                    </div>
+                    {(selecionado as any).motivoCancelamento && (
+                      <div style={{ background:'#fee2e2', borderRadius:'8px', padding:'8px 12px' }}>
+                        <p style={{ fontSize:'11px', color:'#9ca3af', marginBottom:'2px' }}>Motivo do cancelamento</p>
+                        <p style={{ fontSize:'13px', color:'#991b1b', fontStyle:'italic' }}>"{(selecionado as any).motivoCancelamento}"</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'4px', flexWrap:'wrap' }}>
-                {modoEdicao && selecionado && (selecionado.status !== 'finalizado' && selecionado.status !== 'cancelado') ? (
+                {modoEdicao && selecionado && (selecionado.status !== 'fechado' && selecionado.status !== 'cancelado') ? (
                   <div style={{ display:'flex', gap:'8px' }}>
                     <button onClick={()=>excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>
                       🚫 Cancelar
@@ -875,7 +920,7 @@ export default function AgendaPage() {
                 ) : <div/>}
                 <div style={{ display:'flex', gap:'10px' }}>
                   <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
-                  {(!modoEdicao || (modoEdicao && selecionado?.status !== 'finalizado' && selecionado?.status !== 'cancelado')) && (
+                  {(!modoEdicao || (modoEdicao && selecionado?.status !== 'fechado' && selecionado?.status !== 'cancelado')) && (
                     <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando}
                       style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
                       {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}

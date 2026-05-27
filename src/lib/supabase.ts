@@ -40,11 +40,14 @@ export function formatarData(
 
 export function corStatus(status: string): string {
   const cores: Record<string, string> = {
+    aberto:         'bg-blue-100 text-blue-700',
+    fechado:        'bg-green-100 text-green-700',
+    cancelado:      'bg-red-100 text-red-700',
+    // legado
     agendado:       'bg-blue-100 text-blue-700',
     confirmado:     'bg-green-100 text-green-700',
     em_atendimento: 'bg-yellow-100 text-yellow-700',
-    finalizado:     'bg-gray-100 text-gray-600',
-    cancelado:      'bg-red-100 text-red-700',
+    finalizado:     'bg-green-100 text-green-600',
     nao_compareceu: 'bg-orange-100 text-orange-700',
   }
   return cores[status] ?? 'bg-gray-100 text-gray-600'
@@ -52,19 +55,15 @@ export function corStatus(status: string): string {
 
 export function labelStatus(status: string): string {
   const labels: Record<string, string> = {
+    aberto:         'Aberto',
+    fechado:        'Fechado',
+    cancelado:      'Cancelado',
+    // legado
     agendado:       'Agendado',
     confirmado:     'Confirmado',
     em_atendimento: 'Em atendimento',
     finalizado:     'Finalizado',
-    cancelado:      'Cancelado',
     nao_compareceu: 'Não compareceu',
-    // compatibilidade com status com inicial maiúscula
-    'Agendado':        'Agendado',
-    'Confirmado':      'Confirmado',
-    'Em atendimento':  'Em atendimento',
-    'Finalizado':      'Finalizado',
-    'Cancelado':       'Cancelado',
-    'Não compareceu':  'Não compareceu',
   }
   return labels[status] ?? status
 }

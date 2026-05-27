@@ -176,7 +176,7 @@ export default function DashboardPage() {
         <>
           {/* Cards */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:'14px', marginBottom:'20px' }}>
-            <CardMetrica label="Agendamentos hoje" valor={String(metricas.agendamentosHoje)} sublabel={`${metricas.confirmados} confirmados`}           cor="#eef2ff" icone="📅"/>
+            <CardMetrica label="Agendamentos hoje" valor={String(metricas.agendamentosHoje)} sublabel={`${metricas.confirmados} finalizados`}           cor="#eef2ff" icone="📅"/>
             <CardMetrica label="Clientes ativos"   valor={String(metricas.clientes)}         sublabel="cadastrados"                                        cor="#ecfdf5" icone="👥"/>
             <CardMetrica label="Fat. do mês"       valor={formatarMoeda(metricas.faturamentoMes)} sublabel="agend. finalizados"                           cor="#fffbeb" icone="💰"/>
             <CardMetrica label="Ticket médio"      valor={metricas.ticketMedio>0?formatarMoeda(metricas.ticketMedio):'—'} sublabel="por atendimento"      cor="#fdf4ff" icone="📊"/>

@@ -215,8 +215,10 @@ export default function AgendaPage() {
         .eq('status', 'ativo')
         .order('nome'),
       sb.from('servicos')
-        .select('id, nome, cor, duracao_min')
-        .eq('empresa_id', empresaAtiva.id),
+        .select('id, nome, cor, duracao_min, valor, status')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('status', 'ativo')
+        .order('nome'),
       sb.from('status_agendamento')
         .select('id, nome, cor, icone')
         .eq('empresa_id', empresaAtiva.id)
@@ -238,10 +240,12 @@ export default function AgendaPage() {
 
     ;(clsRaw   || []).forEach((c: any) => { cliMap[c.id]  = c.nome })
     ;(profsRaw || []).forEach((p: any) => { profMap[p.id] = p.nome })
+    const servVal: Record<string,number> = {}
     ;(servsRaw || []).forEach((s: any) => {
       servNom[s.id] = s.nome
       servCor[s.id] = s.cor || '#6366f1'
       servDur[s.id] = s.duracao_min || 60
+      servVal[s.id] = s.valor || 0
     })
 
     setStatusList(sts || [])
@@ -563,15 +567,59 @@ export default function AgendaPage() {
                         <div style={{ flex:1, height:'1.5px', background:'#ef4444' }}/>
                       </div>
                     )}
-                    {ags.map(ag=>(
-                      <div key={ag.id} onClick={()=>abrirEdicao(ag)} style={{ position:'absolute', top:`${(ag.horaInicio-HORA_INICIO)*ALTURA_HORA}px`, left:'3px', right:'3px', height:`${(ag.duracao/60)*ALTURA_HORA-4}px`, background:ag.cor+'20', border:`1px solid ${ag.cor}40`, borderLeft:`3px solid ${ag.cor}`, borderRadius:'6px', padding:'5px 7px', cursor:'pointer', overflow:'hidden', transition:'all .15s', zIndex:5 }}
-                        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=ag.cor+'35'}}
-                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=ag.cor+'20'}}>
-                        <div style={{ fontSize:'11px', fontWeight:'600', color:ag.cor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{String(ag.horaInicio).padStart(2,'0')}:00 — {ag.cliente}</div>
-                        <div style={{ fontSize:'10px', color:'#6b7280', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.servico}</div>
-                        <span className={corStatus(ag.status)} style={{ display:'inline-block', fontSize:'10px', padding:'1px 6px', borderRadius:'99px', marginTop:'2px' }}>{labelStatus(ag.status)}</span>
-                      </div>
-                    ))}
+                    {ags.map(ag=>{
+                      const isFinalizado = ag.status === 'finalizado'
+                      const isCancelado  = ag.status === 'cancelado'
+                      const bgBase  = isFinalizado ? '#ecfdf5' : isCancelado ? '#fef2f2' : ag.cor+'18'
+                      const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : ag.cor+'35'
+                      const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : ag.cor
+                      const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : ag.cor
+                      const altura  = Math.max((ag.duracao/60)*ALTURA_HORA - 4, 22)
+                      const hora    = String(ag.horaInicio).padStart(2,'0') + ':00'
+                      return (
+                        <div key={ag.id} onClick={()=>abrirEdicao(ag)}
+                          style={{ position:'absolute', top:`${(ag.horaInicio-HORA_INICIO)*ALTURA_HORA}px`, left:'3px', right:'3px', height:`${altura}px`, background:bgBase, border:`1px solid ${borda}30`, borderLeft:`3px solid ${borda}`, borderRadius:'8px', padding:'4px 7px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5, opacity:isCancelado?0.75:1 }}
+                          onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
+                          onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
+
+                          {/* Linha 1: hora + ícone de status */}
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'4px' }}>
+                            <span style={{ fontSize:'10px', fontWeight:'700', color:textCor, fontFamily:'monospace', flexShrink:0 }}>{hora}</span>
+                            {isFinalizado && (
+                              <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                <span style={{ color:'white', fontSize:'8px', fontWeight:'900', lineHeight:1 }}>✓</span>
+                              </div>
+                            )}
+                            {isCancelado && (
+                              <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                <span style={{ color:'white', fontSize:'9px', fontWeight:'900', lineHeight:1 }}>✕</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Linha 2: cliente */}
+                          <div style={{ fontSize:'11px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', marginTop:'1px' }}>
+                            {ag.cliente}
+                          </div>
+
+                          {/* Linha 3: serviço (só se tiver espaço) */}
+                          {altura >= 44 && (
+                            <div style={{ fontSize:'10px', color:isFinalizado?'#6b7280':isCancelado?'#9ca3af':'#6b7280', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
+                              {ag.servico}
+                            </div>
+                          )}
+
+                          {/* Linha 4: badge de status especial */}
+                          {altura >= 60 && (isFinalizado || isCancelado) && (
+                            <div style={{ marginTop:'2px', display:'inline-flex', alignItems:'center', gap:'3px', background:isFinalizado?'#10b981':'#ef4444', borderRadius:'99px', padding:'1px 6px' }}>
+                              <span style={{ fontSize:'9px', fontWeight:'700', color:'white' }}>
+                                {isFinalizado ? '✓ Finalizado' : '✕ Cancelado'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}
@@ -646,25 +694,25 @@ export default function AgendaPage() {
                       ...f,
                       servico: nome,
                       duracao: serv?.duracao_min ? String(serv.duracao_min) : f.duracao,
-                      valor:   serv?.valor && !modoEdicao ? String(serv.valor) : f.valor,
+                      valor:   serv?.valor ? String(serv.valor) : f.valor,
                     }))
                   }} style={selectStyle}>
                     <option value="">Selecione o serviço...</option>
-                    {servicos.filter((s: any)=>s.status==='ativo').length === 0 && (
-                      <option disabled value="">— Nenhum serviço cadastrado —</option>
-                    )}
-                    {servicos.filter((s: any)=>s.status==='ativo').map((s: any)=>(
-                      <option key={s.id} value={s.nome}>{s.nome}{s.valor?' — R$ '+Number(s.valor).toFixed(2).replace('.',','):''}</option>
+                    {servicos.length === 0 ? (
+                      <option disabled value="">— Cadastre serviços primeiro —</option>
+                    ) : servicos.map((s: any)=>(
+                      <option key={s.id} value={s.nome}>
+                        {s.nome}{s.duracao_min ? ' ('+s.duracao_min+'min)' : ''}{s.valor ? ' — R$ '+Number(s.valor).toFixed(2).replace('.',',') : ''}
+                      </option>
                     ))}
                   </select>
                 </InputField>
                 <InputField label="Profissional">
                   <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,horaInicio:'09:00'}))} style={selectStyle}>
                     <option value="">Selecione o profissional...</option>
-                    {profissionais.filter((p: any)=>p.status==='ativo').length === 0 && (
-                      <option disabled value="">— Nenhum profissional cadastrado —</option>
-                    )}
-                    {profissionais.filter((p: any)=>p.status==='ativo').map((p: any)=>(
+                    {profissionais.length === 0 ? (
+                      <option disabled value="">— Cadastre profissionais primeiro —</option>
+                    ) : profissionais.map((p: any)=>(
                       <option key={p.id} value={p.nome}>{p.nome}{p.cargo ? ' — '+p.cargo : ''}</option>
                     ))}
                   </select>

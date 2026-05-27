@@ -194,13 +194,23 @@ export async function listarAgendamentos(
 
 export async function criarAgendamento(empresaId: string, payload: Record<string, any>) {
   const sb = createClient()
+  // Busca o id da tabela usuarios (não auth.uid) para o created_by
   const { data: { user } } = await sb.auth.getUser()
+  let createdBy = null
+  if (user) {
+    const { data: u } = await sb
+      .from('usuarios')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single()
+    createdBy = u?.id || null
+  }
   const { data, error } = await sb
     .from('agendamentos')
     .insert({
       ...limpar(payload),
       empresa_id: empresaId,
-      created_by: user?.id,
+      created_by: createdBy,
     })
     .select()
     .single()

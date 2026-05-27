@@ -7,7 +7,6 @@ import {
   listarAgendamentos, criarAgendamento, atualizarAgendamento, excluirAgendamento,
   listarClientes, listarProfissionais, listarServicos,
 } from '@/lib/api'
-import { PROFISSIONAIS_CADASTRO, horarioDoDia, horariosDisponiveis } from '@/lib/dados'
 
 const HORA_INICIO = 7
 const ALTURA_HORA = 60
@@ -168,6 +167,8 @@ export default function AgendaPage() {
     dataISO:toISO(hojeNoBrasil()), horaInicio:'09:00', duracao:'60',
     status:'agendado', forma_pagamento:'', valor:'', observacoes:'',
   })
+  const [intervaloMin, setIntervaloMin] = useState(30)
+  const [horariosProfissional, setHorariosProfissional] = useState<{dia_semana:number;hora_inicio:string;hora_fim:string}[]>([])
 
   // Carrega dados do Supabase
   const carregar = useCallback(async () => {
@@ -179,6 +180,17 @@ export default function AgendaPage() {
       listarProfissionais(empresaAtiva.id),
       listarServicos(empresaAtiva.id),
     ])
+    // Carrega horários dos profissionais do banco
+    if (profs.data) {
+      const sb2 = createClient()
+      const { data: hors } = await sb2
+        .from('horarios_profissional')
+        .select('usuario_id, dia_semana, hora_inicio, hora_fim, ativo')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('ativo', true)
+      if (hors) setHorariosProfissional(hors)
+    }
+
     if (ags.data) {
       setAgendamentos(ags.data.map((a: any) => ({
         id:           a.id,
@@ -289,15 +301,64 @@ export default function AgendaPage() {
     return `${ini} – ${fim}`
   })()
 
-  // Horários do profissional
-  const profCad = PROFISSIONAIS_CADASTRO.find(p=>p.nome===form.profissional)
-  const slots = profCad && form.dataISO
-    ? horariosDisponiveis(profCad, form.dataISO, parseInt(form.duracao), agendamentos.map(a=>({...a,profissional:a.profissional,id:Number(a.id)||0})) as any, modoEdicao&&selecionado?Number(selecionado.id):undefined)
-    : []
-  const naoAtende = profCad && form.dataISO ? !horarioDoDia(profCad, form.dataISO) : false
-  const horaSel = parseInt(form.horaInicio.split(':')[0])
-  const slotSel = slots.find(s=>s.hora===horaSel)
-  const btnBloqueado = naoAtende || (slotSel!=null&&!slotSel.disponivel) || !form.profissional || !form.clienteId
+  // Horários do profissional baseados no banco
+  const profSelecionado = profissionais.find(p => p.nome === form.profissional)
+  
+  // Pega o dia da semana da data selecionada (0=Dom, 6=Sáb)
+  const diaSemanaForm = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
+  
+  // Busca o horário do profissional naquele dia da semana
+  const horarioDoDiaForm = profSelecionado
+    ? horariosProfissional.find(h => 
+        h.usuario_id === profSelecionado.id && 
+        h.dia_semana === diaSemanaForm
+      )
+    : null
+
+  const naoAtende = profSelecionado && form.dataISO && !horarioDoDiaForm
+
+  // Gera slots de horário disponíveis baseado no horário cadastrado
+  const slotsDisponiveis = useMemo(() => {
+    if (!horarioDoDiaForm || !form.dataISO || !profSelecionado) return []
+    
+    const slots: { hora: number; min: number; label: string; disponivel: boolean; clienteOcupa?: string }[] = []
+    
+    const [hIni, mIni] = horarioDoDiaForm.hora_inicio.split(':').map(Number)
+    const [hFim, mFim] = horarioDoDiaForm.hora_fim.split(':').map(Number)
+    const inicioMin = hIni * 60 + mIni
+    const fimMin    = hFim * 60 + mFim
+    const durMin    = parseInt(form.duracao) || 60
+    
+    for (let min = inicioMin; min + durMin <= fimMin; min += intervaloMin) {
+      const hora  = Math.floor(min / 60)
+      const resto = min % 60
+      const label = \`\${String(hora).padStart(2,'0')}:\${String(resto).padStart(2,'0')}\`
+      
+      // Verifica conflito com agendamentos existentes
+      const conflito = agendamentos.find(ag => {
+        if (ag.dataISO !== form.dataISO) return false
+        if (ag.profissional !== form.profissional) return false
+        if (ag.status === 'cancelado') return false
+        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
+        const agInicioMin = ag.horaInicio * 60
+        const agFimMin    = agInicioMin + ag.duracao
+        return min < agFimMin && (min + durMin) > agInicioMin
+      })
+      
+      slots.push({
+        hora, min, label,
+        disponivel: !conflito,
+        clienteOcupa: conflito?.cliente,
+      })
+    }
+    return slots
+  }, [horarioDoDiaForm, form.dataISO, form.profissional, form.duracao, intervaloMin, agendamentos, modoEdicao, selecionado])
+
+  const horaSel = form.horaInicio
+  const slotSel = slotsDisponiveis.find(s => s.label === horaSel)
+  const btnBloqueado = (naoAtende && !!profSelecionado) || 
+    (slotSel != null && !slotSel.disponivel) || 
+    !form.profissional || !form.clienteId
 
   return (
     <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -523,42 +584,93 @@ export default function AgendaPage() {
               )}
 
               {/* Seletor horários */}
-              {form.dataISO && form.profissional && (() => {
-                if (naoAtende && profCad) return (
-                  <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'8px', padding:'12px 14px', fontSize:'13px', color:'#92400e', display:'flex', gap:'8px', alignItems:'center' }}>
-                    <span style={{ fontSize:'18px' }}>🚫</span>
+              {/* Seletor de horários baseado nos horários do profissional */}
+              {form.dataISO && form.profissional && (
+                <div>
+                  {naoAtende ? (
+                    <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'8px', padding:'12px 14px', fontSize:'13px', color:'#92400e', display:'flex', gap:'8px', alignItems:'center' }}>
+                      <span style={{ fontSize:'18px' }}>🚫</span>
+                      <div>
+                        <p style={{ fontWeight:'600', marginBottom:'2px' }}>{form.profissional} não atende neste dia</p>
+                        <p style={{ fontSize:'12px', color:'#b45309' }}>
+                          Verifique os horários cadastrados para este profissional.
+                        </p>
+                      </div>
+                    </div>
+                  ) : slotsDisponiveis.length > 0 ? (
                     <div>
-                      <p style={{ fontWeight:'600', marginBottom:'2px' }}>{form.profissional} não atende neste dia</p>
-                      <p style={{ fontSize:'12px', color:'#b45309' }}>Dias: {profCad.horarios.filter(h=>h.ativo).map(h=>['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][h.dia]).join(', ')}</p>
+                      {/* Cabeçalho com info + controle de intervalo */}
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px', flexWrap:'wrap', gap:'8px' }}>
+                        <div>
+                          <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Horário de início</label>
+                          {horarioDoDiaForm && (
+                            <span style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'8px' }}>
+                              {horarioDoDiaForm.hora_inicio} – {horarioDoDiaForm.hora_fim}
+                              {' · '}
+                              <span style={{ color:'#10b981', fontWeight:'500' }}>{slotsDisponiveis.filter(s=>s.disponivel).length} disponíveis</span>
+                              {slotsDisponiveis.some(s=>!s.disponivel) && <span style={{ color:'#ef4444', fontWeight:'500' }}> · {slotsDisponiveis.filter(s=>!s.disponivel).length} ocupados</span>}
+                            </span>
+                          )}
+                        </div>
+                        {/* Controle de intervalo */}
+                        <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                          <span style={{ fontSize:'11px', color:'#9ca3af' }}>Intervalo:</span>
+                          {[15,30,60].map(min => (
+                            <button key={min} onClick={() => setIntervaloMin(min)} style={{
+                              padding:'3px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:'500',
+                              border: intervaloMin===min ? '1.5px solid #6366f1' : '1px solid #e5e7eb',
+                              background: intervaloMin===min ? '#eef2ff' : 'white',
+                              color: intervaloMin===min ? '#6366f1' : '#6b7280',
+                              cursor:'pointer',
+                            }}>{min}min</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Grid de horários */}
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px' }}>
+                        {slotsDisponiveis.map(slot => {
+                          const estaSel = horaSel === slot.label
+                          return (
+                            <button
+                              key={slot.label}
+                              type="button"
+                              disabled={!slot.disponivel}
+                              title={!slot.disponivel ? `Ocupado: ${slot.clienteOcupa}` : slot.label}
+                              onClick={() => setForm(f => ({...f, horaInicio: slot.label}))}
+                              style={{
+                                padding:'8px 4px', borderRadius:'8px', fontSize:'12px',
+                                fontWeight: estaSel ? '700' : '400', cursor: slot.disponivel ? 'pointer' : 'not-allowed',
+                                border:      estaSel ? '2px solid #6366f1' : !slot.disponivel ? '1px solid #fca5a5' : '1px solid #e5e7eb',
+                                background:  !slot.disponivel ? '#fee2e2' : estaSel ? '#6366f1' : 'white',
+                                color:       !slot.disponivel ? '#fca5a5' : estaSel ? 'white' : '#374151',
+                                textDecoration: !slot.disponivel ? 'line-through' : 'none',
+                                position: 'relative',
+                              }}
+                            >
+                              {slot.label}
+                              {!slot.disponivel && <span style={{ position:'absolute', top:'2px', right:'3px', fontSize:'9px' }}>🔒</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Aviso se slot selecionado está ocupado */}
+                      {slotSel && !slotSel.disponivel && (
+                        <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 12px', marginTop:'8px', fontSize:'13px', color:'#dc2626', display:'flex', gap:'8px', alignItems:'center' }}>
+                          <span>⚠️</span>
+                          <p>{slotSel.clienteOcupa} já está agendado neste horário. Escolha outro.</p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )
-                if (slots.length===0) return null
-                const profHorario = profCad ? horarioDoDia(profCad, form.dataISO) : null
-                return (
-                  <div>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
-                      <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Horário de início</label>
-                      <span style={{ fontSize:'11px', color:'#9ca3af' }}>
-                        {profHorario?.inicio} – {profHorario?.fim}
-                        {' · '}<span style={{ color:'#10b981', fontWeight:'500' }}>{slots.filter(s=>s.disponivel).length} disponíveis</span>
-                        {slots.some(s=>!s.disponivel)&&<span style={{ color:'#ef4444', fontWeight:'500' }}> · {slots.filter(s=>!s.disponivel).length} ocupados</span>}
-                      </span>
+                  ) : profSelecionado ? (
+                    <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'12px', fontSize:'13px', color:'#9ca3af', textAlign:'center' }}>
+                      Nenhum horário cadastrado para este profissional neste dia.<br/>
+                      <span style={{ fontSize:'12px' }}>Configure os horários na tela de Profissionais.</span>
                     </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px' }}>
-                      {slots.map(slot=>{
-                        const estaSel=horaSel===slot.hora
-                        return (
-                          <button key={slot.hora} type="button" disabled={!slot.disponivel} onClick={()=>setForm(f=>({...f,horaInicio:slot.horaStr}))} style={{ padding:'8px 4px', borderRadius:'8px', border:estaSel?'2px solid #6366f1':!slot.disponivel?'1px solid #fca5a5':'1px solid #e5e7eb', background:!slot.disponivel?'#fee2e2':estaSel?'#6366f1':'white', color:!slot.disponivel?'#fca5a5':estaSel?'white':'#374151', fontSize:'12px', fontWeight:estaSel?'700':'400', cursor:!slot.disponivel?'not-allowed':'pointer', textDecoration:!slot.disponivel?'line-through':'none', position:'relative' }}>
-                            {slot.horaStr}
-                            {!slot.disponivel&&<span style={{ position:'absolute', top:'2px', right:'3px', fontSize:'9px' }}>🔒</span>}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })()}
+                  ) : null}
+                </div>
+              )}
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Status">
@@ -591,7 +703,7 @@ export default function AgendaPage() {
                 <div style={{ display:'flex', gap:'10px' }}>
                   <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
                   <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando} style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
-                    {salvando?'Salvando...':naoAtende?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}
+                    {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}
                   </button>
                 </div>
               </div>

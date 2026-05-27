@@ -457,10 +457,7 @@ export default function AgendaPage() {
     [agendamentos,periodoInicio,periodoFim]
   )
 
-  const labelPeriodoFiltro = !periodoInicio || !periodoFim ? 'Período' :
-    isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) +
-    ' – ' +
-    isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'})
+  const labelPeriodoFiltro = (!periodoInicio || !periodoFim) ? 'Período' : (isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) + ' – ' + isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'}))
 
   return (
     <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>

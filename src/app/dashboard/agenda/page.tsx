@@ -332,7 +332,7 @@ export default function AgendaPage() {
     for (let min = inicioMin; min + durMin <= fimMin; min += intervaloMin) {
       const hora  = Math.floor(min / 60)
       const resto = min % 60
-      const label = \`\${String(hora).padStart(2,'0')}:\${String(resto).padStart(2,'0')}\`
+      const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
       
       // Verifica conflito com agendamentos existentes
       const conflito = agendamentos.find(ag => {

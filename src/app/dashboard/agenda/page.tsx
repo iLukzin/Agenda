@@ -168,7 +168,7 @@ export default function AgendaPage() {
     status:'agendado', forma_pagamento:'', valor:'', observacoes:'',
   })
   const [intervaloMin, setIntervaloMin] = useState(30)
-  const [horariosProfissional, setHorariosProfissional] = useState<{dia_semana:number;hora_inicio:string;hora_fim:string}[]>([])
+  const [horariosProfissional, setHorariosProfissional] = useState<{usuario_id:string;dia_semana:number;hora_inicio:string;hora_fim:string}[]>([])
 
   // Carrega dados do Supabase
   const carregar = useCallback(async () => {

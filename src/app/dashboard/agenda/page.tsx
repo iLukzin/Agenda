@@ -12,7 +12,7 @@ const HORA_INICIO = 7
 const ALTURA_HORA = 60
 const HORAS = Array.from({length:14}, (_,i) => (i+7).toString().padStart(2,'0') + ':00')
 
-// ── Helpers fuso Brasil ──────────────────────────────────────
+// -- Helpers fuso Brasil --------------------------------------
 function hojeNoBrasil(): Date {
   const str = new Date().toLocaleString('en-US', { timeZone:'America/Sao_Paulo' })
   const d = new Date(str); d.setHours(0,0,0,0); return d
@@ -37,8 +37,8 @@ function labelPeriodoSemana(seg: Date): string {
   const mI=seg.toLocaleDateString('pt-BR',{month:'short',timeZone:'America/Sao_Paulo'}).replace('.','')
   const mF=sab.toLocaleDateString('pt-BR',{month:'short',timeZone:'America/Sao_Paulo'}).replace('.','')
   return mI===mF
-    ? numeroDia(seg) + ' – ' + numeroDia(sab) + ' de ' + mI + ' ' + sab.getFullYear()
-    : numeroDia(seg) + ' ' + mI + ' – ' + numeroDia(sab) + ' ' + mF + ' ' + sab.getFullYear()
+    ? numeroDia(seg) + ' - ' + numeroDia(sab) + ' de ' + mI + ' ' + sab.getFullYear()
+    : numeroDia(seg) + ' ' + mI + ' - ' + numeroDia(sab) + ' ' + mF + ' ' + sab.getFullYear()
 }
 function labelDia(d: Date): string {
   return d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'America/Sao_Paulo'})
@@ -79,7 +79,7 @@ function InputField({ label, children }: { label:string; children:React.ReactNod
 const inputStyle  = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 const selectStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none' }
 
-// ── Mini calendário ──────────────────────────────────────────
+// -- Mini calendário ------------------------------------------
 function MiniCalendario({ dataSel, onChange, onFechar }: { dataSel:Date; onChange:(d:Date)=>void; onFechar:()=>void }) {
   const hoje = hojeNoBrasil()
   const [mes, setMes] = useState(new Date(dataSel.getFullYear(), dataSel.getMonth(), 1))
@@ -89,9 +89,9 @@ function MiniCalendario({ dataSel, onChange, onFechar }: { dataSel:Date; onChang
   return (
     <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:'calc(100% + 8px)', left:0, zIndex:200, background:'white', borderRadius:'14px', border:'1px solid #e5e7eb', boxShadow:'0 8px 30px rgba(0,0,0,0.12)', padding:'16px', width:'268px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
-        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}>‹</button>
+        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}><</button>
         <span style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e' }}>{nomeMes}</span>
-        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}>›</button>
+        <button onClick={()=>setMes(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'16px', color:'#6b7280', padding:'2px 8px' }}>></button>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:'4px' }}>
         {['S','T','Q','Q','S','S','D'].map((d,i)=><div key={i} style={{ textAlign:'center', fontSize:'10px', fontWeight:'600', color:'#9ca3af', padding:'3px 0' }}>{d}</div>)}
@@ -110,7 +110,7 @@ function MiniCalendario({ dataSel, onChange, onFechar }: { dataSel:Date; onChang
   )
 }
 
-// ── Vista lista período ──────────────────────────────────────
+// -- Vista lista período --------------------------------------
 function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLocal[]; onEditar:(ag:AgendamentoLocal)=>void }) {
   if (agendamentos.length===0) return <div style={{ textAlign:'center', padding:'48px 0', color:'#9ca3af', fontSize:'14px' }}>Nenhum agendamento neste período.</div>
   const porData = agendamentos.reduce<Record<string,AgendamentoLocal[]>>((acc,ag)=>{
@@ -152,7 +152,7 @@ function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLoca
   )
 }
 
-// ── Componente principal ─────────────────────────────────────
+// -- Componente principal -------------------------------------
 export default function AgendaPage() {
   const { empresaAtiva } = useEmpresa()
   const hoje = useMemo(()=>hojeNoBrasil(),[])
@@ -192,7 +192,7 @@ export default function AgendaPage() {
     status:'agendado', forma_pagamento:'', valor:'', observacoes:'',
   })
 
-  // ── Carrega dados ──────────────────────────────────────────
+  // -- Carrega dados ------------------------------------------
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
     setCarregando(true)
@@ -288,7 +288,7 @@ export default function AgendaPage() {
 
   const diasSemana = useMemo(()=>Array.from({length:6},(_,i)=>addDias(semanaBase,i)),[semanaBase])
 
-  // ── Navegação ──────────────────────────────────────────────
+  // -- Navegação ----------------------------------------------
   function semanaAnterior() { setSemanaBase(d=>{const n=addDias(d,-7);const h=inicioSemana(hojeNoBrasil());return n<h?h:n}) }
   function semanaSeguinte() { setSemanaBase(d=>addDias(d,7)) }
   function diaAnterior()    { setDiaAtivo(d=>{const n=addDias(d,-1);const h=hojeNoBrasil();const f=n<h?h:n;setSemanaBase(inicioSemana(f));return f}) }
@@ -296,12 +296,12 @@ export default function AgendaPage() {
   function irParaHoje()     { const h=hojeNoBrasil();setSemanaBase(inicioSemana(h));setDiaAtivo(h);setCalAberto(false) }
   function irParaData(d: Date) { setSemanaBase(inicioSemana(d));setDiaAtivo(d);setCalAberto(false) }
 
-  // ── Modal ──────────────────────────────────────────────────
+  // -- Modal --------------------------------------------------
   function abrirNovo() {
     const dataRef = visualizacao==='dia'?diaAtivo:hoje
     setModoEdicao(false); setSelecionado(null); setClienteSel(null); setBuscaCliente('')
     setIntervaloMin(30)
-    // Não pré-seleciona serviço nem profissional — usuário escolhe
+    // Não pré-seleciona serviço nem profissional -- usuário escolhe
     setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
     setModalAberto(true)
   }
@@ -398,7 +398,7 @@ export default function AgendaPage() {
     setFinalizando(false)
   }
 
-  // ── Lógica de horários ─────────────────────────────────────
+  // -- Lógica de horários -------------------------------------
   const profSelecionado = profissionais.find((p: any) => p.nome === form.profissional)
   const diaSemanaForm   = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
 
@@ -424,7 +424,7 @@ export default function AgendaPage() {
         // Ignora cancelados e finalizados (finalizados liberam o horário visualmente)
         if (ag.status === 'cancelado' || ag.status === 'cancelado') return false
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        // Bloqueia apenas sobreposição real — não mais agFimMin, usa só duracao do ag existente
+        // Bloqueia apenas sobreposição real -- não mais agFimMin, usa só duracao do ag existente
         const agInicioMin = ag.horaInicio * 60
         const agFimMin    = agInicioMin + ag.duracao  // duração real do agendamento existente
         const slotFimMin  = min + durMin
@@ -446,7 +446,7 @@ export default function AgendaPage() {
 
   const agendamentosPeriodo = useMemo(()=>agendamentos.filter(a=>a.dataISO>=periodoInicio&&a.dataISO<=periodoFim).sort((a,b)=>a.dataISO.localeCompare(b.dataISO)||a.horaInicio-b.horaInicio),[agendamentos,periodoInicio,periodoFim])
 
-  const labelPeriodoFiltro = (!periodoInicio || !periodoFim) ? 'Período' : (isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) + ' – ' + isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'}))
+  const labelPeriodoFiltro = (!periodoInicio || !periodoFim) ? 'Período' : (isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) + ' - ' + isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'}))
 
   return (
     <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -488,7 +488,7 @@ export default function AgendaPage() {
                 </div>
                 <div style={{ display:'flex', gap:'8px' }}>
                   <button onClick={()=>{setVisualizacao('periodo');setFiltroAberto(false)}} style={{ flex:1, background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Ver agendamentos</button>
-                  <button onClick={()=>{setFiltroAberto(false);if(visualizacao==='periodo')setVisualizacao('semana')}} style={{ background:'#f3f4f6', color:'#6b7280', border:'none', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', cursor:'pointer' }}>✕</button>
+                  <button onClick={()=>{setFiltroAberto(false);if(visualizacao==='periodo')setVisualizacao('semana')}} style={{ background:'#f3f4f6', color:'#6b7280', border:'none', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', cursor:'pointer' }}>x</button>
                 </div>
               </div></>
             )}
@@ -496,9 +496,9 @@ export default function AgendaPage() {
 
           {visualizacao!=='periodo' && (
             <div style={{ display:'flex', gap:'4px' }}>
-              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>‹</button>
+              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}><</button>
               <button onClick={irParaHoje} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', color:'#6366f1' }}>Hoje</button>
-              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>›</button>
+              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>></button>
             </div>
           )}
 
@@ -528,7 +528,7 @@ export default function AgendaPage() {
         <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px', flexShrink:0, flexWrap:'wrap' }}>
             <span style={{ fontSize:'13px', color:'#6b7280' }}>{agendamentosPeriodo.length} agendamento{agendamentosPeriodo.length!==1?'s':''}</span>
-            <button onClick={()=>setVisualizacao('semana')} style={{ marginLeft:'auto', background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>← Voltar</button>
+            <button onClick={()=>setVisualizacao('semana')} style={{ marginLeft:'auto', background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}><- Voltar</button>
           </div>
           <ListaPeriodo agendamentos={agendamentosPeriodo} onEditar={abrirEdicao}/>
         </div>
@@ -590,12 +590,12 @@ export default function AgendaPage() {
                             <span style={{ fontSize:'10px', fontWeight:'700', color:textCor, fontFamily:'monospace', flexShrink:0 }}>{hora}</span>
                             {isFinalizado && (
                               <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                <span style={{ color:'white', fontSize:'8px', fontWeight:'900', lineHeight:1 }}>✓</span>
+                                <span style={{ color:'white', fontSize:'8px', fontWeight:'900', lineHeight:1 }}>v</span>
                               </div>
                             )}
                             {isCancelado && (
                               <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                <span style={{ color:'white', fontSize:'9px', fontWeight:'900', lineHeight:1 }}>✕</span>
+                                <span style={{ color:'white', fontSize:'9px', fontWeight:'900', lineHeight:1 }}>x</span>
                               </div>
                             )}
                           </div>
@@ -616,7 +616,7 @@ export default function AgendaPage() {
                           {altura >= 60 && (isFinalizado || isCancelado) && (
                             <div style={{ marginTop:'2px', display:'inline-flex', alignItems:'center', gap:'3px', background:isFinalizado?'#10b981':'#ef4444', borderRadius:'99px', padding:'1px 6px' }}>
                               <span style={{ fontSize:'9px', fontWeight:'700', color:'white' }}>
-                                {isFinalizado ? '✓ Finalizado' : '✕ Cancelado'}
+                                {isFinalizado ? 'v Finalizado' : 'x Cancelado'}
                               </span>
                             </div>
                           )}
@@ -665,8 +665,8 @@ export default function AgendaPage() {
           <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'540px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 18px' }}/>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'✏️ Editar agendamento':'+ Novo agendamento'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>✕</button>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'edit Editar agendamento':'+ Novo agendamento'}</h2>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>x</button>
             </div>
 
 
@@ -675,7 +675,7 @@ export default function AgendaPage() {
               {modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado') && (
                 <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', color:'#6b7280', display:'flex', alignItems:'center', gap:'8px', pointerEvents:'none', opacity:1 }}>
                   <span>🔒</span>
-                  <span>Este agendamento está <b>{selecionado?.status === 'fechado' ? 'finalizado' : 'cancelado'}</b> — somente visualização.</span>
+                  <span>Este agendamento está <b>{selecionado?.status === 'fechado' ? 'finalizado' : 'cancelado'}</b> -- somente visualização.</span>
                 </div>
               )}
               {/* Busca cliente */}
@@ -690,7 +690,7 @@ export default function AgendaPage() {
                       <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e', marginBottom:'1px' }}>{clienteSel.nome}</p>
                       <p style={{ fontSize:'12px', color:'#6b7280' }}>{clienteSel.whatsapp||clienteSel.telefone||''}</p>
                     </div>
-                    <button type="button" onClick={()=>{setClienteSel(null);setBuscaCliente('');setForm(f=>({...f,clienteId:'',cliente:''}))}} style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:'18px' }}>✕</button>
+                    <button type="button" onClick={()=>{setClienteSel(null);setBuscaCliente('');setForm(f=>({...f,clienteId:'',cliente:''}))}} style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:'18px' }}>x</button>
                   </div>
                 ) : (
                   <>
@@ -738,10 +738,10 @@ export default function AgendaPage() {
                   }} style={selectStyle}>
                     <option value="">Selecione o serviço...</option>
                     {servicos.length === 0 ? (
-                      <option disabled value="">— Cadastre serviços primeiro —</option>
+                      <option disabled value="">-- Cadastre serviços primeiro --</option>
                     ) : servicos.map((s: any)=>(
                       <option key={s.id} value={s.nome}>
-                        {s.nome}{s.duracao_min ? ' ('+s.duracao_min+'min)' : ''}{s.valor ? ' — R$ '+Number(s.valor).toFixed(2).replace('.',',') : ''}
+                        {s.nome}{s.duracao_min ? ' ('+s.duracao_min+'min)' : ''}{s.valor ? ' -- R$ '+Number(s.valor).toFixed(2).replace('.',',') : ''}
                       </option>
                     ))}
                   </select>
@@ -750,9 +750,9 @@ export default function AgendaPage() {
                   <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,horaInicio:'09:00'}))} style={selectStyle}>
                     <option value="">Selecione o profissional...</option>
                     {profissionais.length === 0 ? (
-                      <option disabled value="">— Cadastre profissionais primeiro —</option>
+                      <option disabled value="">-- Cadastre profissionais primeiro --</option>
                     ) : profissionais.map((p: any)=>(
-                      <option key={p.id} value={p.nome}>{p.nome}{p.cargo ? ' — '+p.cargo : ''}</option>
+                      <option key={p.id} value={p.nome}>{p.nome}{p.cargo ? ' -- '+p.cargo : ''}</option>
                     ))}
                   </select>
                 </InputField>
@@ -793,9 +793,9 @@ export default function AgendaPage() {
                           <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Horário de início</label>
                           {horarioDoDiaForm && (
                             <span style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'8px' }}>
-                              {horarioDoDiaForm.hora_inicio} – {horarioDoDiaForm.hora_fim}
-                              {' · '}<span style={{ color:'#10b981', fontWeight:'500' }}>{slotsDisponiveis.filter(s=>s.disponivel).length} disponíveis</span>
-                              {slotsDisponiveis.some(s=>!s.disponivel)&&<span style={{ color:'#ef4444', fontWeight:'500' }}> · {slotsDisponiveis.filter(s=>!s.disponivel).length} ocupados</span>}
+                              {horarioDoDiaForm.hora_inicio} - {horarioDoDiaForm.hora_fim}
+                              {' . '}<span style={{ color:'#10b981', fontWeight:'500' }}>{slotsDisponiveis.filter(s=>s.disponivel).length} disponíveis</span>
+                              {slotsDisponiveis.some(s=>!s.disponivel)&&<span style={{ color:'#ef4444', fontWeight:'500' }}> . {slotsDisponiveis.filter(s=>!s.disponivel).length} ocupados</span>}
                             </span>
                           )}
                         </div>
@@ -822,14 +822,14 @@ export default function AgendaPage() {
                       </div>
                       {slotSel&&!slotSel.disponivel&&(
                         <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 12px', marginTop:'8px', fontSize:'13px', color:'#dc2626', display:'flex', gap:'8px', alignItems:'center' }}>
-                          <span>⚠️</span><p>{slotSel.clienteOcupa} já está agendado neste horário.</p>
+                          <span>!</span><p>{slotSel.clienteOcupa} já está agendado neste horário.</p>
                         </div>
                       )}
                     </div>
                   ) : profSelecionado ? (
                     <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'12px', fontSize:'13px', color:'#9ca3af', textAlign:'center' }}>
                       Sem horários cadastrados para este dia.<br/>
-                      <span style={{ fontSize:'12px' }}>Configure em Profissionais → Horários.</span>
+                      <span style={{ fontSize:'12px' }}>Configure em Profissionais -> Horários.</span>
                     </div>
                   ) : null}
                 </div>
@@ -839,8 +839,8 @@ export default function AgendaPage() {
                 <InputField label="Status">
                   <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={selectStyle} disabled={true}>
                     <option value="aberto">📅 Aberto</option>
-                    <option value="fechado">✅ Fechado</option>
-                    <option value="cancelado">❌ Cancelado</option>
+                    <option value="fechado">[OK] Fechado</option>
+                    <option value="cancelado">[X] Cancelado</option>
                   </select>
                 </InputField>
                 <InputField label="Valor (R$)">
@@ -862,7 +862,7 @@ export default function AgendaPage() {
               {modoEdicao && selecionado?.status === 'fechado' && (
                 <div style={{ borderRadius:'12px', overflow:'hidden', border:'1px solid #6ee7b7' }}>
                   <div style={{ background:'linear-gradient(135deg, #10b981, #059669)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
-                    <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>✅</div>
+                    <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>[OK]</div>
                     <div>
                       <p style={{ color:'white', fontWeight:'700', fontSize:'15px', marginBottom:'2px' }}>Atendimento Finalizado</p>
                       <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px' }}>Este agendamento foi concluído e não pode ser alterado.</p>
@@ -909,7 +909,7 @@ export default function AgendaPage() {
                       🚫 Cancelar
                     </button>
                     <button onClick={()=>finalizar(selecionado.id)} disabled={finalizando} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-                      {finalizando ? 'Finalizando...' : '✅ Finalizar atendimento'}
+                      {finalizando ? 'Finalizando...' : '[OK] Finalizar atendimento'}
                     </button>
                   </div>
                 ) : <div/>}
@@ -918,7 +918,7 @@ export default function AgendaPage() {
                   {(!modoEdicao || (modoEdicao && selecionado?.status !== 'fechado' && selecionado?.status !== 'cancelado')) && (
                     <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando}
                       style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
-                      {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'⚠️ Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}
+                      {salvando?'Salvando...':naoAtende&&profSelecionado?'🚫 Dia indisponível':slotSel&&!slotSel.disponivel?'! Horário ocupado':modoEdicao?'Salvar alterações':'Agendar'}
                     </button>
                   )}
                 </div>

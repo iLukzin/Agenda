@@ -7,14 +7,14 @@ import { createClient } from '@/lib/supabase'
 import { useEmpresa, EmpresaResumo } from '@/context/EmpresaContext'
 
 const navItems = [
-  { href:'/dashboard',                    icon:'⊞', label:'Dashboard'     },
+  { href:'/dashboard',                    icon:'?', label:'Dashboard'     },
   { href:'/dashboard/agenda',             icon:'📅', label:'Agenda'        },
   { href:'/dashboard/clientes',           icon:'👥', label:'Clientes'      },
   { href:'/dashboard/profissionais',      icon:'🩺', label:'Profissionais' },
-  { href:'/dashboard/servicos',           icon:'✦',  label:'Serviços'      },
+  { href:'/dashboard/servicos',           icon:'?',  label:'Serviços'      },
   { href:'/dashboard/financeiro',         icon:'💰', label:'Financeiro'    },
   { href:'/dashboard/usuarios',           icon:'👤', label:'Usuários'      },
-  { href:'/dashboard/configuracoes',      icon:'⚙',  label:'Configurações' },
+  { href:'/dashboard/configuracoes',      icon:'?',  label:'Configurações' },
 ]
 
 const navMaster = [
@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', minHeight:'100vh', display:'flex', flexDirection:'column', minWidth:0 }}>
         {isMobile && (
           <div style={{ position:'sticky', top:0, zIndex:30, background:'white', borderBottom:'1px solid #f0f0f8', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
-            <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'22px', color:'#374151' }}>☰</button>
+            <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'22px', color:'#374151' }}>?</button>
             <span style={{ fontWeight:'600', fontSize:'16px', color:'#1a1a2e' }}>AgendaPro</span>
             {empresaAtiva && <span style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:'99px' }}>{empresaAtiva.nome}</span>}
           </div>
@@ -119,11 +119,11 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
         {sidebarAberta && <span style={{ color:'white', fontWeight:'600', fontSize:'15px', whiteSpace:'nowrap' }}>AgendaPro</span>}
         {!isMobile && (
           <button onClick={() => setSidebarAberta(!sidebarAberta)} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', flexShrink:0, fontSize:'12px' }}>
-            {sidebarAberta ? '◀' : '▶'}
+            {sidebarAberta ? '?' : '?'}
           </button>
         )}
         {isMobile && onClose && (
-          <button onClick={onClose} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', fontSize:'20px' }}>✕</button>
+          <button onClick={onClose} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', fontSize:'20px' }}>?</button>
         )}
       </div>
 
@@ -141,7 +141,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
               <p style={{ fontSize:'12px', fontWeight:'600', color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{empresaAtiva.nome}</p>
               <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.4)' }}>{empresaAtiva.plano}</p>
             </div>
-            {isMaster && empresas.length > 1 && <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'10px' }}>▼</span>}
+            {isMaster && empresas.length > 1 && <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'10px' }}>?</span>}
           </button>
 
           {/* Dropdown empresas (só master) */}
@@ -159,7 +159,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
                     <p style={{ fontSize:'12px', color:'white', fontWeight:'500' }}>{emp.nome}</p>
                     <p style={{ fontSize:'10px', color: emp.status==='ativo'?'#10b981':'#ef4444' }}>{emp.status}</p>
                   </div>
-                  {emp.id===empresaAtiva?.id && <span style={{ marginLeft:'auto', color:'#6366f1', fontSize:'14px' }}>✓</span>}
+                  {emp.id===empresaAtiva?.id && <span style={{ marginLeft:'auto', color:'#6366f1', fontSize:'14px' }}>?</span>}
                 </button>
               ))}
               <Link href="/master/empresas" style={{ display:'block', padding:'10px 12px', fontSize:'12px', color:'rgba(255,255,255,0.5)', textDecoration:'none', textAlign:'center', borderTop:'1px solid rgba(255,255,255,0.05)' }}>

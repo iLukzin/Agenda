@@ -12,8 +12,8 @@ type Empresa = {
 }
 
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
-const planoCor:  Record<string,string> = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
-const planoBg:   Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
+const planoCor: Record<string,string> = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
+const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
 
 export default function EmpresasPage() {
   const { recarregar } = useEmpresa()
@@ -22,19 +22,21 @@ export default function EmpresasPage() {
   const [salvando, setSalvando]     = useState(false)
   const [erro, setErro]             = useState('')
   const [busca, setBusca]           = useState('')
-  const [modalAberto, setModalAberto]   = useState(false)
-  const [modoEdicao, setModoEdicao]     = useState(false)
-  const [selecionada, setSelecionada]   = useState<Empresa|null>(null)
-  const [form, setForm] = useState({ nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'' })
+  const [modalAberto, setModalAberto] = useState(false)
+  const [modoEdicao, setModoEdicao]   = useState(false)
+  const [selecionada, setSelecionada] = useState<Empresa|null>(null)
+  const [form, setForm] = useState({
+    nome:'', cnpj:'', email:'', telefone:'', endereco:'',
+    plano:'profissional', status:'ativo', vencimento:''
+  })
 
   const carregar = useCallback(async () => {
     setCarregando(true)
     const sb = createClient()
-    const { data, error } = await sb
+    const { data } = await sb
       .from('empresas')
-      .select('id, nome, cnpj, email, telefone, endereco, plano, status, vencimento')
+      .select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento')
       .order('nome')
-    if (error) { console.error(error); setCarregando(false); return }
     setEmpresas((data || []).map((e: any) => ({
       ...e,
       cnpj:       e.cnpj || '',
@@ -50,7 +52,8 @@ export default function EmpresasPage() {
 
   const filtradas = empresas.filter(e =>
     e.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    e.cnpj.includes(busca) || e.email.toLowerCase().includes(busca.toLowerCase())
+    e.cnpj.includes(busca) ||
+    e.email.toLowerCase().includes(busca.toLowerCase())
   )
 
   function abrirNova() {
@@ -68,7 +71,7 @@ export default function EmpresasPage() {
   function fecharModal() { setModalAberto(false); setSelecionada(null); setErro('') }
 
   async function salvar() {
-    if (!form.nome.trim()) return setErro('Nome é obrigatório.')
+    if (!form.nome.trim()) return setErro('Nome e obrigatorio.')
     setSalvando(true); setErro('')
     const sb = createClient()
     const payload = {
@@ -91,7 +94,7 @@ export default function EmpresasPage() {
     }
     if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
     await carregar()
-    recarregar() // Atualiza seletor de empresa na sidebar
+    recarregar()
     fecharModal()
     setSalvando(false)
   }
@@ -107,27 +110,25 @@ export default function EmpresasPage() {
     (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
       setForm(p => ({...p, [k]: e.target.value}))
 
-  const ativas  = empresas.filter(e => e.status==='ativo').length
-  const totalUs = 0 // seria uma query separada
+  const ativas = empresas.filter(e => e.status==='ativo').length
 
   return (
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}><- Dashboard</Link>
-          <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>🏢 Gerenciar Empresas</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master -- todas as empresas do sistema</p>
+          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>Painel</Link>
+          <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Gerenciar Empresas</h1>
+          <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master -- todas as empresas</p>
         </div>
         <button onClick={abrirNova} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
           + Nova empresa
         </button>
       </div>
 
-      {/* Métricas */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'14px', marginBottom:'24px' }}>
         {[
-          { label:'Empresas ativas',  valor:ativas,          cor:'#10b981', bg:'#ecfdf5' },
-          { label:'Total empresas',   valor:empresas.length, cor:'#6b7280', bg:'#f3f4f6' },
+          { label:'Empresas ativas', valor:ativas,          cor:'#10b981' },
+          { label:'Total empresas',  valor:empresas.length, cor:'#6b7280' },
         ].map(m => (
           <div key={m.label} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'18px 20px' }}>
             <p style={{ fontSize:'11px', color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'6px' }}>{m.label}</p>
@@ -136,13 +137,10 @@ export default function EmpresasPage() {
         ))}
       </div>
 
-      {/* Busca */}
       <div style={{ position:'relative', maxWidth:'300px', marginBottom:'16px' }}>
-        <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
-        <input style={{ ...inputStyle, paddingLeft:'36px' }} placeholder="Buscar empresa..." value={busca} onChange={e => setBusca(e.target.value)}/>
+        <input style={inputStyle} placeholder="Buscar empresa..." value={busca} onChange={e => setBusca(e.target.value)}/>
       </div>
 
-      {/* Tabela */}
       {carregando ? (
         <div style={{ textAlign:'center', padding:'60px', color:'#9ca3af' }}>Carregando...</div>
       ) : (
@@ -185,7 +183,7 @@ export default function EmpresasPage() {
                     </div>
                   </td>
                   <td style={{ padding:'14px 16px' }}>
-                    <button onClick={() => abrirEdicao(e)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>edit Editar</button>
+                    <button onClick={() => abrirEdicao(e)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>Editar</button>
                   </td>
                 </tr>
               ))}
@@ -197,13 +195,12 @@ export default function EmpresasPage() {
         </div>
       )}
 
-      {/* Modal */}
       {modalAberto && (
         <div onClick={fecharModal} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
           <div onClick={ev => ev.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'520px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'edit Editar empresa':'🏢 Nova empresa'}</h2>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'Editar empresa':'Nova empresa'}</h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
@@ -224,13 +221,13 @@ export default function EmpresasPage() {
                 <input type="email" value={form.email} onChange={f('email')} style={inputStyle} placeholder="contato@empresa.com"/>
               </div>
               <div style={{ gridColumn:'1/-1' }}>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereço</label>
-                <input value={form.endereco} onChange={f('endereco')} style={inputStyle} placeholder="Rua, número, bairro, cidade"/>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereco</label>
+                <input value={form.endereco} onChange={f('endereco')} style={inputStyle} placeholder="Rua, numero, bairro, cidade"/>
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Plano</label>
                 <select value={form.plano} onChange={f('plano')} style={{ ...inputStyle, padding:'9px 12px' }}>
-                  <option value="basico">Básico</option>
+                  <option value="basico">Basico</option>
                   <option value="profissional">Profissional</option>
                   <option value="enterprise">Enterprise</option>
                 </select>
@@ -252,7 +249,7 @@ export default function EmpresasPage() {
             <div style={{ display:'flex', justifyContent:'flex-end', gap:'10px', marginTop:'20px' }}>
               <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
               <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
-                {salvando?'Salvando...':modoEdicao?'Salvar alterações':'Criar empresa'}
+                {salvando?'Salvando...':modoEdicao?'Salvar':'Criar empresa'}
               </button>
             </div>
           </div>

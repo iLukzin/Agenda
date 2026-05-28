@@ -62,7 +62,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (!u) {
-        // Sem registro na tabela — trata como master temporário para não bloquear
+        // Sem registro na tabela ? trata como master temporário para não bloquear
         setUsuario({
           id: user.id,
           nome: user.email?.split('@')[0] || 'Usuário',

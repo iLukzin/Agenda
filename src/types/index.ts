@@ -1,5 +1,5 @@
 // ============================================================
-// AgendaPro — Tipos TypeScript
+// AgendaPro ? Tipos TypeScript
 // ============================================================
 
 export type NivelAcesso = 'master' | 'admin' | 'profissional'

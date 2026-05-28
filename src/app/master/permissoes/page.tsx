@@ -33,7 +33,7 @@ export default function PermissoesPage() {
     const empsMap: Record<string,string> = {}
     if (emps) emps.forEach((e: any) => { empsMap[e.id] = e.nome })
     setEmpresas(emps || [])
-    setUsuarios((us || []).map((u: any) => ({ ...u, empresa_nome: u.empresa_id ? (empsMap[u.empresa_id]||'—') : '—' })))
+    setUsuarios((us || []).map((u: any) => ({ ...u, empresa_nome: u.empresa_id ? (empsMap[u.empresa_id]||'?') : '?' })))
     setCarregando(false)
   }, [])
 
@@ -68,7 +68,7 @@ export default function PermissoesPage() {
     setSalvando(true); setMensagem('')
     const lista = TELAS.map(t => permissoes[t.key] || { tela:t.key, visualizar:false, criar:false, alterar:false, excluir:false })
     const { error } = await salvarPermissoes(usuarioSel.id, usuarioSel.empresa_id, lista)
-    setMensagem(error ? 'Erro: '+error.message : '✅ Permissões salvas!')
+    setMensagem(error ? 'Erro: '+error.message : '? Permissões salvas!')
     if (!error) setTimeout(() => setMensagem(''), 3000)
     setSalvando(false)
   }
@@ -93,7 +93,7 @@ export default function PermissoesPage() {
   return (
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
       <div style={{ marginBottom:'24px' }}>
-        <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>← Dashboard</Link>
+        <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>? Dashboard</Link>
         <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>🔐 Permissões de Usuários</h1>
         <p style={{ fontSize:'13px', color:'#9ca3af' }}>Defina o que cada usuário pode visualizar, criar, alterar e excluir</p>
       </div>
@@ -141,11 +141,11 @@ export default function PermissoesPage() {
             <div style={{ padding:'18px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
               <div>
                 <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'2px' }}>{usuarioSel.nome}</h2>
-                <p style={{ fontSize:'12px', color:'#9ca3af' }}>{usuarioSel.email} · {usuarioSel.empresa_nome}</p>
+                <p style={{ fontSize:'12px', color:'#9ca3af' }}>{usuarioSel.email} ? {usuarioSel.empresa_nome}</p>
               </div>
               <div style={{ display:'flex', gap:'8px' }}>
-                <button onClick={()=>aplicarPadrao('profissional')} style={{ background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:'#374151' }}>↩ Padrão Profissional</button>
-                <button onClick={()=>aplicarPadrao('admin')} style={{ background:'#ecfeff', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:'#06b6d4' }}>↩ Padrão Admin</button>
+                <button onClick={()=>aplicarPadrao('profissional')} style={{ background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:'#374151' }}>? Padrão Profissional</button>
+                <button onClick={()=>aplicarPadrao('admin')} style={{ background:'#ecfeff', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:'#06b6d4' }}>? Padrão Admin</button>
               </div>
             </div>
 
@@ -173,7 +173,7 @@ export default function PermissoesPage() {
                               background:p[tipo]?'#6366f1':'white',
                               display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all .15s',
                             }}>
-                              {p[tipo]&&<span style={{ color:'white', fontSize:'13px', fontWeight:'700', lineHeight:1 }}>✓</span>}
+                              {p[tipo]&&<span style={{ color:'white', fontSize:'13px', fontWeight:'700', lineHeight:1 }}>?</span>}
                             </div>
                           </td>
                         ))}
@@ -186,8 +186,8 @@ export default function PermissoesPage() {
 
             <div style={{ padding:'16px 20px', borderTop:'1px solid #f3f4f6', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
               {mensagem
-                ? <span style={{ fontSize:'13px', fontWeight:'500', color:mensagem.startsWith('✅')?'#10b981':'#ef4444' }}>{mensagem}</span>
-                : <p style={{ fontSize:'12px', color:'#9ca3af' }}>ℹ️ Marcar Criar/Alterar/Excluir habilita Visualizar automaticamente.</p>}
+                ? <span style={{ fontSize:'13px', fontWeight:'500', color:mensagem.startsWith('?')?'#10b981':'#ef4444' }}>{mensagem}</span>
+                : <p style={{ fontSize:'12px', color:'#9ca3af' }}>?? Marcar Criar/Alterar/Excluir habilita Visualizar automaticamente.</p>}
               <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'10px 24px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
                 {salvando?'Salvando...':'💾 Salvar permissões'}
               </button>

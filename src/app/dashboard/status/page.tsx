@@ -16,15 +16,15 @@ type Status = {
 const CORES_STATUS = [
   '#6366f1','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#6b7280'
 ]
-const ICONES = ['📅','✅','🔄','⏳','❌','👤','💬','🏃','⭐']
+const ICONES = ['📅','?','🔄','?','?','👤','💬','🏃','?']
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 
 const STATUS_PADRAO = [
   { nome:'agendado',       cor:'#3b82f6', icone:'📅', ordem:1, padrao:true },
-  { nome:'confirmado',     cor:'#10b981', icone:'✅', ordem:2, padrao:true },
+  { nome:'confirmado',     cor:'#10b981', icone:'?', ordem:2, padrao:true },
   { nome:'em_atendimento', cor:'#f59e0b', icone:'🔄', ordem:3, padrao:true },
-  { nome:'finalizado',     cor:'#6b7280', icone:'⭐', ordem:4, padrao:true },
-  { nome:'cancelado',      cor:'#ef4444', icone:'❌', ordem:5, padrao:true },
+  { nome:'finalizado',     cor:'#6b7280', icone:'?', ordem:4, padrao:true },
+  { nome:'cancelado',      cor:'#ef4444', icone:'?', ordem:5, padrao:true },
   { nome:'nao_compareceu', cor:'#8b5cf6', icone:'👤', ordem:6, padrao:true },
 ]
 
@@ -49,7 +49,7 @@ export default function StatusPage() {
       .eq('empresa_id', empresaAtiva.id)
       .order('ordem')
     if (error) {
-      // Tabela pode não existir ainda — mostra lista padrão
+      // Tabela pode não existir ainda ? mostra lista padrão
       console.error(error)
       setStatusList([])
     } else {
@@ -124,7 +124,7 @@ export default function StatusPage() {
         <div style={{ display:'flex', gap:'8px' }}>
           {statusList.length === 0 && (
             <button onClick={criarStatusPadrao} disabled={salvando} style={{ background:'#f3f4f6', color:'#374151', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>
-              ✨ Criar status padrão
+              ? Criar status padrão
             </button>
           )}
           <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
@@ -164,7 +164,7 @@ export default function StatusPage() {
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                 <span style={{ fontSize:'11px', color:'#9ca3af' }}>ordem {s.ordem}</span>
-                <button onClick={() => abrirEdicao(s)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>✏️ Editar</button>
+                <button onClick={() => abrirEdicao(s)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>?? Editar</button>
                 {!s.padrao && <button onClick={() => excluir(s.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>}
               </div>
             </div>
@@ -178,8 +178,8 @@ export default function StatusPage() {
           <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'460px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'✏️ Editar status':'+ Novo status'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'?? Editar status':'+ Novo status'}</h2>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>?</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
               <div>

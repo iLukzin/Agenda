@@ -138,7 +138,7 @@ export default function UsuariosPage() {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Usuários do sistema</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{ativos} ativos · {inativos} inativos</p>
+          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{ativos} ativos ? {inativos} inativos</p>
         </div>
         <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
           + Novo usuário
@@ -196,15 +196,15 @@ export default function UsuariosPage() {
               </div>
               <div style={{ minWidth:'90px' }}>
                 <p style={{ fontSize:'10px', color:'#9ca3af', marginBottom:'2px' }}>Cargo</p>
-                <p style={{ fontSize:'13px', color:'#374151' }}>{u.cargo||'—'}</p>
+                <p style={{ fontSize:'13px', color:'#374151' }}>{u.cargo||'?'}</p>
               </div>
               <span style={{ fontSize:'11px', fontWeight:'600', padding:'3px 10px', borderRadius:'99px', background:nivelBg[u.nivel_acesso], color:nivelCor[u.nivel_acesso] }}>{nivelLabel[u.nivel_acesso]}</span>
               <span style={{ fontSize:'11px', fontWeight:'600', padding:'3px 10px', borderRadius:'99px', background:u.status==='ativo'?'#ecfdf5':'#f9fafb', color:u.status==='ativo'?'#10b981':'#9ca3af' }}>{u.status==='ativo'?'Ativo':'Inativo'}</span>
               <div style={{ display:'flex', gap:'6px' }}>
-                <button onClick={()=>abrirEdicao(u)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>✏️</button>
+                <button onClick={()=>abrirEdicao(u)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>??</button>
                 {u.status==='ativo'
-                  ? <button onClick={()=>setModalConfirm({tipo:'inativar',id:u.id})} style={{ background:'#fffbeb', color:'#f59e0b', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title="Inativar">⏸</button>
-                  : <button onClick={()=>reativar(u.id)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title="Reativar">▶</button>}
+                  ? <button onClick={()=>setModalConfirm({tipo:'inativar',id:u.id})} style={{ background:'#fffbeb', color:'#f59e0b', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title="Inativar">?</button>
+                  : <button onClick={()=>reativar(u.id)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title="Reativar">?</button>}
                 <button onClick={()=>setModalConfirm({tipo:'excluir',id:u.id})} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
               </div>
             </div>
@@ -219,12 +219,12 @@ export default function UsuariosPage() {
           <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'520px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'✏️ Editar usuário':'+ Novo usuário'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'?? Editar usuário':'+ Novo usuário'}</h2>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>?</button>
             </div>
 
             <div style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'10px', padding:'10px 14px', marginBottom:'18px', fontSize:'13px', color:'#4338ca', lineHeight:'1.5' }}>
-              🔵 <b>Profissional</b> — vê só a própria agenda &nbsp;|&nbsp; 🟦 <b>Admin</b> — gerencia a empresa &nbsp;|&nbsp; 🟣 <b>Master</b> — acesso total
+              🔵 <b>Profissional</b> ? vê só a própria agenda &nbsp;|&nbsp; 🟦 <b>Admin</b> ? gerencia a empresa &nbsp;|&nbsp; 🟣 <b>Master</b> ? acesso total
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
@@ -278,7 +278,7 @@ export default function UsuariosPage() {
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px' }}>
               {modoEdicao && selecionado ? (
                 <div style={{ display:'flex', gap:'6px' }}>
-                  <button onClick={()=>setModalConfirm({tipo:'inativar',id:selecionado.id})} style={{ background:'#fffbeb', color:'#f59e0b', border:'1px solid #fde68a', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>⏸ Inativar</button>
+                  <button onClick={()=>setModalConfirm({tipo:'inativar',id:selecionado.id})} style={{ background:'#fffbeb', color:'#f59e0b', border:'1px solid #fde68a', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>? Inativar</button>
                   <button onClick={()=>setModalConfirm({tipo:'excluir',id:selecionado.id})} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>🗑 Excluir</button>
                 </div>
               ) : <div/>}
@@ -297,7 +297,7 @@ export default function UsuariosPage() {
       {modalConfirm && (
         <div onClick={()=>setModalConfirm(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'16px', padding:'28px 24px', maxWidth:'360px', width:'100%', textAlign:'center' }}>
-            <p style={{ fontSize:'36px', marginBottom:'12px' }}>{modalConfirm.tipo==='excluir'?'🗑':'⏸'}</p>
+            <p style={{ fontSize:'36px', marginBottom:'12px' }}>{modalConfirm.tipo==='excluir'?'🗑':'?'}</p>
             <h3 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'8px' }}>{modalConfirm.tipo==='excluir'?'Excluir usuário?':'Inativar usuário?'}</h3>
             <p style={{ fontSize:'13px', color:'#9ca3af', marginBottom:'24px', lineHeight:'1.5' }}>
               {modalConfirm.tipo==='excluir'?'Esta ação não pode ser desfeita.':'O usuário não conseguirá mais acessar o sistema.'}

@@ -1,10 +1,10 @@
 // ============================================================
-// AgendaPro — Clientes Supabase
+// AgendaPro ? Clientes Supabase
 // ============================================================
 
 import { createBrowserClient } from '@supabase/ssr'
 
-// ── Cliente browser (use client) ─────────────────────────────
+// ?? Cliente browser (use client) ?????????????????????????????
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +12,7 @@ export function createClient() {
   )
 }
 
-// ── Utilitários ───────────────────────────────────────────────
+// ?? Utilitários ???????????????????????????????????????????????
 
 export function formatarMoeda(valor: number): string {
   return new Intl.NumberFormat('pt-BR', {

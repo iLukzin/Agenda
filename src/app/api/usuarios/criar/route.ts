@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Chave de serviço não configurada.' }, { status: 500 })
     }
 
-    // Admin client — bypassa confirmação de email
+    // Admin client ? bypassa confirmação de email
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,

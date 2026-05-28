@@ -3,7 +3,7 @@ import './globals.css'
 import { EmpresaProvider } from '@/context/EmpresaContext'
 
 export const metadata: Metadata = {
-  title: 'AgendaPro — Sistema de Agenda Profissional',
+  title: 'AgendaPro ? Sistema de Agenda Profissional',
   description: 'Sistema SaaS de agenda multiempresa',
 }
 

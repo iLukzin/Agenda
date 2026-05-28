@@ -115,7 +115,7 @@ export default function LoginPage() {
                 onChange={e => setSenha(e.target.value)}
                 required
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder="????????"
                 disabled={carregando}
                 style={{
                   width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px',
@@ -160,7 +160,7 @@ export default function LoginPage() {
         </div>
 
         <p style={{ textAlign:'center', color:'rgba(255,255,255,0.25)', fontSize:'12px', marginTop:'24px' }}>
-          © {new Date().getFullYear()} AgendaPro
+          ? {new Date().getFullYear()} AgendaPro
         </p>
       </div>
 

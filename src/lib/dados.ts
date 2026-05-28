@@ -30,7 +30,7 @@ export type ClienteCadastro = {
   plano: string
 }
 
-// Horário padrão: seg–sex 08:00–18:00
+// Horário padrão: seg?sex 08:00?18:00
 const horariosBase: HorarioProfissional[] = [
   { dia:0, inicio:'08:00', fim:'18:00', ativo:false },
   { dia:1, inicio:'08:00', fim:'18:00', ativo:true  },
@@ -102,7 +102,7 @@ export const CLIENTES_CADASTRO: ClienteCadastro[] = [
   { id:'7', nome:'Sofia Lima',     telefone:'(11) 99999-0007', whatsapp:'(11) 99998-0007', plano:'Avulso'          },
 ]
 
-// ── Helpers de horário ────────────────────────────────────────
+// ?? Helpers de horário ????????????????????????????????????????
 
 // Dado um profissional e uma data ISO, retorna o horário daquele dia
 // ou null se o profissional não atende naquele dia da semana

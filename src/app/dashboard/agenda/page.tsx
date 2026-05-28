@@ -129,7 +129,7 @@ function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLoca
                 onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=ag.cor+'10'}}
                 onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='white'}}>
                 <div style={{ width:'46px', textAlign:'center', flexShrink:0 }}>
-                  <p style={{ fontSize:'15px', fontWeight:'700', color:ag.cor, fontFamily:'monospace' }}>{String(ag.horaInicio).padStart(2,'0')}:00</p>
+                  <p style={{ fontSize:'15px', fontWeight:'700', color:ag.cor, fontFamily:'monospace' }}>{String(Math.floor(ag.horaInicio)).padStart(2,'0') + ':' + String(Math.round((ag.horaInicio - Math.floor(ag.horaInicio))*60)).padStart(2,'0')}</p>
                   <p style={{ fontSize:'10px', color:'#9ca3af' }}>{ag.duracao} min</p>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -223,7 +223,7 @@ export default function AgendaPage() {
     const mapped = (agsRaw || []).map((a:any) => ({
       id:                 a.id,
       dataISO:            a.data_inicio ? a.data_inicio.slice(0,10) : toISO(hojeNoBrasil()),
-      horaInicio:         a.data_inicio ? parseInt(a.data_inicio.slice(11,13)) : 0,
+      horaInicio:         a.data_inicio ? (parseInt(a.data_inicio.slice(11,13)) + parseInt(a.data_inicio.slice(14,16)) / 60) : 0,
       duracao:            servDur[a.servico_id] || 60,
       cliente:            cliMap[a.cliente_id]  || '',
       clienteId:          a.cliente_id          || '',
@@ -263,7 +263,9 @@ export default function AgendaPage() {
     setModoEdicao(true); setSelecionado(ag)
     const cl = clientes.find((c:any) => c.id === ag.clienteId) || null
     setClienteSel(cl); setBuscaCliente('')
-    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(ag.horaInicio).padStart(2,'0') + ':00', duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(ag.valor), observacoes:ag.observacoes })
+    const hiH = Math.floor(ag.horaInicio)
+    const hiM = Math.round((ag.horaInicio - hiH) * 60)
+    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(ag.valor), observacoes:ag.observacoes })
     setIntervaloMin(30)
     setModalAberto(true)
   }
@@ -364,7 +366,7 @@ export default function AgendaPage() {
         if (ag.profissional !== form.profissional) return false
         if (ag.status === 'cancelado' || ag.status === 'fechado') return false
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        return min === ag.horaInicio * 60
+        return min === Math.round(ag.horaInicio * 60)
       })
       // Conflito 2: mesmo cliente no mesmo horario (mesmo com profissional diferente)
       const conflitoCliente = form.clienteId ? agendamentos.find(ag => {
@@ -372,7 +374,7 @@ export default function AgendaPage() {
         if (ag.clienteId !== form.clienteId) return false
         if (ag.status === 'cancelado' || ag.status === 'fechado') return false
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        return min === ag.horaInicio * 60
+        return min === Math.round(ag.horaInicio * 60)
       }) : undefined
       const conflito = conflitoProf || conflitoCliente
       const clienteOcupa = conflitoProf ? conflitoProf.cliente : conflitoCliente ? conflitoCliente.cliente + ' (outro prof.)' : undefined
@@ -523,8 +525,10 @@ export default function AgendaPage() {
                       const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
                       const duracaoMin = ag.duracao > 0 ? ag.duracao : 60
                       const alturaCalc = (duracaoMin / 60) * ALTURA_HORA - 4
-                      const altura = Math.max(alturaCalc, 72)
-                      const hora    = String(ag.horaInicio).padStart(2,'0') + ':00'
+                      const altura = Math.max(alturaCalc, 78)
+                      const horaH = Math.floor(ag.horaInicio)
+                      const horaM = Math.round((ag.horaInicio - horaH) * 60)
+                      const hora  = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
                       return (
                         <div key={ag.id} onClick={()=>abrirEdicao(ag)}
                           style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA) + 'px', left:'3px', right:'3px', height:altura + 'px', background:bgBase, border:'1px solid ' + borda + '30', borderLeft:'3px solid ' + borda, borderRadius:'8px', padding:'6px 8px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5, opacity:isCancelado?0.75:1 }}
@@ -547,11 +551,11 @@ export default function AgendaPage() {
                               <span style={{ fontSize:'10px', color:textCor, opacity:0.85, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontWeight:'500' }}>{ag.profissional}</span>
                             </div>
                           )}
-                          {/* Linha 4: Servico */}
+                          {/* Linha 4: Servico - sempre visivel */}
                           {ag.servico && (
-                            <div style={{ display:'flex', alignItems:'center', gap:'3px', overflow:'hidden', lineHeight:'1.4' }}>
-                              <span style={{ fontSize:'9px', color:textCor, opacity:0.6, flexShrink:0, fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.3px' }}>Srv</span>
-                              <span style={{ fontSize:'10px', color:textCor, opacity:0.75, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontStyle:'italic' }}>{ag.servico}</span>
+                            <div style={{ display:'flex', alignItems:'center', gap:'3px', overflow:'hidden', lineHeight:'1.35', marginTop:'1px' }}>
+                              <span style={{ fontSize:'8px', color:textCor, opacity:0.55, flexShrink:0, fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.4px', minWidth:'20px' }}>SRV</span>
+                              <span style={{ fontSize:'10px', color:textCor, opacity:0.8, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.servico}</span>
                             </div>
                           )}
                         </div>

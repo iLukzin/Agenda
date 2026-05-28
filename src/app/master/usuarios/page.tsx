@@ -67,7 +67,7 @@ export default function UsuariosMasterPage() {
 
   function abrirNovo() {
     setModoEdicao(false); setSelecionado(null); setErro('')
-    setForm({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', empresa_id:'', status:'ativo', senha:'' })
+    setForm({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', empresa_id:'', status:'ativo', senha:'', profissional_id:'' })
     setModalAberto(true)
   }
 

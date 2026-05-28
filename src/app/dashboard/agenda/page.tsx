@@ -6,7 +6,7 @@ import { useEmpresa } from '@/context/EmpresaContext'
 import { criarAgendamento, atualizarAgendamento, excluirAgendamento } from '@/lib/api'
 
 const HORA_INICIO = 7
-const ALTURA_HORA = 60
+const ALTURA_HORA = 80
 const HORAS = Array.from({length:14}, (_,i) => (i+7).toString().padStart(2,'0') + ':00')
 
 // Helpers fuso Brasil
@@ -521,30 +521,38 @@ export default function AgendaPage() {
                       const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : isAberto ? '#bfdbfe' : ag.cor + '35'
                       const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : isAberto ? '#3b82f6' : ag.cor
                       const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
-                      const altura  = Math.max((ag.duracao/60)*ALTURA_HORA - 4, 22)
+                      const duracaoMin = ag.duracao > 0 ? ag.duracao : 60
+                      const alturaCalc = (duracaoMin / 60) * ALTURA_HORA - 4
+                      const altura = Math.max(alturaCalc, 72)
                       const hora    = String(ag.horaInicio).padStart(2,'0') + ':00'
                       return (
                         <div key={ag.id} onClick={()=>abrirEdicao(ag)}
-                          style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA) + 'px', left:'3px', right:'3px', height:altura + 'px', background:bgBase, border:'1px solid ' + borda + '30', borderLeft:'3px solid ' + borda, borderRadius:'8px', padding:'4px 7px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5, opacity:isCancelado?0.75:1 }}
+                          style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA) + 'px', left:'3px', right:'3px', height:altura + 'px', background:bgBase, border:'1px solid ' + borda + '30', borderLeft:'3px solid ' + borda, borderRadius:'8px', padding:'6px 8px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5, opacity:isCancelado?0.75:1 }}
                           onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
                           onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                          {/* Hora + badge status */}
-                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'2px', marginBottom:'1px' }}>
-                            <span style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', flexShrink:0, background:'rgba(0,0,0,0.08)', borderRadius:'4px', padding:'0 4px', lineHeight:'16px' }}>{hora}</span>
-                            <div style={{ display:'flex', gap:'2px', flexShrink:0 }}>
-                              {isFinalizado && <div style={{ width:'13px', height:'13px', borderRadius:'50%', background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'white', fontSize:'7px', fontWeight:'900', lineHeight:1 }}>v</span></div>}
-                              {isCancelado  && <div style={{ width:'13px', height:'13px', borderRadius:'50%', background:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'white', fontSize:'8px', fontWeight:'900', lineHeight:1 }}>x</span></div>}
+                          {/* Linha 1: Hora + badge */}
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'4px', marginBottom:'3px' }}>
+                            <span style={{ fontSize:'12px', fontWeight:'800', color:textCor, fontFamily:'monospace', flexShrink:0, background:'rgba(0,0,0,0.1)', borderRadius:'5px', padding:'1px 6px', lineHeight:'18px', letterSpacing:'-0.3px' }}>{hora}</span>
+                            <div style={{ display:'flex', alignItems:'center', gap:'3px', flexShrink:0 }}>
+                              {isFinalizado && <span style={{ fontSize:'9px', fontWeight:'700', color:'#065f46', background:'#bbf7d0', borderRadius:'99px', padding:'1px 6px', lineHeight:'14px' }}>Finalizado</span>}
+                              {isCancelado  && <span style={{ fontSize:'9px', fontWeight:'700', color:'#991b1b', background:'#fecaca', borderRadius:'99px', padding:'1px 6px', lineHeight:'14px' }}>Cancelado</span>}
                             </div>
                           </div>
-                          {/* Nome do cliente - sempre visivel */}
-                          <div style={{ fontSize:'11px', fontWeight:'700', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.cliente}</div>
-                          {/* Profissional - 2a prioridade */}
-                          {altura >= 40 && ag.profissional && (
-                            <div style={{ fontSize:'10px', color:textCor, opacity:0.75, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.profissional}</div>
+                          {/* Linha 2: Nome completo do cliente */}
+                          <div style={{ fontSize:'12px', fontWeight:'700', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.4', marginBottom:'1px' }}>{ag.cliente}</div>
+                          {/* Linha 3: Profissional */}
+                          {ag.profissional && (
+                            <div style={{ display:'flex', alignItems:'center', gap:'3px', overflow:'hidden', lineHeight:'1.4', marginBottom:'1px' }}>
+                              <span style={{ fontSize:'9px', color:textCor, opacity:0.6, flexShrink:0, fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.3px' }}>Prof</span>
+                              <span style={{ fontSize:'10px', color:textCor, opacity:0.85, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontWeight:'500' }}>{ag.profissional}</span>
+                            </div>
                           )}
-                          {/* Servico - 3a prioridade */}
-                          {altura >= 54 && ag.servico && (
-                            <div style={{ fontSize:'9px', color:textCor, opacity:0.6, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3', fontStyle:'italic' }}>{ag.servico}</div>
+                          {/* Linha 4: Servico */}
+                          {ag.servico && (
+                            <div style={{ display:'flex', alignItems:'center', gap:'3px', overflow:'hidden', lineHeight:'1.4' }}>
+                              <span style={{ fontSize:'9px', color:textCor, opacity:0.6, flexShrink:0, fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.3px' }}>Srv</span>
+                              <span style={{ fontSize:'10px', color:textCor, opacity:0.75, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontStyle:'italic' }}>{ag.servico}</span>
+                            </div>
                           )}
                         </div>
                       )

@@ -230,6 +230,14 @@ export default function AgendaPage() {
     if (!empresaAtiva?.id) return
     setCarregando(true)
     const sb = createClient()
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id',empresaAtiva.id)
+    if (usuario?.nivel_acesso === 'profissional' && usuario?.profissional_id) {
+      qAgs = qAgs.eq('prof_id', usuario.profissional_id)
+    }
+    let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id',empresaAtiva.id).eq('status','ativo')
+    if (usuario?.nivel_acesso === 'profissional' && usuario?.profissional_id) {
+      qProfs = qProfs.eq('id', usuario.profissional_id)
+    }
     const [
       { data: agsRaw, error: errAgs },
       { data: clsRaw },
@@ -238,22 +246,9 @@ export default function AgendaPage() {
       { data: sts },
       { data: hors },
     ] = await Promise.all([
-      (() => {
-        let q = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id',empresaAtiva.id)
-        // Usuario nivel profissional sem vinculo a profissional: filtra pelo prof_id vinculado
-        if (usuario?.nivel_acesso === 'profissional' && usuario?.profissional_id) {
-          q = q.eq('prof_id', usuario.profissional_id)
-        }
-        return q.order('data_inicio')
-      })(),
+      qAgs.order('data_inicio'),
       sb.from('clientes').select('id,nome,telefone,whatsapp').eq('empresa_id',empresaAtiva.id),
-      (() => {
-        let q = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id',empresaAtiva.id).eq('status','ativo')
-        if (usuario?.nivel_acesso === 'profissional' && usuario?.profissional_id) {
-          q = q.eq('id', usuario.profissional_id)
-        }
-        return q.order('nome')
-      })(),
+      qProfs.order('nome'),
       sb.from('servicos').select('id,nome,cor,duracao_min,valor,status').eq('empresa_id',empresaAtiva.id).eq('status','ativo').order('nome'),
       sb.from('status_agendamento').select('id,nome,cor,icone').eq('empresa_id',empresaAtiva.id).order('ordem'),
       sb.from('horarios_prof').select('profissional_id,dia_semana,hora_inicio,hora_fim,ativo').eq('empresa_id',empresaAtiva.id).eq('ativo',true),

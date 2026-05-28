@@ -9,7 +9,6 @@ type Usuario = {
   cargo: string; nivel_acesso: string; empresa_id: string
   empresa_nome: string; status: string
 }
-
 type Empresa = { id: string; nome: string }
 
 const nivelLabel: Record<string,string> = { master:'Master', admin:'Administrador', profissional:'Profissional' }
@@ -28,21 +27,20 @@ export default function UsuariosMasterPage() {
   const [modalAberto, setModalAberto]   = useState(false)
   const [modoEdicao, setModoEdicao]     = useState(false)
   const [selecionado, setSelecionado]   = useState<Usuario|null>(null)
-  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', empresa_id:'', status:'ativo', senha:'' })
+  const [form, setForm] = useState({
+    nome:'', email:'', telefone:'', cargo:'',
+    nivel_acesso:'profissional', empresa_id:'', status:'ativo', senha:''
+  })
 
   const carregar = useCallback(async () => {
     setCarregando(true)
     const sb = createClient()
-
-    // Busca todos os usuários e empresas
     const [{ data: us }, { data: emps }] = await Promise.all([
-      sb.from('usuarios').select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status').order('nome'),
-      sb.from('empresas').select('id, nome').order('nome'),
+      sb.from('usuarios').select('id,nome,email,telefone,cargo,nivel_acesso,empresa_id,status').order('nome'),
+      sb.from('empresas').select('id,nome').order('nome'),
     ])
-
     const empsMap: Record<string,string> = {}
     if (emps) emps.forEach((e: any) => { empsMap[e.id] = e.nome })
-
     setEmpresas(emps || [])
     setUsuarios((us || []).map((u: any) => ({
       ...u,
@@ -77,14 +75,12 @@ export default function UsuariosMasterPage() {
   function fecharModal() { setModalAberto(false); setSelecionado(null); setErro('') }
 
   async function salvar() {
-    if (!form.nome.trim() || !form.email.trim()) return setErro('Nome e e-mail são obrigatórios.')
+    if (!form.nome.trim() || !form.email.trim()) return setErro('Nome e e-mail sao obrigatorios.')
     if (!modoEdicao && form.senha.length < 6) return setErro('Senha deve ter pelo menos 6 caracteres.')
-    if (form.nivel_acesso !== 'master' && !form.empresa_id) return setErro('Selecione uma empresa para este usuário.')
+    if (form.nivel_acesso !== 'master' && !form.empresa_id) return setErro('Selecione uma empresa para este usuario.')
     setSalvando(true); setErro('')
-
     try {
       const sb = createClient()
-
       if (modoEdicao && selecionado) {
         const { error } = await sb.from('usuarios').update({
           nome:         form.nome.trim(),
@@ -95,9 +91,7 @@ export default function UsuariosMasterPage() {
           status:       form.status,
         }).eq('id', selecionado.id)
         if (error) throw new Error(error.message)
-
       } else {
-        // Usa API route que cria sem confirmação de email
         const res = await fetch('/api/usuarios/criar', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -114,7 +108,6 @@ export default function UsuariosMasterPage() {
         const result = await res.json()
         if (!result.success) throw new Error(result.error)
       }
-
       await carregar()
       fecharModal()
     } catch (e: any) {
@@ -131,7 +124,7 @@ export default function UsuariosMasterPage() {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir este usuário permanentemente?')) return
+    if (!confirm('Excluir este usuario permanentemente?')) return
     const sb = createClient()
     await sb.from('usuarios').delete().eq('id', id)
     await carregar()
@@ -146,30 +139,25 @@ export default function UsuariosMasterPage() {
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}><- Dashboard</Link>
-          <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>👑 Usuários do Sistema</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master -- todos os usuários de todas as empresas</p>
+          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>Painel</Link>
+          <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Usuarios do Sistema</h1>
+          <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master -- todos os usuarios</p>
         </div>
         <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-          + Novo usuário
+          + Novo usuario
         </button>
       </div>
 
-      {/* Filtros */}
       <div style={{ display:'flex', gap:'10px', marginBottom:'16px', flexWrap:'wrap' }}>
-        <div style={{ position:'relative', flex:1, minWidth:'200px', maxWidth:'280px' }}>
-          <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
-          <input style={{ ...inputStyle, paddingLeft:'36px' }} placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)}/>
-        </div>
+        <input style={{ ...inputStyle, flex:1, minWidth:'200px', maxWidth:'280px' }} placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)}/>
         <select value={filtroNivel} onChange={e => setFiltroNivel(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none' }}>
-          <option value="todos">Todos os níveis</option>
+          <option value="todos">Todos os niveis</option>
           <option value="master">Master</option>
           <option value="admin">Administrador</option>
           <option value="profissional">Profissional</option>
         </select>
       </div>
 
-      {/* Lista */}
       {carregando ? (
         <div style={{ textAlign:'center', padding:'60px', color:'#9ca3af' }}>Carregando...</div>
       ) : (
@@ -198,37 +186,36 @@ export default function UsuariosMasterPage() {
                 {u.status==='ativo'?'Ativo':'Inativo'}
               </span>
               <div style={{ display:'flex', gap:'6px' }}>
-                <button onClick={() => abrirEdicao(u)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>edit</button>
+                <button onClick={() => abrirEdicao(u)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>Editar</button>
                 <button onClick={() => toggleStatus(u)} style={{ background:'#fffbeb', color:'#f59e0b', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title={u.status==='ativo'?'Inativar':'Reativar'}>
-                  {u.status==='ativo'?'?':'?'}
+                  {u.status==='ativo'?'Pause':'Play'}
                 </button>
-                <button onClick={() => excluir(u.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
+                <button onClick={() => excluir(u.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>Del</button>
               </div>
             </div>
           ))}
-          {filtrados.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af', fontSize:'14px' }}>Nenhum usuário encontrado.</div>}
+          {filtrados.length === 0 && <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af', fontSize:'14px' }}>Nenhum usuario encontrado.</div>}
         </div>
       )}
 
-      {/* Modal */}
       {modalAberto && (
         <div onClick={fecharModal} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
           <div onClick={ev => ev.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'520px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'edit Editar usuário':'+ Novo usuário'}</h2>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'Editar usuario':'+ Novo usuario'}</h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
               <div style={{ gridColumn:'1/-1' }}>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nome completo *</label>
-                <input value={form.nome} onChange={f('nome')} style={inputStyle} placeholder="Nome do usuário"/>
+                <input value={form.nome} onChange={f('nome')} style={inputStyle} placeholder="Nome do usuario"/>
               </div>
               <div style={{ gridColumn:'1/-1' }}>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>E-mail *</label>
                 <input type="email" value={form.email} onChange={f('email')} style={{ ...inputStyle, background:modoEdicao?'#f9fafb':'white' }} placeholder="email@empresa.com" disabled={modoEdicao}/>
-                {modoEdicao && <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'3px' }}>E-mail não pode ser alterado.</p>}
+                {modoEdicao && <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'3px' }}>E-mail nao pode ser alterado.</p>}
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Telefone</label>
@@ -239,21 +226,18 @@ export default function UsuariosMasterPage() {
                 <input value={form.cargo} onChange={f('cargo')} style={inputStyle} placeholder="Ex: Terapeuta"/>
               </div>
 
-              {/* Nível de acesso -- seleção visual */}
               <div style={{ gridColumn:'1/-1' }}>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nível de acesso *</label>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nivel de acesso *</label>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
                   {(['profissional','admin','master'] as const).map(nivel => (
-                    <div key={nivel} onClick={() => setForm(p => ({...p, nivel_acesso:nivel, empresa_id: nivel==='master'?'':p.empresa_id}))}
-                      style={{ padding:'10px 8px', borderRadius:'10px', cursor:'pointer', textAlign:'center', border:form.nivel_acesso===nivel?`2px solid ${nivelCor[nivel]}`:'2px solid #e5e7eb', background:form.nivel_acesso===nivel?nivelBg[nivel]:'white', transition:'all .15s' }}>
-                      <p style={{ fontSize:'18px', marginBottom:'3px' }}>{nivel==='profissional'?'🩺':nivel==='admin'?'🏢':'👑'}</p>
+                    <div key={nivel} onClick={() => setForm(p => ({...p, nivel_acesso:nivel, empresa_id:nivel==='master'?'':p.empresa_id}))}
+                      style={{ padding:'10px 8px', borderRadius:'10px', cursor:'pointer', textAlign:'center', border:form.nivel_acesso===nivel?'2px solid ' + nivelCor[nivel]:'2px solid #e5e7eb', background:form.nivel_acesso===nivel?nivelBg[nivel]:'white' }}>
                       <p style={{ fontSize:'12px', fontWeight:'600', color:form.nivel_acesso===nivel?nivelCor[nivel]:'#6b7280' }}>{nivelLabel[nivel]}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Empresa -- obrigatório para não-master */}
               {form.nivel_acesso !== 'master' && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Empresa vinculada *</label>
@@ -262,23 +246,18 @@ export default function UsuariosMasterPage() {
                     {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
                   </select>
                   <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'4px' }}>
-                    {form.nivel_acesso==='profissional'
-                      ? '📋 Este usuário verá somente os dados desta empresa.'
-                      : '🏢 Este usuário gerenciará todos os dados desta empresa.'}
+                    {form.nivel_acesso==='profissional' ? 'Este usuario vera somente os dados desta empresa.' : 'Este usuario gerenciara todos os dados desta empresa.'}
                   </p>
                 </div>
               )}
 
-              {/* Senha -- só na criação */}
               {!modoEdicao && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Senha de acesso *</label>
-                  <input type="password" value={form.senha} onChange={f('senha')} style={inputStyle} placeholder="Mínimo 6 caracteres"/>
-                  <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'4px' }}>O usuário poderá alterar a senha depois do primeiro acesso.</p>
+                  <input type="password" value={form.senha} onChange={f('senha')} style={inputStyle} placeholder="Minimo 6 caracteres"/>
                 </div>
               )}
 
-              {/* Status -- só na edição */}
               {modoEdicao && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Status</label>
@@ -294,12 +273,12 @@ export default function UsuariosMasterPage() {
 
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px' }}>
               {modoEdicao && selecionado
-                ? <button onClick={() => excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>🗑 Excluir</button>
+                ? <button onClick={() => excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Excluir</button>
                 : <div/>}
               <div style={{ display:'flex', gap:'10px' }}>
                 <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
                 <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
-                  {salvando?'Salvando...':modoEdicao?'Salvar alterações':'Criar usuário'}
+                  {salvando?'Salvando...':modoEdicao?'Salvar':'Criar usuario'}
                 </button>
               </div>
             </div>

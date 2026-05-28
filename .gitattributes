@@ -1,0 +1,6 @@
+# Força LF em todos os arquivos de texto
+* text=auto eol=lf
+
+# Arquivos TypeScript/JSX - nunca modificar conteúdo
+*.ts  binary
+*.tsx binary

@@ -159,7 +159,17 @@ export default function DashboardPage() {
     setCarregando(false)
   }, [empresaAtiva?.id, periodoIni, periodoFim])
 
-  useEffect(() => { carregar() }, [carregar])
+  useEffect(() => {
+    carregar()
+    if (!empresaAtiva?.id) return
+    const sb = createClient()
+    const ch = sb
+      .channel('dashboard-realtime-' + empresaAtiva.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agendamentos', filter: 'empresa_id=eq.' + empresaAtiva.id }, () => carregar())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lancamentos', filter: 'empresa_id=eq.' + empresaAtiva.id }, () => carregar())
+      .subscribe()
+    return () => { sb.removeChannel(ch) }
+  }, [carregar, empresaAtiva?.id])
 
   const labelFiltro = filtro === 'hoje' ? 'Hoje' : filtro === 'mes' ? 'Este mes' :
     new Date(periodoIni+'T12:00:00').toLocaleDateString('pt-BR',{day:'numeric',month:'short'}) + ' - ' +

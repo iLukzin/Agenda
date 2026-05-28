@@ -95,33 +95,45 @@ function calcSlots(
     const hora = Math.floor(min / 60)
     const resto = min % 60
     const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
-    // Conflito de profissional: cancelado libera, fechado e aberto bloqueiam
+    const slotIni = min
+    const slotFim = min + durMin
+
+    // Verifica sobreposicao real de intervalo: dois slots se sobrepõem se
+    // inicio do slot < fim do ag E fim do slot > inicio do ag
+    const sobrepoe = (agIniMin: number, agDurMin: number) => {
+      const agFim = agIniMin + agDurMin
+      return slotIni < agFim && slotFim > agIniMin
+    }
+
+    // Conflito de profissional: cancelado libera, aberto e fechado bloqueiam
     const confProf = agendamentos.find(ag => {
       if (ag.dataISO !== dataISO) return false
       if (ag.profissional !== profissional) return false
-      if (ag.status === 'cancelado') return false // cancelado libera o horario
+      if (ag.status === 'cancelado') return false
       if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-      return min === Math.round(ag.horaInicio * 60)
+      const agIniMin = Math.round(ag.horaInicio * 60)
+      return sobrepoe(agIniMin, ag.duracao > 0 ? ag.duracao : 60)
     })
-    // Conflito de cliente: cancelado libera, fechado e aberto bloqueiam
+
+    // Conflito de cliente: cancelado libera, aberto e fechado bloqueiam
     let confCli: AgendamentoLocal | undefined
     if (clienteId) {
       confCli = agendamentos.find(ag => {
         if (ag.dataISO !== dataISO) return false
         if (ag.clienteId !== clienteId) return false
-        if (ag.status === 'cancelado') return false // cancelado libera
+        if (ag.status === 'cancelado') return false
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        return min === Math.round(ag.horaInicio * 60)
+        const agIniMin = Math.round(ag.horaInicio * 60)
+        return sobrepoe(agIniMin, ag.duracao > 0 ? ag.duracao : 60)
       })
     }
+
     const conflito = confProf || confCli
     let clienteOcupa: string | undefined
     if (confProf) {
-      const statusLabel = confProf.status === 'fechado' ? ' (finalizado)' : ''
-      clienteOcupa = confProf.cliente + statusLabel
+      clienteOcupa = confProf.cliente + (confProf.status === 'fechado' ? ' (finalizado)' : '')
     } else if (confCli) {
-      const statusLabel = confCli.status === 'fechado' ? ' - finalizado' : ''
-      clienteOcupa = confCli.cliente + ' (outro prof.' + statusLabel + ')'
+      clienteOcupa = confCli.cliente + ' (outro prof.' + (confCli.status === 'fechado' ? ' - finalizado' : '') + ')'
     }
     result.push({ hora, min, label, disponivel: !conflito, clienteOcupa })
     min += intervaloMin
@@ -303,7 +315,26 @@ export default function AgendaPage() {
     setCarregando(false)
   }, [empresaAtiva?.id, usuario?.nivel_acesso, usuario?.profissional_id])
 
-  useEffect(() => { carregar() }, [carregar])
+  useEffect(() => {
+    carregar()
+
+    // Realtime: recarrega quando qualquer agendamento da empresa muda
+    if (!empresaAtiva?.id) return
+    const sb = createClient()
+    const channel = sb
+      .channel('agenda-realtime-' + empresaAtiva.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'agendamentos',
+        filter: 'empresa_id=eq.' + empresaAtiva.id,
+      }, () => {
+        carregar()
+      })
+      .subscribe()
+
+    return () => { sb.removeChannel(channel) }
+  }, [carregar, empresaAtiva?.id])
 
   const diasSemana = useMemo(() => Array.from({length:6}, (_,i) => addDias(semanaBase, i)), [semanaBase])
 

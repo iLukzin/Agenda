@@ -350,12 +350,8 @@ export default function AgendaPage() {
       const conflito = agendamentos.find(ag => {
         if (ag.dataISO !== form.dataISO) return false
         if (ag.profissional !== form.profissional) return false
-<<<<<<< HEAD
         // Libera horario de agendamentos fechados ou cancelados
         if (ag.status === 'cancelado' || ag.status === 'fechado') return false
-=======
-        if (ag.status === 'cancelado') return false
->>>>>>> 75ff35e71519bb6182b04e5105d3d23267527344
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
         return min === ag.horaInicio * 60
       })
@@ -499,18 +495,11 @@ export default function AgendaPage() {
                     {ags.map(ag=>{
                       const isFinalizado = ag.status === 'fechado'
                       const isCancelado  = ag.status === 'cancelado'
-<<<<<<< HEAD
                       const isAberto     = ag.status === 'aberto'
                       const bgBase  = isFinalizado ? '#ecfdf5' : isCancelado ? '#fef2f2' : isAberto ? '#dbeafe' : ag.cor + '18'
                       const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : isAberto ? '#bfdbfe' : ag.cor + '35'
                       const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : isAberto ? '#3b82f6' : ag.cor
                       const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
-=======
-                      const bgBase  = isFinalizado ? '#ecfdf5' : isCancelado ? '#fef2f2' : ag.cor + '18'
-                      const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : ag.cor + '35'
-                      const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : ag.cor
-                      const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : ag.cor
->>>>>>> 75ff35e71519bb6182b04e5105d3d23267527344
                       const altura  = Math.max((ag.duracao/60)*ALTURA_HORA - 4, 22)
                       const hora    = String(ag.horaInicio).padStart(2,'0') + ':00'
                       return (

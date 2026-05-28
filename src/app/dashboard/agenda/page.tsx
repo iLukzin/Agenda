@@ -516,29 +516,14 @@ export default function AgendaPage() {
                       </div>
                     )}
                     {(() => {
+                      // Ordenar por hora
                       const sorted = [...ags].sort((a,b) => a.horaInicio - b.horaInicio)
-                      type ColInfo = { ag: typeof sorted[0]; col: number; total: number }
-                      const infos: ColInfo[] = []
-                      sorted.forEach(ag => {
-                        const agFim = ag.horaInicio + (ag.duracao > 0 ? ag.duracao : 60) / 60
-                        const colidentes = infos.filter(info => {
-                          const oFim = info.ag.horaInicio + (info.ag.duracao > 0 ? info.ag.duracao : 60) / 60
-                          return ag.horaInicio < oFim && agFim > info.ag.horaInicio
-                        })
-                        const colsUsadas = new Set(colidentes.map(c => c.col))
-                        let col = 0
-                        while (colsUsadas.has(col)) col++
-                        infos.push({ ag, col, total: 0 })
-                      })
-                      infos.forEach(info => {
-                        const agFim = info.ag.horaInicio + (info.ag.duracao > 0 ? info.ag.duracao : 60) / 60
-                        const grupo = infos.filter(other => {
-                          const oFim = other.ag.horaInicio + (other.ag.duracao > 0 ? other.ag.duracao : 60) / 60
-                          return info.ag.horaInicio < oFim && agFim > other.ag.horaInicio
-                        })
-                        info.total = grupo.length
-                      })
-                      return infos.map(({ ag, col, total }) => {
+                      
+                      // Agrupar por profissional para organizar colunas
+                      const profissionaisNoDia = Array.from(new Set(sorted.map(a => a.profissional || '__sem__')))
+                      const numProfs = profissionaisNoDia.length || 1
+                      
+                      return sorted.map(ag => {
                         const isFinalizado = ag.status === 'fechado'
                         const isCancelado  = ag.status === 'cancelado'
                         const isAberto     = ag.status === 'aberto'
@@ -546,19 +531,47 @@ export default function AgendaPage() {
                         const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : isAberto ? '#bfdbfe' : ag.cor + '35'
                         const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : isAberto ? '#3b82f6' : ag.cor
                         const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
-                        const altura  = Math.max((ag.duracao > 0 ? ag.duracao : 60) / 60 * ALTURA_HORA - 4, 52)
-                        const horaH   = Math.floor(ag.horaInicio)
-                        const horaM   = Math.round((ag.horaInicio - horaH) * 60)
-                        const hora    = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
-                        const pct     = 100 / total
-                        const leftPct = col * pct
+                        
+                        // Altura baseada na duracao real
+                        const dur    = ag.duracao > 0 ? ag.duracao : 60
+                        const altura = Math.max((dur / 60) * ALTURA_HORA - 6, 44)
+                        
+                        // Hora formatada
+                        const horaH = Math.floor(ag.horaInicio)
+                        const horaM = Math.round((ag.horaInicio - horaH) * 60)
+                        const hora  = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
+                        
+                        // Posicao vertical alinhada com a grade de horas
+                        const topPx = (ag.horaInicio - HORA_INICIO) * ALTURA_HORA
+                        
+                        // Posicao horizontal por profissional
+                        const profIdx = profissionaisNoDia.indexOf(ag.profissional || '__sem__')
+                        const pct     = 100 / numProfs
+                        const leftPct = profIdx * pct
+                        
                         return (
                           <div key={ag.id} onClick={()=>abrirEdicao(ag)}
-                            style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA)+'px', left:'calc('+leftPct+'% + 2px)', width:'calc('+pct+'% - 4px)', height:altura+'px', background:bgBase, border:'1px solid '+borda+'30', borderLeft:'3px solid '+borda, borderRadius:'8px', padding:'5px 7px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5+col, opacity:isCancelado?0.85:1, boxSizing:'border-box' }}
+                            style={{
+                              position:'absolute',
+                              top: topPx + 'px',
+                              left: 'calc(' + leftPct + '% + 2px)',
+                              width: 'calc(' + pct + '% - 4px)',
+                              height: altura + 'px',
+                              background: bgBase,
+                              border: '1px solid ' + borda + '40',
+                              borderLeft: '3px solid ' + borda,
+                              borderRadius: '8px',
+                              padding: '5px 8px',
+                              cursor: 'pointer',
+                              overflow: 'hidden',
+                              transition: 'background .15s',
+                              zIndex: 5,
+                              boxSizing: 'border-box',
+                            }}
                             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
                             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                            <div style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', marginBottom:'2px', letterSpacing:'-0.3px' }}>{hora}</div>
-                            <div style={{ fontSize:'11px', fontWeight:'700', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.cliente}</div>
+                            <div style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', letterSpacing:'-0.3px', lineHeight:'15px' }}>{hora}</div>
+                            <div style={{ fontSize:'11px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'14px', marginTop:'1px' }}>{ag.cliente}</div>
                           </div>
                         )
                       })

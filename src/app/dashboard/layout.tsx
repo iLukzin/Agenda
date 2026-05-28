@@ -14,7 +14,6 @@ const navItems = [
   { href:'/dashboard/servicos',           icon:'✦',  label:'Serviços'      },
   { href:'/dashboard/financeiro',         icon:'💰', label:'Financeiro'    },
   { href:'/dashboard/usuarios',           icon:'👤', label:'Usuários'      },
-  { href:'/dashboard/status',             icon:'🏷',  label:'Status'        },
   { href:'/dashboard/configuracoes',      icon:'⚙',  label:'Configurações' },
 ]
 

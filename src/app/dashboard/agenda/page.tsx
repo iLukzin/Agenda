@@ -515,52 +515,54 @@ export default function AgendaPage() {
                         <div style={{ flex:1, height:'1.5px', background:'#ef4444' }}/>
                       </div>
                     )}
-                    {ags.map(ag=>{
-                      const isFinalizado = ag.status === 'fechado'
-                      const isCancelado  = ag.status === 'cancelado'
-                      const isAberto     = ag.status === 'aberto'
-                      const bgBase  = isFinalizado ? '#ecfdf5' : isCancelado ? '#fef2f2' : isAberto ? '#dbeafe' : ag.cor + '18'
-                      const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : isAberto ? '#bfdbfe' : ag.cor + '35'
-                      const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : isAberto ? '#3b82f6' : ag.cor
-                      const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
-                      const duracaoMin = ag.duracao > 0 ? ag.duracao : 60
-                      const alturaCalc = (duracaoMin / 60) * ALTURA_HORA - 4
-                      const altura = Math.max(alturaCalc, 78)
-                      const horaH = Math.floor(ag.horaInicio)
-                      const horaM = Math.round((ag.horaInicio - horaH) * 60)
-                      const hora  = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
-                      return (
-                        <div key={ag.id} onClick={()=>abrirEdicao(ag)}
-                          style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA) + 'px', left:'3px', right:'3px', height:altura + 'px', background:bgBase, border:'1px solid ' + borda + '30', borderLeft:'3px solid ' + borda, borderRadius:'8px', padding:'6px 8px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5, opacity:isCancelado?0.75:1 }}
-                          onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
-                          onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                          {/* Linha 1: Hora + badge */}
-                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'4px', marginBottom:'3px' }}>
-                            <span style={{ fontSize:'12px', fontWeight:'800', color:textCor, fontFamily:'monospace', flexShrink:0, background:'rgba(0,0,0,0.1)', borderRadius:'5px', padding:'1px 6px', lineHeight:'18px', letterSpacing:'-0.3px' }}>{hora}</span>
-                            <div style={{ display:'flex', alignItems:'center', gap:'3px', flexShrink:0 }}>
-                              {isFinalizado && <span style={{ fontSize:'9px', fontWeight:'700', color:'#065f46', background:'#bbf7d0', borderRadius:'99px', padding:'1px 6px', lineHeight:'14px' }}>Finalizado</span>}
-                              {isCancelado  && <span style={{ fontSize:'9px', fontWeight:'700', color:'#991b1b', background:'#fecaca', borderRadius:'99px', padding:'1px 6px', lineHeight:'14px' }}>Cancelado</span>}
-                            </div>
+                    {(() => {
+                      const sorted = [...ags].sort((a,b) => a.horaInicio - b.horaInicio)
+                      type ColInfo = { ag: typeof sorted[0]; col: number; total: number }
+                      const infos: ColInfo[] = []
+                      sorted.forEach(ag => {
+                        const agFim = ag.horaInicio + (ag.duracao > 0 ? ag.duracao : 60) / 60
+                        const colidentes = infos.filter(info => {
+                          const oFim = info.ag.horaInicio + (info.ag.duracao > 0 ? info.ag.duracao : 60) / 60
+                          return ag.horaInicio < oFim && agFim > info.ag.horaInicio
+                        })
+                        const colsUsadas = new Set(colidentes.map(c => c.col))
+                        let col = 0
+                        while (colsUsadas.has(col)) col++
+                        infos.push({ ag, col, total: 0 })
+                      })
+                      infos.forEach(info => {
+                        const agFim = info.ag.horaInicio + (info.ag.duracao > 0 ? info.ag.duracao : 60) / 60
+                        const grupo = infos.filter(other => {
+                          const oFim = other.ag.horaInicio + (other.ag.duracao > 0 ? other.ag.duracao : 60) / 60
+                          return info.ag.horaInicio < oFim && agFim > other.ag.horaInicio
+                        })
+                        info.total = grupo.length
+                      })
+                      return infos.map(({ ag, col, total }) => {
+                        const isFinalizado = ag.status === 'fechado'
+                        const isCancelado  = ag.status === 'cancelado'
+                        const isAberto     = ag.status === 'aberto'
+                        const bgBase  = isFinalizado ? '#ecfdf5' : isCancelado ? '#fef2f2' : isAberto ? '#dbeafe' : ag.cor + '18'
+                        const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : isAberto ? '#bfdbfe' : ag.cor + '35'
+                        const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : isAberto ? '#3b82f6' : ag.cor
+                        const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
+                        const altura  = Math.max((ag.duracao > 0 ? ag.duracao : 60) / 60 * ALTURA_HORA - 4, 52)
+                        const horaH   = Math.floor(ag.horaInicio)
+                        const horaM   = Math.round((ag.horaInicio - horaH) * 60)
+                        const hora    = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
+                        const pct     = 100 / total
+                        const leftPct = col * pct
+                        return (
+                          <div key={ag.id} onClick={()=>abrirEdicao(ag)}
+                            style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA)+'px', left:'calc('+leftPct+'% + 2px)', width:'calc('+pct+'% - 4px)', height:altura+'px', background:bgBase, border:'1px solid '+borda+'30', borderLeft:'3px solid '+borda, borderRadius:'8px', padding:'5px 7px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5+col, opacity:isCancelado?0.85:1, boxSizing:'border-box' }}
+                            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
+                            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
+                            <div style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', marginBottom:'2px', letterSpacing:'-0.3px' }}>{hora}</div>
+                            <div style={{ fontSize:'11px', fontWeight:'700', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.cliente}</div>
                           </div>
-                          {/* Linha 2: Nome completo do cliente */}
-                          <div style={{ fontSize:'12px', fontWeight:'700', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.4', marginBottom:'1px' }}>{ag.cliente}</div>
-                          {/* Linha 3: Profissional */}
-                          {ag.profissional && (
-                            <div style={{ display:'flex', alignItems:'center', gap:'3px', overflow:'hidden', lineHeight:'1.4', marginBottom:'1px' }}>
-                              <span style={{ fontSize:'9px', color:textCor, opacity:0.6, flexShrink:0, fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.3px' }}>Prof</span>
-                              <span style={{ fontSize:'10px', color:textCor, opacity:0.85, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontWeight:'500' }}>{ag.profissional}</span>
-                            </div>
-                          )}
-                          {/* Linha 4: Servico - sempre visivel */}
-                          {ag.servico && (
-                            <div style={{ display:'flex', alignItems:'center', gap:'3px', overflow:'hidden', lineHeight:'1.35', marginTop:'1px' }}>
-                              <span style={{ fontSize:'8px', color:textCor, opacity:0.55, flexShrink:0, fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.4px', minWidth:'20px' }}>SRV</span>
-                              <span style={{ fontSize:'10px', color:textCor, opacity:0.8, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.servico}</span>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
+                        )
+                      })
+                    })()}
                   </div>
                 )
               })}

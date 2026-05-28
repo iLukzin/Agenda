@@ -59,16 +59,11 @@ export default function LoginPage() {
       <div style={{ width:'100%', maxWidth:'420px', position:'relative' }}>
         {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:'32px' }}>
-          <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'56px', height:'56px', borderRadius:'16px', background:'#6366f1', marginBottom:'16px' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
+          <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'72px', height:'72px', borderRadius:'18px', background:'white', marginBottom:'16px', padding:'6px' }}>
+            <img src="/logo-fortitude.png" alt="Fortitude" style={{ width:'60px', height:'60px', objectFit:'contain' }}/>
           </div>
           <h1 style={{ color:'white', fontSize:'26px', fontWeight:'700', letterSpacing:'-0.5px', margin:0 }}>
-            AgendaPro
+            AgendaFortitude
           </h1>
           <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'14px', marginTop:'6px' }}>
             Sistema de Agenda Profissional
@@ -115,7 +110,7 @@ export default function LoginPage() {
                 onChange={e => setSenha(e.target.value)}
                 required
                 autoComplete="current-password"
-                placeholder="????????"
+                placeholder="Sua senha"
                 disabled={carregando}
                 style={{
                   width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px',
@@ -160,7 +155,7 @@ export default function LoginPage() {
         </div>
 
         <p style={{ textAlign:'center', color:'rgba(255,255,255,0.25)', fontSize:'12px', marginTop:'24px' }}>
-          ? {new Date().getFullYear()} AgendaPro
+          AgendaFortitude {new Date().getFullYear()}
         </p>
       </div>
 

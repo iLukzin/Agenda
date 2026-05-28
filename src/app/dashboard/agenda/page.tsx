@@ -95,27 +95,34 @@ function calcSlots(
     const hora = Math.floor(min / 60)
     const resto = min % 60
     const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
+    // Conflito de profissional: cancelado libera, fechado e aberto bloqueiam
     const confProf = agendamentos.find(ag => {
       if (ag.dataISO !== dataISO) return false
       if (ag.profissional !== profissional) return false
-      if (ag.status === 'cancelado' || ag.status === 'fechado') return false
+      if (ag.status === 'cancelado') return false // cancelado libera o horario
       if (modoEdicao && selecionado && ag.id === selecionado.id) return false
       return min === Math.round(ag.horaInicio * 60)
     })
+    // Conflito de cliente: cancelado libera, fechado e aberto bloqueiam
     let confCli: AgendamentoLocal | undefined
     if (clienteId) {
       confCli = agendamentos.find(ag => {
         if (ag.dataISO !== dataISO) return false
         if (ag.clienteId !== clienteId) return false
-        if (ag.status === 'cancelado' || ag.status === 'fechado') return false
+        if (ag.status === 'cancelado') return false // cancelado libera
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
         return min === Math.round(ag.horaInicio * 60)
       })
     }
     const conflito = confProf || confCli
     let clienteOcupa: string | undefined
-    if (confProf) { clienteOcupa = confProf.cliente }
-    else if (confCli) { clienteOcupa = confCli.cliente + ' (outro prof.)' }
+    if (confProf) {
+      const statusLabel = confProf.status === 'fechado' ? ' (finalizado)' : ''
+      clienteOcupa = confProf.cliente + statusLabel
+    } else if (confCli) {
+      const statusLabel = confCli.status === 'fechado' ? ' - finalizado' : ''
+      clienteOcupa = confCli.cliente + ' (outro prof.' + statusLabel + ')'
+    }
     result.push({ hora, min, label, disponivel: !conflito, clienteOcupa })
     min += intervaloMin
   }

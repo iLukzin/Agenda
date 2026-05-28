@@ -42,7 +42,7 @@ export default function ProfissionaisPage() {
     // Busca da tabela profissionais (não usuarios)
     const { data: profs, error } = await sb
       .from('profissionais')
-      .select('id, nome, email, telefone, cargo, especialidade, cor, status')
+      .select('id, nome, email, telefone, cargo, especialidade, cor, status, servicos')
       .eq('empresa_id', empresaAtiva.id)
       .order('nome')
 
@@ -81,7 +81,7 @@ export default function ProfissionaisPage() {
         id:p.id, nome:p.nome||'', email:p.email||'', telefone:p.telefone||'',
         cargo:p.cargo||'', especialidade:p.especialidade||p.cargo||'',
         cor:p.cor||CORES[0], status:p.status,
-        horarios:horariosFormatados, servicos:[],
+        horarios:horariosFormatados, servicos:p.servicos||[],
       }
     }))
     setCarregando(false)
@@ -104,7 +104,7 @@ export default function ProfissionaisPage() {
   function abrirEdicao(p: Profissional) {
     setModoEdicao(true); setSelecionado(p); setErro(''); setAbaModal('dados')
     setForm({ nome:p.nome, email:p.email, telefone:p.telefone, cargo:p.cargo, especialidade:p.especialidade, cor:p.cor, status:p.status })
-    setServicosSel([...p.servicos])
+    setServicosSel(p.servicos || [])
     setHorarios(p.horarios.map(h => ({...h})))
     setModalAberto(true)
   }
@@ -127,6 +127,7 @@ export default function ProfissionaisPage() {
       especialidade:form.cargo || null,
       cor:          form.cor,
       status:       form.status,
+      servicos:     servicosSel,
     }
 
     if (modoEdicao && selecionado) {
@@ -223,7 +224,7 @@ export default function ProfissionaisPage() {
                 {DIAS.map((dia, i) => {
                   const h = p.horarios.find(h => h.dia === i)
                   return (
-                    <div key={dia} title={h?.ativo ? `${dia}: ${h.inicio}–${h.fim}` : `${dia}: não atende`}
+                    <div key={dia} title={h?.ativo ? `${dia}: ${h.inicio}-${h.fim}` : `${dia}: não atende`}
                       style={{ width:'28px', height:'28px', borderRadius:'50%', background:h?.ativo?p.cor+'20':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'9px', fontWeight:'600', color:h?.ativo?p.cor:'#d1d5db', cursor:'default' }}>
                       {dia.slice(0,1)}
                     </div>
@@ -239,7 +240,7 @@ export default function ProfissionaisPage() {
                 )}
                 {perm.alterar && (
                   <button onClick={() => abrirEdicao(p)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'8px', padding:'7px 14px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>
-                    ✏️ Editar
+                    edit Editar
                   </button>
                 )}
               </div>
@@ -261,9 +262,9 @@ export default function ProfissionaisPage() {
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
               <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>
-                {modoEdicao ? '✏️ Editar profissional' : '+ Novo profissional'}
+                {modoEdicao ? 'edit Editar profissional' : '+ Novo profissional'}
               </h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>
 
             {/* Abas */}
@@ -325,7 +326,7 @@ export default function ProfissionaisPage() {
                   <div key={s.id} onClick={() => setServicosSel(prev => prev.includes(s.nome) ? prev.filter(x=>x!==s.nome) : [...prev, s.nome])}
                     style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'10px', cursor:'pointer', border:servicosSel.includes(s.nome)?'1.5px solid #6366f1':'1px solid #e5e7eb', background:servicosSel.includes(s.nome)?'#eef2ff':'white', transition:'all .15s' }}>
                     <div style={{ width:'20px', height:'20px', borderRadius:'50%', flexShrink:0, border:servicosSel.includes(s.nome)?'none':'1.5px solid #d1d5db', background:servicosSel.includes(s.nome)?'#6366f1':'white', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {servicosSel.includes(s.nome) && <span style={{ color:'white', fontSize:'12px' }}>✓</span>}
+                      {servicosSel.includes(s.nome) && <span style={{ color:'white', fontSize:'12px' }}>?</span>}
                     </div>
                     <span style={{ fontSize:'14px', color:'#1a1a2e', fontWeight:servicosSel.includes(s.nome)?'500':'400' }}>{s.nome}</span>
                   </div>

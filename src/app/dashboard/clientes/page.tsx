@@ -20,6 +20,12 @@ type Cliente = {
   plano_nome: string
 }
 
+function mascaraTel(v: string): string {
+  const n = v.replace(/\D/g,'').slice(0,11)
+  if (n.length <= 10) return n.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3').replace(/-$/,'')
+  return n.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3').replace(/-$/,'')
+}
+
 const inputStyle = {
   width: '100%', border: '1px solid #e5e7eb', borderRadius: '8px',
   padding: '9px 12px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const,
@@ -118,7 +124,12 @@ export default function ClientesPage() {
   }
 
   async function salvar() {
-    if (!form.nome.trim()) return setErro('Nome é obrigatório.')
+    if (!form.nome.trim()) return setErro('Nome completo é obrigatório.')
+    if (form.nome.trim().split(' ').length < 2) return setErro('Informe o nome completo (nome e sobrenome).')
+    if (!form.data_nascimento) return setErro('Data de nascimento é obrigatória.')
+    if (!form.whatsapp || form.whatsapp.replace(/\D/g,'').length < 10) return setErro('WhatsApp válido é obrigatório.')
+    if (!form.status) return setErro('Status é obrigatório.')
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setErro('E-mail inválido.')
     if (!empresaAtiva?.id) return setErro('Empresa não identificada.')
     setSalvando(true); setErro('')
     const sb = createClient()
@@ -167,8 +178,11 @@ export default function ClientesPage() {
   }
 
   const f = (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(p => ({ ...p, [k]: e.target.value }))
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      const v = e.target.value
+      const mascarados = ['telefone','whatsapp']
+      setForm(p => ({ ...p, [k]: mascarados.includes(k) ? mascaraTel(v) : v }))
+    }
 
   return (
     <div style={{ padding: '24px 16px' }}>
@@ -223,7 +237,7 @@ export default function ClientesPage() {
                       </div>
                       <div>
                         <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e', marginBottom:'1px' }}>{c.nome}</p>
-                        <p style={{ fontSize:'12px', color:'#9ca3af' }}>{c.email || '—'}</p>
+                        <p style={{ fontSize:'12px', color:'#9ca3af' }}>{c.email || '--'}</p>
                       </div>
                     </div>
                   </td>
@@ -235,7 +249,7 @@ export default function ClientesPage() {
                       </a>
                     ) : c.telefone ? (
                       <span style={{ display:'inline-flex', alignItems:'center', gap:'6px', fontSize:'13px', color:'#6b7280' }}>📞 {c.telefone}</span>
-                    ) : <span style={{ fontSize:'13px', color:'#d1d5db' }}>—</span>}
+                    ) : <span style={{ fontSize:'13px', color:'#d1d5db' }}>--</span>}
                   </td>
                   <td style={{ padding:'14px 16px' }}>
                     <span style={{ fontSize:'12px', fontWeight:'500', padding:'3px 10px', borderRadius:'99px', background: c.plano_id ? '#eef2ff' : '#f3f4f6', color: c.plano_id ? '#6366f1' : '#6b7280' }}>
@@ -249,7 +263,7 @@ export default function ClientesPage() {
                   </td>
                   <td style={{ padding:'14px 16px' }}>
                     <button onClick={() => abrirEdicao(c)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>
-                      ✏️ Editar
+                      edit Editar
                     </button>
                   </td>
                 </tr>
@@ -268,8 +282,8 @@ export default function ClientesPage() {
           <div onClick={e => e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'560px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 18px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao ? '✏️ Editar cliente' : '+ Novo cliente'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao ? 'edit Editar cliente' : '+ Novo cliente'}</h2>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
               <div style={{ gridColumn:'1/-1' }}>

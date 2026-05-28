@@ -49,7 +49,7 @@ export default function UsuariosMasterPage() {
       telefone:     u.telefone || '',
       cargo:        u.cargo || '',
       empresa_id:   u.empresa_id || '',
-      empresa_nome: u.empresa_id ? (empsMap[u.empresa_id] || '—') : '—',
+      empresa_nome: u.empresa_id ? (empsMap[u.empresa_id] || '--') : '--',
     })))
     setCarregando(false)
   }, [])
@@ -146,9 +146,9 @@ export default function UsuariosMasterPage() {
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>← Dashboard</Link>
+          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}><- Dashboard</Link>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>👑 Usuários do Sistema</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master — todos os usuários de todas as empresas</p>
+          <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master -- todos os usuários de todas as empresas</p>
         </div>
         <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
           + Novo usuário
@@ -189,7 +189,7 @@ export default function UsuariosMasterPage() {
               </div>
               <div style={{ minWidth:'80px' }}>
                 <p style={{ fontSize:'10px', color:'#9ca3af', marginBottom:'2px' }}>Cargo</p>
-                <p style={{ fontSize:'13px', color:'#374151' }}>{u.cargo||'—'}</p>
+                <p style={{ fontSize:'13px', color:'#374151' }}>{u.cargo||'--'}</p>
               </div>
               <span style={{ fontSize:'11px', fontWeight:'600', padding:'3px 10px', borderRadius:'99px', background:nivelBg[u.nivel_acesso]||'#f3f4f6', color:nivelCor[u.nivel_acesso]||'#6b7280' }}>
                 {nivelLabel[u.nivel_acesso]||u.nivel_acesso}
@@ -198,9 +198,9 @@ export default function UsuariosMasterPage() {
                 {u.status==='ativo'?'Ativo':'Inativo'}
               </span>
               <div style={{ display:'flex', gap:'6px' }}>
-                <button onClick={() => abrirEdicao(u)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>✏️</button>
+                <button onClick={() => abrirEdicao(u)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>edit</button>
                 <button onClick={() => toggleStatus(u)} style={{ background:'#fffbeb', color:'#f59e0b', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title={u.status==='ativo'?'Inativar':'Reativar'}>
-                  {u.status==='ativo'?'⏸':'▶'}
+                  {u.status==='ativo'?'?':'?'}
                 </button>
                 <button onClick={() => excluir(u.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
               </div>
@@ -216,8 +216,8 @@ export default function UsuariosMasterPage() {
           <div onClick={ev => ev.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'520px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'✏️ Editar usuário':'+ Novo usuário'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'edit Editar usuário':'+ Novo usuário'}</h2>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
@@ -239,7 +239,7 @@ export default function UsuariosMasterPage() {
                 <input value={form.cargo} onChange={f('cargo')} style={inputStyle} placeholder="Ex: Terapeuta"/>
               </div>
 
-              {/* Nível de acesso — seleção visual */}
+              {/* Nível de acesso -- seleção visual */}
               <div style={{ gridColumn:'1/-1' }}>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nível de acesso *</label>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
@@ -253,7 +253,7 @@ export default function UsuariosMasterPage() {
                 </div>
               </div>
 
-              {/* Empresa — obrigatório para não-master */}
+              {/* Empresa -- obrigatório para não-master */}
               {form.nivel_acesso !== 'master' && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Empresa vinculada *</label>
@@ -269,7 +269,7 @@ export default function UsuariosMasterPage() {
                 </div>
               )}
 
-              {/* Senha — só na criação */}
+              {/* Senha -- só na criação */}
               {!modoEdicao && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Senha de acesso *</label>
@@ -278,7 +278,7 @@ export default function UsuariosMasterPage() {
                 </div>
               )}
 
-              {/* Status — só na edição */}
+              {/* Status -- só na edição */}
               {modoEdicao && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Status</label>

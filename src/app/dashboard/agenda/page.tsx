@@ -200,7 +200,7 @@ export default function AgendaPage() {
     ] = await Promise.all([
       sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id',empresaAtiva.id).order('data_inicio'),
       sb.from('clientes').select('id,nome,telefone,whatsapp').eq('empresa_id',empresaAtiva.id),
-      sb.from('profissionais').select('id,nome,cargo,cor,status').eq('empresa_id',empresaAtiva.id).eq('status','ativo').order('nome'),
+      sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id',empresaAtiva.id).eq('status','ativo').order('nome'),
       sb.from('servicos').select('id,nome,cor,duracao_min,valor,status').eq('empresa_id',empresaAtiva.id).eq('status','ativo').order('nome'),
       sb.from('status_agendamento').select('id,nome,cor,icone').eq('empresa_id',empresaAtiva.id).order('ordem'),
       sb.from('horarios_prof').select('profissional_id,dia_semana,hora_inicio,hora_fim,ativo').eq('empresa_id',empresaAtiva.id).eq('ativo',true),
@@ -286,7 +286,8 @@ export default function AgendaPage() {
       prof_id:         prof?.id || null,
       data_inicio:     dataInicio,
       data_fim:        dataFim,
-      status:          'aberto',
+      // Status: novo agendamento = aberto; edicao mantem o status existente
+      ...(modoEdicao ? {} : { status: 'aberto' }),
       tipo_cobranca:   'avulso',
       valor:           parseFloat(form.valor) || 0,
       forma_pagamento: form.forma_pagamento || null,
@@ -328,6 +329,12 @@ export default function AgendaPage() {
 
   // Logica de horarios
   const profSelecionado = profissionais.find((p:any) => p.nome === form.profissional)
+  
+  // Servicos vinculados ao profissional selecionado (da aba servicos do cadastro)
+  // profissional.servicos é array de nomes cadastrados na aba servicos
+  const servicosDoProf = profSelecionado?.servicos && profSelecionado.servicos.length > 0
+    ? servicos.filter((s:any) => profSelecionado.servicos.includes(s.nome))
+    : servicos // Se profissional nao tem servicos vinculados, mostra todos
   const diaSemanaForm   = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
   const horarioDoDiaForm: HorarioDB | undefined = profSelecionado
     ? horariosProfissional.find(h => h.profissional_id === profSelecionado.id && h.dia_semana === diaSemanaForm)
@@ -513,7 +520,8 @@ export default function AgendaPage() {
                             {isCancelado  && <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:'white', fontSize:'9px', fontWeight:'900' }}>x</span></div>}
                           </div>
                           <div style={{ fontSize:'11px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', marginTop:'1px' }}>{ag.cliente}</div>
-                          {altura >= 44 && <div style={{ fontSize:'10px', color:'#6b7280', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.servico}</div>}
+                          {altura >= 36 && <div style={{ fontSize:'10px', color:textCor, opacity:0.75, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.profissional}</div>}
+                          {altura >= 50 && <div style={{ fontSize:'10px', color:'#6b7280', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.servico}</div>}
                         </div>
                       )
                     })}
@@ -649,22 +657,22 @@ export default function AgendaPage() {
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-                <InputField label="Servico">
-                  <select value={form.servico} onChange={e=>{
-                    const nome=e.target.value
-                    const serv=servicos.find((s:any)=>s.nome===nome)
-                    setForm(f=>({...f, servico:nome, duracao:serv?.duracao_min?String(serv.duracao_min):f.duracao, valor:serv?.valor?String(serv.valor):f.valor}))
-                  }} style={selectStyle}>
-                    <option value="">Selecione o servico...</option>
-                    {servicos.length===0 ? <option disabled value="">Cadastre servicos primeiro</option>
-                    : servicos.map((s:any)=><option key={s.id} value={s.nome}>{s.nome}{s.duracao_min?' ('+s.duracao_min+'min)':''}{s.valor?' - R$ '+Number(s.valor).toFixed(2).replace('.',','):''}</option>)}
-                  </select>
-                </InputField>
                 <InputField label="Profissional">
-                  <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,horaInicio:'09:00'}))} style={selectStyle}>
+                  <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,servico:'',horaInicio:'09:00'}))} style={selectStyle}>
                     <option value="">Selecione o profissional...</option>
                     {profissionais.length===0 ? <option disabled value="">Cadastre profissionais primeiro</option>
                     : profissionais.map((p:any)=><option key={p.id} value={p.nome}>{p.nome}{p.cargo?' - '+p.cargo:''}</option>)}
+                  </select>
+                </InputField>
+                <InputField label={'Servico' + (form.profissional ? '' : ' (selecione o profissional primeiro)')}>
+                  <select value={form.servico} onChange={e=>{
+                    const nome=e.target.value
+                    const serv=servicosDoProf.find((s:any)=>s.nome===nome)
+                    setForm(f=>({...f, servico:nome, duracao:serv?.duracao_min?String(serv.duracao_min):f.duracao, valor:serv?.valor?String(serv.valor):f.valor}))
+                  }} style={{ ...selectStyle, background: !form.profissional ? '#f9fafb' : 'white' }} disabled={!form.profissional}>
+                    <option value="">{form.profissional ? 'Selecione o servico...' : 'Primeiro selecione o profissional'}</option>
+                    {form.profissional && servicosDoProf.length===0 ? <option disabled value="">Nenhum servico vinculado a este profissional</option>
+                    : servicosDoProf.map((s:any)=><option key={s.id} value={s.nome}>{s.nome}{s.duracao_min?' ('+s.duracao_min+'min)':''}{s.valor?' - R$ '+Number(s.valor).toFixed(2).replace('.',','):''}</option>)}
                   </select>
                 </InputField>
               </div>

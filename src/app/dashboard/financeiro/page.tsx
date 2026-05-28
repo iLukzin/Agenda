@@ -101,7 +101,7 @@ export default function FinanceiroPage() {
     })))
     setAgsFinalizados((ags||[]).map((a:any) => ({
       id:a.id, data_inicio:a.data_inicio, valor:a.valor||0,
-      cliente:cliMap[a.cliente_id]||'—', servico:servMap[a.servico_id]||'—',
+      cliente:cliMap[a.cliente_id]||'--', servico:servMap[a.servico_id]||'--',
     })))
     setCarregando(false)
   }, [empresaAtiva?.id, periodoIni, periodoFim])
@@ -121,7 +121,7 @@ export default function FinanceiroPage() {
     [lancamentos, tipo]
   )
 
-  // ── Modal ─────────────────────────────────────────────────────
+  // -- Modal -----------------------------------------------------
   function abrirNovo() {
     setModoEdicao(false); setSelecionado(null); setErro('')
     setForm({ tipo:'receita', descricao:'', valor:'', categoria:'Consultas', data_vencimento:hojeISO(), data_pagamento:'', status:'pendente', forma_pagamento:'', cliente_id:'' })
@@ -160,7 +160,7 @@ export default function FinanceiroPage() {
     await carregar()
   }
 
-  // ── Exportar Excel ─────────────────────────────────────────────
+  // -- Exportar Excel ---------------------------------------------
   function exportarExcel() {
     const rows = [
       ['Tipo','Descrição','Categoria','Vencimento','Pagamento','Valor','Status','Cliente'],
@@ -179,14 +179,14 @@ export default function FinanceiroPage() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Exportar PDF ───────────────────────────────────────────────
+  // -- Exportar PDF -----------------------------------------------
   function exportarPDF() {
     const win = window.open('','_blank','width=900,height=700')
     if (!win) return
     const label = filtroTipo==='hoje'?'Hoje':filtroTipo==='mes'?'Este mês':filtroTipo==='ano'?'Este ano':`${periodoIni} a ${periodoFim}`
     const linhas = filtrados.map(l=>`
       <tr>
-        <td>${l.tipo==='receita'?'↑ Receita':'↓ Despesa'}</td>
+        <td>${l.tipo==='receita'?'? Receita':'? Despesa'}</td>
         <td>${l.descricao}</td>
         <td>${l.categoria}</td>
         <td>${new Date(l.data_vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</td>
@@ -216,7 +216,7 @@ export default function FinanceiroPage() {
     </div>
     <table><thead><tr><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead>
     <tbody>${linhas}</tbody></table>
-    <br><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <br><button onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
     </body></html>`)
     win.document.close()
   }
@@ -224,7 +224,7 @@ export default function FinanceiroPage() {
   const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) =>
     setForm(p => ({...p, [k]: e.target.value}))
 
-  const labelPeriodo = filtroTipo==='hoje'?'Hoje':filtroTipo==='mes'?'Este mês':filtroTipo==='ano'?`Ano ${new Date().getFullYear()}`:`${new Date(periodoIni+'T12:00:00').toLocaleDateString('pt-BR')} – ${new Date(periodoFim+'T12:00:00').toLocaleDateString('pt-BR')}`
+  const labelPeriodo = filtroTipo==='hoje'?'Hoje':filtroTipo==='mes'?'Este mês':filtroTipo==='ano'?`Ano ${new Date().getFullYear()}`:`${new Date(periodoIni+'T12:00:00').toLocaleDateString('pt-BR')} - ${new Date(periodoFim+'T12:00:00').toLocaleDateString('pt-BR')}`
 
   return (
     <div style={{ padding:'24px 16px' }}>
@@ -267,10 +267,10 @@ export default function FinanceiroPage() {
       {/* Cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:'14px', marginBottom:'20px' }}>
         {[
-          { label:'Receitas pagas',  v:totalReceitas,  cor:'#10b981', bg:'#ecfdf5', ic:'↑', sub:'lançamentos + agend.' },
-          { label:'Despesas pagas',  v:totalDespesas,  cor:'#ef4444', bg:'#fef2f2', ic:'↓', sub:'do período'          },
-          { label:'Lucro líquido',   v:lucro,          cor:lucro>=0?'#6366f1':'#ef4444', bg:'#eef2ff', ic:'◈', sub:'receitas − despesas' },
-          { label:'A receber/pagar', v:totalPendentes, cor:'#f59e0b', bg:'#fffbeb', ic:'⏳', sub:'pendentes'           },
+          { label:'Receitas pagas',  v:totalReceitas,  cor:'#10b981', bg:'#ecfdf5', ic:'?', sub:'lançamentos + agend.' },
+          { label:'Despesas pagas',  v:totalDespesas,  cor:'#ef4444', bg:'#fef2f2', ic:'?', sub:'do período'          },
+          { label:'Lucro líquido',   v:lucro,          cor:lucro>=0?'#6366f1':'#ef4444', bg:'#eef2ff', ic:'*', sub:'receitas ? despesas' },
+          { label:'A receber/pagar', v:totalPendentes, cor:'#f59e0b', bg:'#fffbeb', ic:'?', sub:'pendentes'           },
         ].map(c=>(
           <div key={c.label} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'16px 18px' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
@@ -305,12 +305,12 @@ export default function FinanceiroPage() {
               {filtrados.map(l=>(
                 <div key={l.id} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                   <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:l.tipo==='receita'?'#ecfdf5':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0, color:l.tipo==='receita'?'#10b981':'#ef4444', fontWeight:'700' }}>
-                    {l.tipo==='receita'?'↑':'↓'}
+                    {l.tipo==='receita'?'?':'?'}
                   </div>
                   <div style={{ flex:1, minWidth:'140px' }}>
                     <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e', marginBottom:'2px' }}>{l.descricao}</p>
                     <p style={{ fontSize:'12px', color:'#9ca3af' }}>
-                      {l.categoria}{l.cliente_nome?' · '+l.cliente_nome:''}{l.origem==='agendamento'?' · 🗓':''}
+                      {l.categoria}{l.cliente_nome?' . '+l.cliente_nome:''}{l.origem==='agendamento'?' . 🗓':''}
                     </p>
                   </div>
                   <div style={{ textAlign:'right', minWidth:'80px' }}>
@@ -323,9 +323,9 @@ export default function FinanceiroPage() {
                     {l.status==='pago'?'Pago':'Pendente'}
                   </span>
                   <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
-                    {l.status==='pendente' && <button onClick={()=>marcarPago(l)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }} title="Marcar pago">✓</button>}
+                    {l.status==='pendente' && <button onClick={()=>marcarPago(l)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }} title="Marcar pago">?</button>}
                     {l.origem!=='agendamento' && <>
-                      <button onClick={()=>abrirEdicao(l)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }}>✏️</button>
+                      <button onClick={()=>abrirEdicao(l)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }}>edit</button>
                       <button onClick={()=>excluir(l.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
                     </>}
                   </div>
@@ -341,15 +341,15 @@ export default function FinanceiroPage() {
       {aba==='agendamentos' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
           <div style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'10px', padding:'12px 16px', marginBottom:'8px', fontSize:'13px', color:'#4338ca' }}>
-            ✅ Total de atendimentos fechados no período: <b>{formatarMoeda(receitasAgs)}</b>
+            [v] Total de atendimentos fechados no período: <b>{formatarMoeda(receitasAgs)}</b>
           </div>
           {carregando ? <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af' }}>Carregando...</div>
           : agsFinalizados.map(a=>(
             <div key={a.id} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
-              <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'#ecfdf5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0 }}>✅</div>
+              <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'#ecfdf5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0 }}>[v]</div>
               <div style={{ flex:1, minWidth:'140px' }}>
                 <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e', marginBottom:'2px' }}>{a.cliente}</p>
-                <p style={{ fontSize:'12px', color:'#9ca3af' }}>{a.servico} · {a.data_inicio.slice(0,10).split('-').reverse().join('/')} às {a.data_inicio.slice(11,16)}</p>
+                <p style={{ fontSize:'12px', color:'#9ca3af' }}>{a.servico} . {a.data_inicio.slice(0,10).split('-').reverse().join('/')} às {a.data_inicio.slice(11,16)}</p>
               </div>
               <p style={{ fontSize:'15px', fontWeight:'700', color:'#10b981' }}>+{formatarMoeda(a.valor)}</p>
             </div>
@@ -361,7 +361,7 @@ export default function FinanceiroPage() {
       {/* Resumo */}
       {aba==='relatorio' && (
         <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
-          <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'20px' }}>Resumo — {labelPeriodo}</h2>
+          <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'20px' }}>Resumo -- {labelPeriodo}</h2>
           <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
             {[
               { label:'Receitas de lançamentos (pagos)',    v:receitasLanc,  cor:'#10b981', bold:false },
@@ -386,15 +386,15 @@ export default function FinanceiroPage() {
           <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'520px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'✏️ Editar lançamento':'+ Novo lançamento'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>✕</button>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'edit Editar lançamento':'+ Novo lançamento'}</h2>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'16px' }}>
               {(['receita','despesa'] as const).map(t=>(
                 <div key={t} onClick={()=>setForm(p=>({...p,tipo:t,categoria:t==='receita'?'Consultas':'Aluguel'}))}
                   style={{ padding:'12px', borderRadius:'10px', textAlign:'center', cursor:'pointer', border:`2px solid ${form.tipo===t?(t==='receita'?'#10b981':'#ef4444'):'#e5e7eb'}`, background:form.tipo===t?(t==='receita'?'#ecfdf5':'#fef2f2'):'white' }}>
-                  <p style={{ fontSize:'20px', marginBottom:'3px' }}>{t==='receita'?'↑':'↓'}</p>
+                  <p style={{ fontSize:'20px', marginBottom:'3px' }}>{t==='receita'?'?':'?'}</p>
                   <p style={{ fontSize:'14px', fontWeight:'600', color:form.tipo===t?(t==='receita'?'#10b981':'#ef4444'):'#6b7280' }}>{t==='receita'?'Receita':'Despesa'}</p>
                 </div>
               ))}

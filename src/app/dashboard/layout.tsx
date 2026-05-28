@@ -2,38 +2,136 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useEmpresa, EmpresaResumo } from '@/context/EmpresaContext'
 
 const navItems = [
-  { href:'/dashboard',                    icon:'?', label:'Dashboard'     },
-  { href:'/dashboard/agenda',             icon:'📅', label:'Agenda'        },
-  { href:'/dashboard/clientes',           icon:'👥', label:'Clientes'      },
-  { href:'/dashboard/profissionais',      icon:'🩺', label:'Profissionais' },
-  { href:'/dashboard/servicos',           icon:'?',  label:'Serviços'      },
-  { href:'/dashboard/financeiro',         icon:'💰', label:'Financeiro'    },
-  { href:'/dashboard/usuarios',           icon:'👤', label:'Usuários'      },
-  { href:'/dashboard/configuracoes',      icon:'?',  label:'Configurações' },
+  { href:'/dashboard',               icon:'DASH', label:'Dashboard'     },
+  { href:'/dashboard/agenda',        icon:'CAL',  label:'Agenda'        },
+  { href:'/dashboard/clientes',      icon:'USR',  label:'Clientes'      },
+  { href:'/dashboard/profissionais', icon:'DOC',  label:'Profissionais' },
+  { href:'/dashboard/servicos',      icon:'SRV',  label:'Servicos'      },
+  { href:'/dashboard/financeiro',    icon:'FIN',  label:'Financeiro'    },
+  { href:'/dashboard/usuarios',      icon:'PEO',  label:'Usuarios'      },
+  { href:'/dashboard/configuracoes', icon:'CFG',  label:'Configuracoes' },
 ]
 
 const navMaster = [
-  { href:'/master/empresas', icon:'🏢', label:'Empresas'  },
-  { href:'/master/usuarios',   icon:'👑', label:'Usuários Master' },
-  { href:'/master/permissoes', icon:'🔐', label:'Permissões'       },
+  { href:'/master/empresas',   icon:'BLD', label:'Empresas'       },
+  { href:'/master/usuarios',   icon:'CRW', label:'Usuarios Master' },
+  { href:'/master/permissoes', icon:'LCK', label:'Permissoes'      },
 ]
+
+function NavIcon({ code, size = 18 }: { code: string; size?: number }) {
+  const icons: Record<string, React.ReactNode> = {
+    DASH: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+      </svg>
+    ),
+    CAL: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        <circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/>
+      </svg>
+    ),
+    USR: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+    DOC: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+        <path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/>
+        <circle cx="12" cy="14" r="2"/>
+      </svg>
+    ),
+    SRV: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    ),
+    FIN: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    ),
+    PEO: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    ),
+    CFG: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    ),
+    BLD: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    ),
+    CRW: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    ),
+    LCK: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    ),
+    MENU: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    ),
+    CLOSE: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    ),
+    CHK: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    ),
+    OUT: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    ),
+    ARR: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    ),
+  }
+  return icons[code] || null
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, carregando } = useEmpresa()
   const [sidebarAberta, setSidebarAberta] = useState(true)
-  const [menuMobile, setMenuMobile] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const [dropEmpresa, setDropEmpresa] = useState(false)
+  const [menuMobile, setMenuMobile]       = useState(false)
+  const [isMobile, setIsMobile]           = useState(false)
+  const [dropEmpresa, setDropEmpresa]     = useState(false)
   const [loadingTimeout, setLoadingTimeout] = useState(false)
 
-  // Timeout de segurança: se demorar mais de 8s carregando, mostra o sistema mesmo assim
   useEffect(() => {
     if (!carregando) return
     const t = setTimeout(() => setLoadingTimeout(true), 8000)
@@ -74,31 +172,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     )
   }
 
+  const sidebarProps = { sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile:false, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa }
+
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'#f8f8fc' }}>
       {isMobile && menuMobile && (
         <div onClick={() => setMenuMobile(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:40 }}/>
       )}
 
-      {/* Sidebar desktop */}
       {!isMobile && (
-        <aside style={{ width:sidebarW, background:'#0f0f17', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transition:'width .2s ease', overflow:'hidden' }}>
-          <SidebarConteudo {...{ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile:false, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa }} />
+        <aside style={{ width:sidebarW, background:'#0f172a', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transition:'width .2s ease', overflow:'hidden' }}>
+          <SidebarConteudo {...sidebarProps} isMobile={false}/>
         </aside>
       )}
 
-      {/* Drawer mobile */}
       {isMobile && (
-        <aside style={{ width:'260px', background:'#0f0f17', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transform: menuMobile?'translateX(0)':'translateX(-100%)', transition:'transform .25s ease' }}>
-          <SidebarConteudo {...{ sidebarAberta:true, setSidebarAberta, pathname, handleLogout, isMobile:true, onClose:()=>setMenuMobile(false), usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa }} />
+        <aside style={{ width:'260px', background:'#0f172a', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transform:menuMobile?'translateX(0)':'translateX(-100%)', transition:'transform .25s ease' }}>
+          <SidebarConteudo {...sidebarProps} sidebarAberta={true} isMobile={true} onClose={()=>setMenuMobile(false)}/>
         </aside>
       )}
 
       <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', minHeight:'100vh', display:'flex', flexDirection:'column', minWidth:0 }}>
         {isMobile && (
           <div style={{ position:'sticky', top:0, zIndex:30, background:'white', borderBottom:'1px solid #f0f0f8', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
-            <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'22px', color:'#374151' }}>?</button>
-            <span style={{ fontWeight:'600', fontSize:'16px', color:'#1a1a2e' }}>AgendaPro</span>
+            <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', color:'#374151' }}>
+              <NavIcon code="MENU" size={22}/>
+            </button>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+              <Image src="/logo-fortitude.png" alt="Logo" width={28} height={28} style={{ borderRadius:'6px', objectFit:'contain' }}/>
+              <span style={{ fontWeight:'700', fontSize:'15px', color:'#1a1a2e' }}>AgendaFortitude</span>
+            </div>
             {empresaAtiva && <span style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:'99px' }}>{empresaAtiva.nome}</span>}
           </div>
         )}
@@ -111,58 +214,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile, onClose, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa }: any) {
   return (
     <>
-      {/* Logo + toggle */}
-      <div style={{ padding:'16px 14px 10px', display:'flex', alignItems:'center', gap:'10px' }}>
-        <div style={{ width:'34px', height:'34px', borderRadius:'10px', background:'#6366f1', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <span style={{ fontSize:'16px' }}>📅</span>
+      {/* Logo */}
+      <div style={{ padding:'16px 14px 12px', display:'flex', alignItems:'center', gap:'10px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ width:'36px', height:'36px', borderRadius:'10px', overflow:'hidden', flexShrink:0, background:'white', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <Image src="/logo-fortitude.png" alt="Logo Fortitude" width={32} height={32} style={{ objectFit:'contain' }}/>
         </div>
-        {sidebarAberta && <span style={{ color:'white', fontWeight:'600', fontSize:'15px', whiteSpace:'nowrap' }}>AgendaPro</span>}
+        {sidebarAberta && (
+          <div style={{ flex:1, overflow:'hidden' }}>
+            <p style={{ color:'white', fontWeight:'700', fontSize:'14px', whiteSpace:'nowrap', letterSpacing:'-0.2px' }}>AgendaFortitude</p>
+            <p style={{ color:'rgba(255,255,255,0.3)', fontSize:'10px', whiteSpace:'nowrap' }}>by Fortitude Sistym</p>
+          </div>
+        )}
         {!isMobile && (
-          <button onClick={() => setSidebarAberta(!sidebarAberta)} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', flexShrink:0, fontSize:'12px' }}>
-            {sidebarAberta ? '?' : '?'}
+          <button onClick={() => setSidebarAberta(!sidebarAberta)} style={{ marginLeft:'auto', background:'rgba(255,255,255,0.06)', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer', flexShrink:0, width:'26px', height:'26px', borderRadius:'6px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <NavIcon code={sidebarAberta?'CLOSE':'MENU'} size={13}/>
           </button>
         )}
         {isMobile && onClose && (
-          <button onClick={onClose} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', fontSize:'20px' }}>?</button>
+          <button onClick={onClose} style={{ marginLeft:'auto', background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer' }}>
+            <NavIcon code="CLOSE" size={18}/>
+          </button>
         )}
       </div>
 
       {/* Seletor de empresa */}
       {sidebarAberta && empresaAtiva && (
-        <div style={{ margin:'0 10px 8px', position:'relative' }}>
-          <button onClick={() => setDropEmpresa(!dropEmpresa)} style={{
-            width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)',
-            borderRadius:'8px', padding:'8px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px',
-          }}>
-            <div style={{ width:'24px', height:'24px', borderRadius:'6px', background:'#6366f1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', color:'white', fontWeight:'600', flexShrink:0 }}>
+        <div style={{ margin:'10px 10px 6px', position:'relative' }}>
+          <button onClick={() => setDropEmpresa(!dropEmpresa)} style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'9px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px' }}>
+            <div style={{ width:'26px', height:'26px', borderRadius:'7px', background:'linear-gradient(135deg,#3b82f6,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:'white', fontWeight:'700', flexShrink:0 }}>
               {empresaAtiva.nome.charAt(0)}
             </div>
             <div style={{ flex:1, textAlign:'left', overflow:'hidden' }}>
               <p style={{ fontSize:'12px', fontWeight:'600', color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{empresaAtiva.nome}</p>
-              <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.4)' }}>{empresaAtiva.plano}</p>
+              <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', textTransform:'capitalize' }}>{empresaAtiva.plano}</p>
             </div>
-            {isMaster && empresas.length > 1 && <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'10px' }}>?</span>}
+            {isMaster && empresas.length > 1 && (
+              <span style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}>
+                <NavIcon code="ARR" size={14}/>
+              </span>
+            )}
           </button>
 
-          {/* Dropdown empresas (só master) */}
           {dropEmpresa && isMaster && (
-            <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', marginTop:'4px', zIndex:60, overflow:'hidden', maxHeight:'200px', overflowY:'auto' }}>
+            <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'#1e293b', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', zIndex:60, overflow:'hidden', maxHeight:'200px', overflowY:'auto' }}>
               {empresas.map((emp: EmpresaResumo) => (
-                <button key={emp.id} onClick={() => { trocarEmpresa(emp); setDropEmpresa(false) }} style={{
-                  width:'100%', padding:'10px 12px', background: emp.id===empresaAtiva?.id ? 'rgba(99,102,241,0.2)' : 'transparent',
-                  border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', borderBottom:'1px solid rgba(255,255,255,0.05)',
-                }}>
-                  <div style={{ width:'22px', height:'22px', borderRadius:'6px', background:'#6366f1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'white', fontWeight:'700', flexShrink:0 }}>
+                <button key={emp.id} onClick={() => { trocarEmpresa(emp); setDropEmpresa(false) }} style={{ width:'100%', padding:'10px 12px', background:emp.id===empresaAtiva?.id?'rgba(59,130,246,0.15)':'transparent', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ width:'24px', height:'24px', borderRadius:'6px', background:'linear-gradient(135deg,#3b82f6,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'white', fontWeight:'700', flexShrink:0 }}>
                     {emp.nome.charAt(0)}
                   </div>
-                  <div style={{ textAlign:'left' }}>
+                  <div style={{ textAlign:'left', flex:1 }}>
                     <p style={{ fontSize:'12px', color:'white', fontWeight:'500' }}>{emp.nome}</p>
-                    <p style={{ fontSize:'10px', color: emp.status==='ativo'?'#10b981':'#ef4444' }}>{emp.status}</p>
+                    <p style={{ fontSize:'10px', color:emp.status==='ativo'?'#10b981':'#ef4444' }}>{emp.status}</p>
                   </div>
-                  {emp.id===empresaAtiva?.id && <span style={{ marginLeft:'auto', color:'#6366f1', fontSize:'14px' }}>?</span>}
+                  {emp.id===empresaAtiva?.id && <span style={{ color:'#3b82f6' }}><NavIcon code="CHK" size={14}/></span>}
                 </button>
               ))}
-              <Link href="/master/empresas" style={{ display:'block', padding:'10px 12px', fontSize:'12px', color:'rgba(255,255,255,0.5)', textDecoration:'none', textAlign:'center', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+              <Link href="/master/empresas" style={{ display:'block', padding:'10px 12px', fontSize:'12px', color:'rgba(255,255,255,0.4)', textDecoration:'none', textAlign:'center', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
                 + Nova empresa
               </Link>
             </div>
@@ -170,43 +277,32 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
         </div>
       )}
 
-      <div style={{ height:'1px', background:'rgba(255,255,255,0.06)', margin:'0 12px 6px' }}/>
-
-      {/* Nav principal */}
-      <nav style={{ flex:1, padding:'4px 8px', display:'flex', flexDirection:'column', gap:'1px', overflowY:'auto' }}>
+      {/* Nav */}
+      <nav style={{ flex:1, padding:'8px 8px', display:'flex', flexDirection:'column', gap:'2px', overflowY:'auto' }}>
         {navItems.map(item => {
           const ativo = pathname === item.href
           return (
-            <Link key={item.href} href={item.href} style={{
-              display:'flex', alignItems:'center', gap:'10px', padding:'8px 10px', borderRadius:'8px',
-              textDecoration:'none', fontSize:'13px', fontWeight: ativo?'500':'400',
-              color: ativo?'white':'rgba(255,255,255,0.55)',
-              background: ativo?'rgba(99,102,241,0.2)':'transparent',
-              transition:'all .15s', whiteSpace:'nowrap', position:'relative',
-            }}>
-              {ativo && <div style={{ position:'absolute', left:0, top:'50%', transform:'translateY(-50%)', width:'3px', height:'18px', background:'#6366f1', borderRadius:'0 3px 3px 0' }}/>}
-              <span style={{ fontSize:'15px', width:'20px', textAlign:'center', flexShrink:0 }}>{item.icon}</span>
+            <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(59,130,246,0.18)':'transparent', transition:'all .15s', whiteSpace:'nowrap', position:'relative' }}>
+              {ativo && <div style={{ position:'absolute', left:0, top:'50%', transform:'translateY(-50%)', width:'3px', height:'20px', background:'#3b82f6', borderRadius:'0 3px 3px 0' }}/>}
+              <span style={{ width:'20px', textAlign:'center', flexShrink:0, color:ativo?'#60a5fa':'rgba(255,255,255,0.4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <NavIcon code={item.icon} size={16}/>
+              </span>
               {sidebarAberta && <span>{item.label}</span>}
             </Link>
           )
         })}
 
-        {/* Seção Master */}
         {isMaster && sidebarAberta && (
           <>
-            <div style={{ height:'1px', background:'rgba(255,255,255,0.06)', margin:'8px 4px', }}/>
-            <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', padding:'4px 10px' }}>Master</p>
+            <div style={{ height:'1px', background:'rgba(255,255,255,0.06)', margin:'8px 4px' }}/>
+            <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.2)', textTransform:'uppercase', letterSpacing:'0.08em', padding:'4px 10px' }}>Master</p>
             {navMaster.map(item => {
               const ativo = pathname.startsWith(item.href)
               return (
-                <Link key={item.href} href={item.href} style={{
-                  display:'flex', alignItems:'center', gap:'10px', padding:'8px 10px', borderRadius:'8px',
-                  textDecoration:'none', fontSize:'13px', fontWeight: ativo?'500':'400',
-                  color: ativo?'white':'rgba(255,255,255,0.55)',
-                  background: ativo?'rgba(99,102,241,0.2)':'transparent',
-                  transition:'all .15s', whiteSpace:'nowrap',
-                }}>
-                  <span style={{ fontSize:'15px', width:'20px', textAlign:'center', flexShrink:0 }}>{item.icon}</span>
+                <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(59,130,246,0.18)':'transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
+                  <span style={{ width:'20px', textAlign:'center', flexShrink:0, color:ativo?'#60a5fa':'rgba(255,255,255,0.4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <NavIcon code={item.icon} size={16}/>
+                  </span>
                   {sidebarAberta && <span>{item.label}</span>}
                 </Link>
               )
@@ -215,23 +311,27 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
         )}
       </nav>
 
-      {/* Usuário logado */}
+      {/* Usuario */}
       {sidebarAberta && usuario && (
-        <div style={{ padding:'10px 12px', borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:'8px' }}>
-          <div style={{ width:'30px', height:'30px', borderRadius:'50%', background:'rgba(99,102,241,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'600', color:'#a5b4fc', flexShrink:0 }}>
+        <div style={{ padding:'10px 12px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', gap:'8px' }}>
+          <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#3b82f6,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'700', color:'white', flexShrink:0 }}>
             {usuario.nome.charAt(0)}
           </div>
           <div style={{ flex:1, overflow:'hidden' }}>
             <p style={{ fontSize:'12px', color:'white', fontWeight:'500', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{usuario.nome}</p>
-            <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{usuario.email}</p>
+            <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{usuario.email}</p>
           </div>
-          <button onClick={handleLogout} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', fontSize:'16px', padding:'2px' }} title="Sair">🚪</button>
+          <button onClick={handleLogout} style={{ background:'rgba(255,255,255,0.06)', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', width:'30px', height:'30px', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center' }} title="Sair">
+            <NavIcon code="OUT" size={15}/>
+          </button>
         </div>
       )}
 
       {!sidebarAberta && (
-        <div style={{ padding:'10px 8px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-          <button onClick={handleLogout} style={{ width:'100%', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', fontSize:'16px', padding:'8px' }}>🚪</button>
+        <div style={{ padding:'10px 8px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+          <button onClick={handleLogout} style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', height:'36px', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <NavIcon code="OUT" size={15}/>
+          </button>
         </div>
       )}
     </>

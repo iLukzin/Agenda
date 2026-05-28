@@ -514,14 +514,24 @@ export default function AgendaPage() {
                           style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA) + 'px', left:'3px', right:'3px', height:altura + 'px', background:bgBase, border:'1px solid ' + borda + '30', borderLeft:'3px solid ' + borda, borderRadius:'8px', padding:'4px 7px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5, opacity:isCancelado?0.75:1 }}
                           onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
                           onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'4px' }}>
-                            <span style={{ fontSize:'10px', fontWeight:'700', color:textCor, fontFamily:'monospace', flexShrink:0 }}>{hora}</span>
-                            {isFinalizado && <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:'white', fontSize:'8px', fontWeight:'900' }}>v</span></div>}
-                            {isCancelado  && <div style={{ width:'14px', height:'14px', borderRadius:'50%', background:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:'white', fontSize:'9px', fontWeight:'900' }}>x</span></div>}
+                          {/* Linha 1: hora + badge status */}
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'2px', marginBottom:'2px' }}>
+                            <span style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', flexShrink:0, letterSpacing:'-0.3px' }}>{hora}</span>
+                            <div style={{ display:'flex', gap:'2px', flexShrink:0 }}>
+                              {isFinalizado && <div style={{ width:'13px', height:'13px', borderRadius:'50%', background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'white', fontSize:'7px', fontWeight:'900', lineHeight:1 }}>v</span></div>}
+                              {isCancelado  && <div style={{ width:'13px', height:'13px', borderRadius:'50%', background:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'white', fontSize:'8px', fontWeight:'900', lineHeight:1 }}>x</span></div>}
+                            </div>
                           </div>
-                          <div style={{ fontSize:'11px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', marginTop:'1px' }}>{ag.cliente}</div>
-                          {altura >= 36 && <div style={{ fontSize:'10px', color:textCor, opacity:0.75, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.profissional}</div>}
-                          {altura >= 50 && <div style={{ fontSize:'10px', color:'#6b7280', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{ag.servico}</div>}
+                          {/* Linha 2: nome do cliente */}
+                          <div style={{ fontSize:'11px', fontWeight:'700', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.cliente}</div>
+                          {/* Linha 3: servico (se tiver altura) */}
+                          {altura >= 42 && ag.servico && (
+                            <div style={{ fontSize:'10px', color:textCor, opacity:0.8, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.servico}</div>
+                          )}
+                          {/* Linha 4: profissional (se tiver mais altura) */}
+                          {altura >= 56 && ag.profissional && (
+                            <div style={{ fontSize:'9px', color:textCor, opacity:0.6, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.profissional}</div>
+                          )}
                         </div>
                       )
                     })}

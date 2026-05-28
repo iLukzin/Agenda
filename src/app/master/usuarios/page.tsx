@@ -7,9 +7,10 @@ import { createClient } from '@/lib/supabase'
 type Usuario = {
   id: string; nome: string; email: string; telefone: string
   cargo: string; nivel_acesso: string; empresa_id: string
-  empresa_nome: string; status: string
+  empresa_nome: string; status: string; profissional_id: string
 }
 type Empresa = { id: string; nome: string }
+type Profissional = { id: string; nome: string; empresa_id: string }
 
 const nivelLabel: Record<string,string> = { master:'Master', admin:'Administrador', profissional:'Profissional' }
 const nivelCor:   Record<string,string> = { master:'#6366f1', admin:'#06b6d4', profissional:'#10b981' }
@@ -19,6 +20,7 @@ const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px
 export default function UsuariosMasterPage() {
   const [usuarios, setUsuarios]     = useState<Usuario[]>([])
   const [empresas, setEmpresas]     = useState<Empresa[]>([])
+  const [profissionais, setProfissionais] = useState<Profissional[]>([])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)
   const [erro, setErro]             = useState('')
@@ -29,25 +31,28 @@ export default function UsuariosMasterPage() {
   const [selecionado, setSelecionado]   = useState<Usuario|null>(null)
   const [form, setForm] = useState({
     nome:'', email:'', telefone:'', cargo:'',
-    nivel_acesso:'profissional', empresa_id:'', status:'ativo', senha:''
+    nivel_acesso:'profissional', empresa_id:'', status:'ativo', senha:'', profissional_id:''
   })
 
   const carregar = useCallback(async () => {
     setCarregando(true)
     const sb = createClient()
-    const [{ data: us }, { data: emps }] = await Promise.all([
-      sb.from('usuarios').select('id,nome,email,telefone,cargo,nivel_acesso,empresa_id,status').order('nome'),
+    const [{ data: us }, { data: emps }, { data: profs }] = await Promise.all([
+      sb.from('usuarios').select('id,nome,email,telefone,cargo,nivel_acesso,empresa_id,status,profissional_id').order('nome'),
       sb.from('empresas').select('id,nome').order('nome'),
+      sb.from('profissionais').select('id,nome,empresa_id').eq('status','ativo').order('nome'),
     ])
+    setProfissionais(profs || [])
     const empsMap: Record<string,string> = {}
     if (emps) emps.forEach((e: any) => { empsMap[e.id] = e.nome })
     setEmpresas(emps || [])
     setUsuarios((us || []).map((u: any) => ({
       ...u,
-      telefone:     u.telefone || '',
-      cargo:        u.cargo || '',
-      empresa_id:   u.empresa_id || '',
-      empresa_nome: u.empresa_id ? (empsMap[u.empresa_id] || '--') : '--',
+      telefone:        u.telefone || '',
+      cargo:           u.cargo || '',
+      empresa_id:      u.empresa_id || '',
+      empresa_nome:    u.empresa_id ? (empsMap[u.empresa_id] || '--') : '--',
+      profissional_id: u.profissional_id || '',
     })))
     setCarregando(false)
   }, [])
@@ -68,7 +73,7 @@ export default function UsuariosMasterPage() {
 
   function abrirEdicao(u: Usuario) {
     setModoEdicao(true); setSelecionado(u); setErro('')
-    setForm({ nome:u.nome, email:u.email, telefone:u.telefone, cargo:u.cargo, nivel_acesso:u.nivel_acesso, empresa_id:u.empresa_id, status:u.status, senha:'' })
+    setForm({ nome:u.nome, email:u.email, telefone:u.telefone, cargo:u.cargo, nivel_acesso:u.nivel_acesso, empresa_id:u.empresa_id, status:u.status, senha:'', profissional_id:u.profissional_id||'' })
     setModalAberto(true)
   }
 
@@ -83,12 +88,13 @@ export default function UsuariosMasterPage() {
       const sb = createClient()
       if (modoEdicao && selecionado) {
         const { error } = await sb.from('usuarios').update({
-          nome:         form.nome.trim(),
-          telefone:     form.telefone || null,
-          cargo:        form.cargo || null,
-          nivel_acesso: form.nivel_acesso,
-          empresa_id:   form.empresa_id || null,
-          status:       form.status,
+          nome:            form.nome.trim(),
+          telefone:        form.telefone || null,
+          cargo:           form.cargo || null,
+          nivel_acesso:    form.nivel_acesso,
+          empresa_id:      form.empresa_id || null,
+          profissional_id: form.profissional_id || null,
+          status:          form.status,
         }).eq('id', selecionado.id)
         if (error) throw new Error(error.message)
       } else {
@@ -241,12 +247,26 @@ export default function UsuariosMasterPage() {
               {form.nivel_acesso !== 'master' && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Empresa vinculada *</label>
-                  <select value={form.empresa_id} onChange={f('empresa_id')} style={{ ...inputStyle, padding:'9px 12px' }}>
+                  <select value={form.empresa_id} onChange={e => {
+                    setForm(p => ({...p, empresa_id: e.target.value, profissional_id: ''}))
+                  }} style={{ ...inputStyle, padding:'9px 12px' }}>
                     <option value="">Selecione uma empresa...</option>
                     {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
                   </select>
+                </div>
+              )}
+              {form.nivel_acesso === 'profissional' && form.empresa_id && (
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Profissional vinculado</label>
+                  <select value={form.profissional_id} onChange={f('profissional_id')} style={{ ...inputStyle, padding:'9px 12px' }}>
+                    <option value="">Nenhum profissional vinculado</option>
+                    {profissionais.filter((p: any) => p.empresa_id === form.empresa_id).map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
+                  </select>
                   <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'4px' }}>
-                    {form.nivel_acesso==='profissional' ? 'Este usuario vera somente os dados desta empresa.' : 'Este usuario gerenciara todos os dados desta empresa.'}
+                    Vinculando um profissional, este usuario vera e agendara somente para ele.
+                    Sem vinculo, vera todas as agendas da empresa.
                   </p>
                 </div>
               )}

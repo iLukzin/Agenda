@@ -148,7 +148,7 @@ function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLoca
 
 // Componente principal
 export default function AgendaPage() {
-  const { empresaAtiva } = useEmpresa()
+  const { empresaAtiva, usuario, isMaster } = useEmpresa()
   const hoje = useMemo(()=>hojeNoBrasil(),[])
 
   const [agendamentos, setAgendamentos]   = useState<AgendamentoLocal[]>([])
@@ -198,9 +198,22 @@ export default function AgendaPage() {
       { data: sts },
       { data: hors },
     ] = await Promise.all([
-      sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id',empresaAtiva.id).order('data_inicio'),
+      (() => {
+        let q = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id',empresaAtiva.id)
+        // Usuario nivel profissional sem vinculo a profissional: filtra pelo prof_id vinculado
+        if (usuario?.nivel_acesso === 'profissional' && usuario?.profissional_id) {
+          q = q.eq('prof_id', usuario.profissional_id)
+        }
+        return q.order('data_inicio')
+      })(),
       sb.from('clientes').select('id,nome,telefone,whatsapp').eq('empresa_id',empresaAtiva.id),
-      sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id',empresaAtiva.id).eq('status','ativo').order('nome'),
+      (() => {
+        let q = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id',empresaAtiva.id).eq('status','ativo')
+        if (usuario?.nivel_acesso === 'profissional' && usuario?.profissional_id) {
+          q = q.eq('id', usuario.profissional_id)
+        }
+        return q.order('nome')
+      })(),
       sb.from('servicos').select('id,nome,cor,duracao_min,valor,status').eq('empresa_id',empresaAtiva.id).eq('status','ativo').order('nome'),
       sb.from('status_agendamento').select('id,nome,cor,icone').eq('empresa_id',empresaAtiva.id).order('ordem'),
       sb.from('horarios_prof').select('profissional_id,dia_semana,hora_inicio,hora_fim,ativo').eq('empresa_id',empresaAtiva.id).eq('ativo',true),
@@ -518,11 +531,12 @@ export default function AgendaPage() {
                     {(() => {
                       // Ordenar por hora
                       const sorted = [...ags].sort((a,b) => a.horaInicio - b.horaInicio)
-                      
-                      // Agrupar por profissional para organizar colunas
-                      const profissionaisNoDia = Array.from(new Set(sorted.map(a => a.profissional || '__sem__')))
-                      const numProfs = profissionaisNoDia.length || 1
-                      
+
+                      // Agrupar por profissional ? cada prof ocupa uma coluna fixa no dia
+                      const profsNoDia = Array.from(new Set(sorted.map(a => a.profissional || '__')))
+                      const numCols    = Math.max(profsNoDia.length, 1)
+                      const colW       = 100 / numCols // largura % de cada coluna
+
                       return sorted.map(ag => {
                         const isFinalizado = ag.status === 'fechado'
                         const isCancelado  = ag.status === 'cancelado'
@@ -531,47 +545,48 @@ export default function AgendaPage() {
                         const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : isAberto ? '#bfdbfe' : ag.cor + '35'
                         const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : isAberto ? '#3b82f6' : ag.cor
                         const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
-                        
-                        // Altura baseada na duracao real
+
+                        // Duracao e altura minima de 44px
                         const dur    = ag.duracao > 0 ? ag.duracao : 60
                         const altura = Math.max((dur / 60) * ALTURA_HORA - 6, 44)
-                        
-                        // Hora formatada
+
+                        // Hora formatada com minutos
                         const horaH = Math.floor(ag.horaInicio)
                         const horaM = Math.round((ag.horaInicio - horaH) * 60)
                         const hora  = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
-                        
-                        // Posicao vertical alinhada com a grade de horas
+
+                        // Posicao vertical exata na grade
                         const topPx = (ag.horaInicio - HORA_INICIO) * ALTURA_HORA
-                        
-                        // Posicao horizontal por profissional
-                        const profIdx = profissionaisNoDia.indexOf(ag.profissional || '__sem__')
-                        const pct     = 100 / numProfs
-                        const leftPct = profIdx * pct
-                        
+
+                        // Coluna horizontal do profissional (fixa)
+                        const profIdx = profsNoDia.indexOf(ag.profissional || '__')
+                        const leftPct = profIdx * colW
+
                         return (
                           <div key={ag.id} onClick={()=>abrirEdicao(ag)}
                             style={{
-                              position:'absolute',
-                              top: topPx + 'px',
-                              left: 'calc(' + leftPct + '% + 2px)',
-                              width: 'calc(' + pct + '% - 4px)',
+                              position: 'absolute',
+                              top:    topPx + 'px',
+                              left:   'calc(' + leftPct + '% + 2px)',
+                              width:  'calc(' + colW    + '% - 4px)',
                               height: altura + 'px',
-                              background: bgBase,
-                              border: '1px solid ' + borda + '40',
-                              borderLeft: '3px solid ' + borda,
-                              borderRadius: '8px',
-                              padding: '5px 8px',
-                              cursor: 'pointer',
-                              overflow: 'hidden',
-                              transition: 'background .15s',
+                              background:  bgBase,
+                              border:      '1px solid ' + borda + '40',
+                              borderLeft:  '3px solid ' + borda,
+                              borderRadius:'8px',
+                              padding:     '4px 7px',
+                              cursor:      'pointer',
+                              overflow:    'hidden',
+                              transition:  'background .15s',
                               zIndex: 5,
                               boxSizing: 'border-box',
                             }}
                             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
                             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                            <div style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', letterSpacing:'-0.3px', lineHeight:'15px' }}>{hora}</div>
-                            <div style={{ fontSize:'11px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'14px', marginTop:'1px' }}>{ag.cliente}</div>
+                            {/* Hora */}
+                            <div style={{ fontSize:'10px', fontWeight:'800', color:textCor, fontFamily:'monospace', lineHeight:'14px', letterSpacing:'-0.3px' }}>{hora}</div>
+                            {/* Cliente - mostra o maximo possivel sem cortar */}
+                            <div style={{ fontSize:'11px', fontWeight:'600', color:textCor, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:altura > 58 ? 2 : 1, WebkitBoxOrient:'vertical', lineHeight:'1.3', marginTop:'1px' }}>{ag.cliente}</div>
                           </div>
                         )
                       })

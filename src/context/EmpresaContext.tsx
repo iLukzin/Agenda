@@ -17,6 +17,7 @@ export type UsuarioLogado = {
   email: string
   nivel_acesso: 'master' | 'admin' | 'profissional'
   empresa_id?: string
+  profissional_id?: string
 }
 
 type EmpresaContextType = {
@@ -57,7 +58,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       // Busca o usuário na tabela
       const { data: u } = await sb
         .from('usuarios')
-        .select('id, nome, email, nivel_acesso, empresa_id, status')
+        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status')
         .eq('auth_id', user.id)
         .single()
 
@@ -80,11 +81,12 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       }
 
       const usuarioLogado: UsuarioLogado = {
-        id:           u.id,
-        nome:         u.nome,
-        email:        u.email,
-        nivel_acesso: u.nivel_acesso,
-        empresa_id:   u.empresa_id,
+        id:              u.id,
+        nome:            u.nome,
+        email:           u.email,
+        nivel_acesso:    u.nivel_acesso,
+        empresa_id:      u.empresa_id,
+        profissional_id: u.profissional_id,
       }
       setUsuario(usuarioLogado)
 

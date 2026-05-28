@@ -545,17 +545,23 @@ export default function AgendaPage() {
                       )}
                     </div>
                     {profsNoDia.map((prof: any, profIdx: number) => {
-                      const agsProf = agsFiltrados.filter(a => a.dataISO === dataKey && a.profissional === prof.nome).sort((a,b) => a.horaInicio - b.horaInicio)
+                      const agsProf = (() => {
+                            const todos = agsFiltrados.filter(a => a.dataISO === dataKey && a.profissional === prof.nome).sort((a,b) => a.horaInicio - b.horaInicio)
+                            return todos.filter(ag => {
+                              if (ag.status !== 'cancelado') return true
+                              return !todos.some(o => o.id !== ag.id && o.status !== 'cancelado' && Math.abs(o.horaInicio - ag.horaInicio) < 0.02)
+                            })
+                          })()
                       return (
                         <div key={prof.id} style={{ position:'relative', height:(HORAS.length*ALTURA_HORA)+'px', borderLeft:profIdx>0?'1px solid #f0f0f8':'none', zIndex:2 }}>
                           {agsProf.map(ag => {
                             const isFinalizado = ag.status === 'fechado'
                             const isCancelado = ag.status === 'cancelado'
                             const isAberto = ag.status === 'aberto'
-                            const bgBase = isFinalizado?'#ecfdf5':isCancelado?'#fef2f2':isAberto?'#dbeafe':ag.cor+'18'
-                            const bgHover = isFinalizado?'#d1fae5':isCancelado?'#fecaca':isAberto?'#bfdbfe':ag.cor+'35'
-                            const borda = isFinalizado?'#10b981':isCancelado?'#ef4444':isAberto?'#3b82f6':ag.cor
-                            const textCor = isFinalizado?'#065f46':isCancelado?'#991b1b':isAberto?'#1d4ed8':ag.cor
+                            const bgBase = isFinalizado?'#ecfdf5':isCancelado?'#fff1f2':isAberto?'#eff6ff':ag.cor+'18'
+                            const bgHover = isFinalizado?'#d1fae5':isCancelado?'#fecaca':isAberto?'#dbeafe':ag.cor+'35'
+                            const borda = isFinalizado?'#10b981':isCancelado?'#f43f5e':isAberto?'#3b82f6':ag.cor
+                            const textCor = isFinalizado?'#065f46':isCancelado?'#be123c':isAberto?'#1d4ed8':ag.cor
                             const dur = ag.duracao > 0 ? ag.duracao : 60
                             const altura = Math.max((dur/60)*ALTURA_HORA - 6, 44)
                             const topPx = (ag.horaInicio - HORA_INICIO) * ALTURA_HORA
@@ -565,8 +571,12 @@ export default function AgendaPage() {
                               <div key={ag.id} onClick={()=>abrirEdicao(ag)} style={{ position:'absolute', top:topPx+'px', left:'2px', right:'2px', height:altura+'px', background:bgBase, border:'1px solid '+borda+'40', borderLeft:'3px solid '+borda, borderRadius:'7px', padding:'4px 6px', cursor:'pointer', overflow:'hidden', transition:'background .12s', zIndex:4, boxSizing:'border-box' }}
                                 onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
                                 onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                                <div style={{ fontSize:'10px', fontWeight:'800', color:textCor, fontFamily:'monospace', lineHeight:'14px' }}>{hora}</div>
-                                <div style={{ fontSize:'10px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'13px', marginTop:'1px' }}>{ag.cliente}</div>
+                                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'2px' }}>
+                                  <span style={{ fontSize:'10px', fontWeight:'800', color:textCor, fontFamily:'monospace', letterSpacing:'-0.3px' }}>{hora}</span>
+                                  {isFinalizado && <span style={{ fontSize:'8px', fontWeight:'700', color:'#065f46', background:'#bbf7d0', borderRadius:'99px', padding:'1px 4px', flexShrink:0 }}>OK</span>}
+                                  {isCancelado  && <span style={{ fontSize:'8px', fontWeight:'700', color:'#be123c', background:'#fecdd3', borderRadius:'99px', padding:'1px 4px', flexShrink:0 }}>X</span>}
+                                </div>
+                                <div style={{ fontSize:'10px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'13px' }}>{ag.cliente}</div>
                               </div>
                             )
                           })}
@@ -606,9 +616,71 @@ export default function AgendaPage() {
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'14px', pointerEvents:isBloqEdicao?'none':'auto', opacity:isBloqEdicao?0.7:1 }}>
-              {isBloqEdicao && (
-                <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', color:'#6b7280' }}>
-                  Este agendamento esta <b>{selecionado?.status === 'fechado' ? 'finalizado' : 'cancelado'}</b> - somente visualizacao.
+              {/* Banner de status - finalizado */}
+              {modoEdicao && selecionado?.status === 'fechado' && (
+                <div style={{ borderRadius:'14px', overflow:'hidden', border:'1.5px solid #6ee7b7', boxShadow:'0 4px 16px rgba(16,185,129,0.12)' }}>
+                  <div style={{ background:'linear-gradient(135deg,#059669,#10b981)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0, backdropFilter:'blur(4px)' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div>
+                      <p style={{ color:'white', fontWeight:'700', fontSize:'15px', letterSpacing:'-0.2px' }}>Atendimento Finalizado</p>
+                      <p style={{ color:'rgba(255,255,255,0.75)', fontSize:'12px', marginTop:'1px' }}>Registro encerrado com sucesso</p>
+                    </div>
+                    <div style={{ marginLeft:'auto', background:'rgba(255,255,255,0.15)', borderRadius:'99px', padding:'4px 12px' }}>
+                      <span style={{ color:'white', fontSize:'11px', fontWeight:'700', letterSpacing:'0.05em', textTransform:'uppercase' }}>Fechado</span>
+                    </div>
+                  </div>
+                  <div style={{ background:'#f0fdf4', padding:'12px 18px', display:'flex', gap:'20px', flexWrap:'wrap' }}>
+                    <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.cliente}</p></div>
+                    <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Servico</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.servico}</p></div>
+                    <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Valor</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>R$ {Number(selecionado.valor).toFixed(2).replace('.',',')}</p></div>
+                  </div>
+                </div>
+              )}
+              {/* Banner de status - cancelado */}
+              {modoEdicao && selecionado?.status === 'cancelado' && (
+                <div style={{ borderRadius:'14px', overflow:'hidden', border:'1.5px solid #fda4af', boxShadow:'0 4px 16px rgba(244,63,94,0.12)' }}>
+                  <div style={{ background:'linear-gradient(135deg,#e11d48,#f43f5e)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </div>
+                    <div>
+                      <p style={{ color:'white', fontWeight:'700', fontSize:'15px', letterSpacing:'-0.2px' }}>Agendamento Cancelado</p>
+                      <p style={{ color:'rgba(255,255,255,0.75)', fontSize:'12px', marginTop:'1px' }}>Este horario foi liberado</p>
+                    </div>
+                    <div style={{ marginLeft:'auto', background:'rgba(255,255,255,0.15)', borderRadius:'99px', padding:'4px 12px' }}>
+                      <span style={{ color:'white', fontSize:'11px', fontWeight:'700', letterSpacing:'0.05em', textTransform:'uppercase' }}>Cancelado</span>
+                    </div>
+                  </div>
+                  <div style={{ background:'#fff1f2', padding:'12px 18px', display:'flex', flexDirection:'column', gap:'8px' }}>
+                    <div style={{ display:'flex', gap:'20px', flexWrap:'wrap' }}>
+                      <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#be123c' }}>{selecionado.cliente}</p></div>
+                      <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Servico</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#be123c' }}>{selecionado.servico}</p></div>
+                      <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Data</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#be123c' }}>{isoParaDate(selecionado.dataISO).toLocaleDateString('pt-BR')}</p></div>
+                    </div>
+                    {selecionado.motivoCancelamento && (
+                      <div style={{ background:'#fecdd3', borderRadius:'8px', padding:'8px 12px', display:'flex', gap:'8px', alignItems:'flex-start' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#be123c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0, marginTop:'1px' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <div><p style={{ fontSize:'10px', color:'#9f1239', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:'600', marginBottom:'2px' }}>Motivo</p><p style={{ fontSize:'12px', color:'#be123c' }}>{selecionado.motivoCancelamento}</p></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Banner de status - aberto */}
+              {modoEdicao && selecionado?.status === 'aberto' && (
+                <div style={{ borderRadius:'12px', background:'linear-gradient(135deg,#eff6ff,#dbeafe)', border:'1.5px solid #93c5fd', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
+                  <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(59,130,246,0.35)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  </div>
+                  <div>
+                    <p style={{ fontWeight:'700', fontSize:'14px', color:'#1d4ed8', letterSpacing:'-0.2px' }}>Agendamento em Aberto</p>
+                    <p style={{ fontSize:'12px', color:'#3b82f6', marginTop:'1px' }}>Aguardando atendimento</p>
+                  </div>
+                  <div style={{ marginLeft:'auto', background:'#3b82f6', borderRadius:'99px', padding:'4px 14px' }}>
+                    <span style={{ color:'white', fontSize:'11px', fontWeight:'700', letterSpacing:'0.05em', textTransform:'uppercase' }}>Aberto</span>
+                  </div>
                 </div>
               )}
               {/* Busca cliente */}

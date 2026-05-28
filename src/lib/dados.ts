@@ -1,3 +1,4 @@
+// BUILD: 1779992105
 // ============================================================
 // Dados compartilhados entre páginas
 // Em produção estes dados viriam do Supabase

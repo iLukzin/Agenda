@@ -1,3 +1,4 @@
+// BUILD: 1779992105
 // Hook para verificar permissões do usuário na tela atual
 'use client'
 

@@ -1,3 +1,4 @@
+// BUILD: 1779992105
 import type { Metadata } from 'next'
 import './globals.css'
 import { EmpresaProvider } from '@/context/EmpresaContext'

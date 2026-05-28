@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node -e \"const fs=require('fs'),path=require('path');function f(d){fs.readdirSync(d).forEach(n=>{const p=path.join(d,n);fs.statSync(p).isDirectory()?f(p):(/\\.(tsx|ts)$/.test(n)&&(c=fs.readFileSync(p,'utf8'),c2=c.replace(/retornar \\(/g,'return (').replace(/retornar\\(/g,'return('),c!==c2&&(fs.writeFileSync(p,c2),console.log('fixed:',p))))})}f('src')\" && next build",
     "start": "next start",
     "lint": "next lint",
     "prebuild": "node scripts/fix-translations.js"

@@ -166,6 +166,7 @@ export default function AgendaPage() {
   const [periodoInicio, setPeriodoInicio] = useState(toISO(hojeNoBrasil()))
   const [periodoFim, setPeriodoFim]       = useState(toISO(addDias(hojeNoBrasil(),30)))
   const [filtroAberto, setFiltroAberto]   = useState(false)
+  const [filtroProfissional, setFiltroProfissional] = useState<string>('todos')
 
   const [modalAberto, setModalAberto]     = useState(false)
   const [modoEdicao, setModoEdicao]       = useState(false)
@@ -402,6 +403,14 @@ export default function AgendaPage() {
   const btnBloqueado = (naoAtende && !!profSelecionado) || (slotSel != null && !slotSel.disponivel) || !form.profissional || !form.clienteId
 
   const diasParaMostrar = visualizacao==='dia' ? [diaAtivo] : diasSemana
+
+  // Agendamentos filtrados pelo profissional selecionado no filtro
+  const agsFiltrados = useMemo(() =>
+    filtroProfissional === 'todos'
+      ? agendamentos
+      : agendamentos.filter(a => a.profissional === filtroProfissional),
+    [agendamentos, filtroProfissional]
+  )
   const colunas         = diasParaMostrar.length
   const posLinha        = linhaHoraAtual()
 
@@ -457,140 +466,138 @@ export default function AgendaPage() {
               </div></>
             )}
           </div>
-          {visualizacao!=='periodo' && (
-            <div style={{ display:'flex', gap:'4px' }}>
-              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>{'<'}</button>
-              <button onClick={irParaHoje} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', color:'#6366f1' }}>Hoje</button>
-              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>{'>'}</button>
-            </div>
-          )}
-          <div style={{ display:'flex', background:'#f3f4f6', borderRadius:'8px', padding:'3px' }}>
-            {(['semana','dia'] as const).map(v=>(
-              <button key={v} onClick={()=>setVisualizacao(v)} style={{ padding:'5px 12px', borderRadius:'6px', border:'none', cursor:'pointer', fontSize:'12px', fontWeight:'500', background:visualizacao===v?'white':'transparent', color:visualizacao===v?'#1a1a2e':'#9ca3af', boxShadow:visualizacao===v?'0 1px 3px rgba(0,0,0,0.1)':'none' }}>{v==='semana'?'Semana':'Dia'}</button>
-            ))}
-            {visualizacao==='periodo' && <button style={{ padding:'5px 12px', borderRadius:'6px', border:'none', cursor:'default', fontSize:'12px', fontWeight:'600', background:'white', color:'#6366f1', boxShadow:'0 1px 3px rgba(0,0,0,0.1)' }}>Lista</button>}
-          </div>
-          <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'7px 14px', fontSize:'13px', fontWeight:'500', cursor:'pointer' }}>+ Novo</button>
-        </div>
-      </div>
-
-      {visualizacao==='semana' && (
-        <div style={{ display:'flex', gap:'4px', marginBottom:'10px', flexShrink:0, overflowX:'auto', paddingBottom:'2px' }}>
-          {diasSemana.map(data=>{
-            const ehHoje=isMesmoISO(data,hoje)
-            return <button key={toISO(data)} onClick={()=>{setDiaAtivo(data);setVisualizacao('dia')}} style={{ flexShrink:0, padding:'6px 12px', borderRadius:'8px', border:ehHoje?'1.5px solid #6366f1':'1px solid #e5e7eb', background:ehHoje?'#6366f1':'white', color:ehHoje?'white':'#374151', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>{nomeDiaCurto(data)} {numeroDia(data)}</button>
-          })}
+          {/* Filtro de profissional */}
+      {visualizacao !== 'periodo' && profissionais.length > 1 && (
+        <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px', flexShrink:0, overflowX:'auto', paddingBottom:'2px' }}>
+          <span style={{ fontSize:'12px', color:'#9ca3af', flexShrink:0, fontWeight:'500' }}>Prof:</span>
+          <button onClick={()=>setFiltroProfissional('todos')} style={{ flexShrink:0, padding:'5px 14px', borderRadius:'99px', border:filtroProfissional==='todos'?'1.5px solid #6366f1':'1px solid #e5e7eb', background:filtroProfissional==='todos'?'#6366f1':'white', color:filtroProfissional==='todos'?'white':'#374151', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>Todos</button>
+          {profissionais.map((p:any) => (
+            <button key={p.id} onClick={()=>setFiltroProfissional(filtroProfissional===p.nome?'todos':p.nome)}
+              style={{ flexShrink:0, padding:'5px 14px', borderRadius:'99px', border:filtroProfissional===p.nome?'1.5px solid ' + (p.cor||'#6366f1'):'1px solid #e5e7eb', background:filtroProfissional===p.nome?(p.cor||'#6366f1'):'white', color:filtroProfissional===p.nome?'white':'#374151', fontSize:'12px', fontWeight:'500', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+              <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:filtroProfissional===p.nome?'rgba(255,255,255,0.7)':(p.cor||'#6366f1'), flexShrink:0 }}/>
+              {p.nome}
+            </button>
+          ))}
         </div>
       )}
 
-      {visualizacao==='periodo' && (
-        <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px', flexShrink:0, flexWrap:'wrap' }}>
-            <span style={{ fontSize:'13px', color:'#6b7280' }}>{agendamentosPeriodo.length} agendamento{agendamentosPeriodo.length!==1?'s':''}</span>
-            <button onClick={()=>setVisualizacao('semana')} style={{ marginLeft:'auto', background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>Voltar</button>
-          </div>
-          <ListaPeriodo agendamentos={agendamentosPeriodo} onEditar={abrirEdicao}/>
-        </div>
-      )}
-
-      {visualizacao!=='periodo' && (
+      {visualizacao !== 'periodo' && (
         <div style={{ flex:1, overflow:'hidden', background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', display:'flex', flexDirection:'column' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'60px repeat(' + colunas + ',1fr)', borderBottom:'1px solid #f0f0f8', flexShrink:0 }}>
-            <div/>
-            {diasParaMostrar.map(data=>{
-              const ehHoje=isMesmoISO(data,hoje)
+
+          {/* Cabecalho: hora | [para cada dia: sub-colunas de profissional] */}
+          <div style={{ display:'flex', borderBottom:'2px solid #f0f0f8', flexShrink:0, overflowX:'auto' }}>
+            {/* Coluna de horas */}
+            <div style={{ width:'60px', flexShrink:0 }}/>
+            {/* Dias */}
+            {diasParaMostrar.map(data => {
+              const ehHoje = isMesmoISO(data, hoje)
+              const dataKey = toISO(data)
+              // Profissionais que tem agendamentos neste dia (ou todos se filtro ativo)
+              const profsNoDia = filtroProfissional !== 'todos'
+                ? profissionais.filter((p:any) => p.nome === filtroProfissional)
+                : profissionais.length > 0
+                  ? profissionais
+                  : [{id:'__', nome:'', cor:'#6366f1'}]
+              const nProfs = profsNoDia.length
+
               return (
-                <div key={toISO(data)} style={{ padding:'10px 8px', textAlign:'center', borderLeft:'1px solid #f0f0f8', background:ehHoje?'#eef2ff':'transparent' }}>
-                  <div style={{ fontSize:'11px', color:ehHoje?'#6366f1':'#9ca3af', fontWeight:'600', textTransform:'uppercase' }}>{nomeDiaCurto(data)}</div>
-                  <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'28px', height:'28px', borderRadius:'50%', marginTop:'3px', background:ehHoje?'#6366f1':'transparent', color:ehHoje?'white':'#1a1a2e', fontSize:'13px', fontWeight:'700' }}>{numeroDia(data)}</div>
+                <div key={dataKey} style={{ flex:1, minWidth: (nProfs * 120) + 'px', borderLeft:'1px solid #f0f0f8', background:ehHoje?'#f8f9ff':'transparent' }}>
+                  {/* Linha do dia */}
+                  <div style={{ padding:'8px 0 6px', textAlign:'center', borderBottom:'1px solid #f0f0f8' }}>
+                    <span style={{ fontSize:'11px', color:ehHoje?'#6366f1':'#9ca3af', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.05em' }}>{nomeDiaCurto(data)}</span>
+                    <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'26px', height:'26px', borderRadius:'50%', marginLeft:'6px', background:ehHoje?'#6366f1':'transparent', color:ehHoje?'white':'#1a1a2e', fontSize:'13px', fontWeight:'700' }}>{numeroDia(data)}</div>
+                  </div>
+                  {/* Sub-cabecalhos dos profissionais */}
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(' + nProfs + ',1fr)', borderBottom:'1px solid #f0f0f8' }}>
+                    {profsNoDia.map((p:any) => (
+                      <div key={p.id} style={{ padding:'5px 4px', textAlign:'center', borderLeft:'1px solid #f3f4f6', background:(p.cor||'#6366f1') + '08' }}>
+                        <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', maxWidth:'100%', overflow:'hidden' }}>
+                          <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:p.cor||'#6366f1', flexShrink:0 }}/>
+                          <span style={{ fontSize:'10px', fontWeight:'600', color:'#374151', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>{p.nome || 'Profissional'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             })}
           </div>
-          <div style={{ flex:1, overflowY:'auto' }}>
-            <div style={{ display:'grid', gridTemplateColumns:'60px repeat(' + colunas + ',1fr)' }}>
-              <div>
-                {HORAS.map(hora=>(
-                  <div key={hora} style={{ height:ALTURA_HORA + 'px', display:'flex', alignItems:'flex-start', paddingTop:'4px', justifyContent:'flex-end', paddingRight:'10px' }}>
-                    <span style={{ fontSize:'10px', color:'#9ca3af', fontFamily:'monospace' }}>{hora}</span>
+
+          {/* Corpo: grade de horas */}
+          <div style={{ flex:1, overflowY:'auto', overflowX:'auto' }}>
+            <div style={{ display:'flex', minHeight:(HORAS.length * ALTURA_HORA) + 'px' }}>
+              {/* Coluna de horas */}
+              <div style={{ width:'60px', flexShrink:0 }}>
+                {HORAS.map(hora => (
+                  <div key={hora} style={{ height:ALTURA_HORA+'px', display:'flex', alignItems:'flex-start', paddingTop:'4px', justifyContent:'flex-end', paddingRight:'8px', boxSizing:'border-box' }}>
+                    <span style={{ fontSize:'10px', color:'#9ca3af', fontFamily:'monospace', whiteSpace:'nowrap' }}>{hora}</span>
                   </div>
                 ))}
               </div>
-              {diasParaMostrar.map(data=>{
-                const dataKey=toISO(data), ehHoje=isMesmoISO(data,hoje)
-                const ags=agendamentos.filter(a=>a.dataISO===dataKey)
+
+              {/* Dias */}
+              {diasParaMostrar.map(data => {
+                const dataKey = toISO(data), ehHoje = isMesmoISO(data, hoje)
+                const profsNoDia = filtroProfissional !== 'todos'
+                  ? profissionais.filter((p:any) => p.nome === filtroProfissional)
+                  : profissionais.length > 0
+                    ? profissionais
+                    : [{id:'__', nome:'', cor:'#6366f1'}]
+                const nProfs = profsNoDia.length
+
                 return (
-                  <div key={dataKey} style={{ borderLeft:'1px solid #f0f0f8', position:'relative', height:(HORAS.length*ALTURA_HORA) + 'px', background:ehHoje?'#fafbff':'transparent' }}>
-                    {HORAS.map((_,hIdx)=><div key={hIdx} style={{ position:'absolute', top:(hIdx*ALTURA_HORA) + 'px', left:0, right:0, borderTop:'1px solid #f3f4f6' }}/>)}
-                    {ehHoje && posLinha!==null && (
-                      <div style={{ position:'absolute', top:posLinha + 'px', left:0, right:0, zIndex:10, pointerEvents:'none', display:'flex', alignItems:'center' }}>
-                        <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', marginLeft:'-4px', flexShrink:0 }}/>
-                        <div style={{ flex:1, height:'1.5px', background:'#ef4444' }}/>
-                      </div>
-                    )}
-                    {(() => {
-                      // Ordenar por hora
-                      const sorted = [...ags].sort((a,b) => a.horaInicio - b.horaInicio)
+                  <div key={dataKey} style={{ flex:1, minWidth:(nProfs*120)+'px', borderLeft:'1px solid #f0f0f8', display:'grid', gridTemplateColumns:'repeat(' + nProfs + ',1fr)', position:'relative', background:ehHoje?'#fafbff':'transparent' }}>
 
-                      // Agrupar por profissional ? cada prof ocupa uma coluna fixa no dia
-                      const profsNoDia = Array.from(new Set(sorted.map(a => a.profissional || '__')))
-                      const numCols    = Math.max(profsNoDia.length, 1)
-                      const colW       = 100 / numCols // largura % de cada coluna
+                    {/* Linhas de hora de fundo - unico elemento absoluto */}
+                    <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
+                      {HORAS.map((_,hIdx) => (
+                        <div key={hIdx} style={{ position:'absolute', top:(hIdx*ALTURA_HORA)+'px', left:0, right:0, borderTop:'1px solid #f3f4f6' }}/>
+                      ))}
+                      {ehHoje && posLinha !== null && (
+                        <div style={{ position:'absolute', top:posLinha+'px', left:0, right:0, zIndex:3, display:'flex', alignItems:'center' }}>
+                          <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', marginLeft:'-4px', flexShrink:0 }}/>
+                          <div style={{ flex:1, height:'1.5px', background:'#ef4444' }}/>
+                        </div>
+                      )}
+                    </div>
 
-                      return sorted.map(ag => {
-                        const isFinalizado = ag.status === 'fechado'
-                        const isCancelado  = ag.status === 'cancelado'
-                        const isAberto     = ag.status === 'aberto'
-                        const bgBase  = isFinalizado ? '#ecfdf5' : isCancelado ? '#fef2f2' : isAberto ? '#dbeafe' : ag.cor + '18'
-                        const bgHover = isFinalizado ? '#d1fae5' : isCancelado ? '#fecaca' : isAberto ? '#bfdbfe' : ag.cor + '35'
-                        const borda   = isFinalizado ? '#10b981' : isCancelado ? '#ef4444' : isAberto ? '#3b82f6' : ag.cor
-                        const textCor = isFinalizado ? '#065f46' : isCancelado ? '#991b1b' : isAberto ? '#1d4ed8' : ag.cor
+                    {/* Coluna de cada profissional */}
+                    {profsNoDia.map((prof:any, profIdx:number) => {
+                      const agsProf = agsFiltrados.filter(a => a.dataISO === dataKey && (a.profissional === prof.nome || (prof.id === '__')))
+                        .sort((a,b) => a.horaInicio - b.horaInicio)
 
-                        // Duracao e altura minima de 44px
-                        const dur    = ag.duracao > 0 ? ag.duracao : 60
-                        const altura = Math.max((dur / 60) * ALTURA_HORA - 6, 44)
+                      return (
+                        <div key={prof.id} style={{ position:'relative', height:(HORAS.length*ALTURA_HORA)+'px', borderLeft:profIdx>0?'1px solid #f0f0f8':'none', zIndex:2 }}>
+                          {agsProf.map(ag => {
+                            const isFinalizado = ag.status === 'fechado'
+                            const isCancelado  = ag.status === 'cancelado'
+                            const isAberto     = ag.status === 'aberto'
+                            const bgBase  = isFinalizado?'#ecfdf5':isCancelado?'#fef2f2':isAberto?'#dbeafe':ag.cor+'18'
+                            const bgHover = isFinalizado?'#d1fae5':isCancelado?'#fecaca':isAberto?'#bfdbfe':ag.cor+'35'
+                            const borda   = isFinalizado?'#10b981':isCancelado?'#ef4444':isAberto?'#3b82f6':ag.cor
+                            const textCor = isFinalizado?'#065f46':isCancelado?'#991b1b':isAberto?'#1d4ed8':ag.cor
 
-                        // Hora formatada com minutos
-                        const horaH = Math.floor(ag.horaInicio)
-                        const horaM = Math.round((ag.horaInicio - horaH) * 60)
-                        const hora  = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
+                            const dur    = ag.duracao > 0 ? ag.duracao : 60
+                            const altura = Math.max((dur/60)*ALTURA_HORA - 6, 40)
+                            const topPx  = (ag.horaInicio - HORA_INICIO) * ALTURA_HORA
 
-                        // Posicao vertical exata na grade
-                        const topPx = (ag.horaInicio - HORA_INICIO) * ALTURA_HORA
+                            const horaH = Math.floor(ag.horaInicio)
+                            const horaM = Math.round((ag.horaInicio - horaH) * 60)
+                            const hora  = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
 
-                        // Coluna horizontal do profissional (fixa)
-                        const profIdx = profsNoDia.indexOf(ag.profissional || '__')
-                        const leftPct = profIdx * colW
-
-                        return (
-                          <div key={ag.id} onClick={()=>abrirEdicao(ag)}
-                            style={{
-                              position: 'absolute',
-                              top:    topPx + 'px',
-                              left:   'calc(' + leftPct + '% + 2px)',
-                              width:  'calc(' + colW    + '% - 4px)',
-                              height: altura + 'px',
-                              background:  bgBase,
-                              border:      '1px solid ' + borda + '40',
-                              borderLeft:  '3px solid ' + borda,
-                              borderRadius:'8px',
-                              padding:     '4px 7px',
-                              cursor:      'pointer',
-                              overflow:    'hidden',
-                              transition:  'background .15s',
-                              zIndex: 5,
-                              boxSizing: 'border-box',
-                            }}
-                            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
-                            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                            {/* Hora */}
-                            <div style={{ fontSize:'10px', fontWeight:'800', color:textCor, fontFamily:'monospace', lineHeight:'14px', letterSpacing:'-0.3px' }}>{hora}</div>
-                            {/* Cliente - mostra o maximo possivel sem cortar */}
-                            <div style={{ fontSize:'11px', fontWeight:'600', color:textCor, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:altura > 58 ? 2 : 1, WebkitBoxOrient:'vertical', lineHeight:'1.3', marginTop:'1px' }}>{ag.cliente}</div>
-                          </div>
-                        )
-                      })
-                    })()}
+                            return (
+                              <div key={ag.id} onClick={()=>abrirEdicao(ag)}
+                                style={{ position:'absolute', top:topPx+'px', left:'2px', right:'2px', height:altura+'px', background:bgBase, border:'1px solid '+borda+'40', borderLeft:'3px solid '+borda, borderRadius:'7px', padding:'4px 6px', cursor:'pointer', overflow:'hidden', transition:'background .12s', zIndex:4, boxSizing:'border-box' }}
+                                onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
+                                onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
+                                <div style={{ fontSize:'10px', fontWeight:'800', color:textCor, fontFamily:'monospace', lineHeight:'14px', whiteSpace:'nowrap' }}>{hora}</div>
+                                <div style={{ fontSize:'10px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'13px', marginTop:'1px' }}>{ag.cliente}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}

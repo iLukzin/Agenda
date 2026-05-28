@@ -1,6 +1,5 @@
 {
+  "buildCommand": "node scripts/fix-translations.js && next build",
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "outputDirectory": ".next"
+  "installCommand": "npm install"
 }

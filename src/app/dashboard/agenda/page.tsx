@@ -42,7 +42,7 @@ function labelDia(d: Date): string {
 function linhaHoraAtual(): number|null {
   const s=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})
   const [h,m]=s.split(':').map(Number)
-  if((h < HORA_INICIO) || (h > HORA_INICIO+13)) return null
+  if(h - HORA_INICIO < 0 || h - HORA_INICIO > 13) return null
   return (h-HORA_INICIO)*ALTURA_HORA+(m/60)*ALTURA_HORA
 }
 
@@ -145,6 +145,44 @@ function ListaPeriodo({ agendamentos, onEditar }: { agendamentos:AgendamentoLoca
       })}
     </div>
   )
+}
+
+function calcSlots(horarioDoDiaForm: HorarioDB|undefined, form: any, profSelecionado: any, agendamentos: AgendamentoLocal[], intervaloMin: number, modoEdicao: boolean, selecionado: AgendamentoLocal|null) {
+  if (!horarioDoDiaForm || !form.dataISO || !profSelecionado) return []
+  const result: Array<{hora:number; min:number; label:string; disponivel:boolean; clienteOcupa:string|undefined}> = []
+  const partsIni = horarioDoDiaForm.hora_inicio.split(':').map(Number)
+  const partsFim = horarioDoDiaForm.hora_fim.split(':').map(Number)
+  const inicioMin = partsIni[0]*60 + partsIni[1]
+  const fimMin    = partsFim[0]*60 + partsFim[1]
+  const durMin    = parseInt(form.duracao) || 60
+  let min = inicioMin
+  while (min + durMin - fimMin < 1) {
+    const hora  = Math.floor(min / 60)
+    const resto = min % 60
+    const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
+    const confProf = agendamentos.find(ag => {
+      if (ag.dataISO !== form.dataISO) return false
+      if (ag.profissional !== form.profissional) return false
+      if (ag.status === 'cancelado' || ag.status === 'fechado') return false
+      if (modoEdicao && selecionado && ag.id === selecionado.id) return false
+      return min === Math.round(ag.horaInicio * 60)
+    })
+    let confCli: AgendamentoLocal|undefined
+    if (form.clienteId) {
+      confCli = agendamentos.find(ag => {
+        if (ag.dataISO !== form.dataISO) return false
+        if (ag.clienteId !== form.clienteId) return false
+        if (ag.status === 'cancelado' || ag.status === 'fechado') return false
+        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
+        return min === Math.round(ag.horaInicio * 60)
+      })
+    }
+    const conflito = confProf || confCli
+    const clienteOcupa = confProf ? confProf.cliente : confCli ? confCli.cliente + ' (outro prof.)' : undefined
+    result.push({ hora, min, label, disponivel:!conflito, clienteOcupa })
+    min += intervaloMin
+  }
+  return result
 }
 
 // Componente principal
@@ -259,9 +297,9 @@ export default function AgendaPage() {
 
   const diasSemana = useMemo(()=>Array.from({length:6},(_,i)=>addDias(semanaBase,i)),[semanaBase])
 
-  function semanaAnterior() { setSemanaBase(d=>{ const n=addDias(d,-7); const h=inicioSemana(hojeNoBrasil()); return (n < h) ? h : n }) }
+  function semanaAnterior() { setSemanaBase(d=>{ const n=addDias(d,-7); const h=inicioSemana(hojeNoBrasil()); return n.getTime() < h.getTime() ? h : n }) }
   function semanaSeguinte() { setSemanaBase(d=>addDias(d,7)) }
-  function diaAnterior()    { setDiaAtivo(d=>{ const n=addDias(d,-1); const h=hojeNoBrasil(); const f=(n < h) ? h : n; setSemanaBase(inicioSemana(f)); return f }) }
+  function diaAnterior()    { setDiaAtivo(d=>{ const n=addDias(d,-1); const h=hojeNoBrasil(); const f=n.getTime() < h.getTime() ? h : n; setSemanaBase(inicioSemana(f)); return f }) }
   function diaSeguinte()    { setDiaAtivo(d=>{ const n=addDias(d,1); setSemanaBase(inicioSemana(n)); return n }) }
   function irParaHoje()     { const h=hojeNoBrasil(); setSemanaBase(inicioSemana(h)); setDiaAtivo(h); setCalAberto(false) }
   function irParaData(d: Date) { setSemanaBase(inicioSemana(d)); setDiaAtivo(d); setCalAberto(false) }
@@ -351,75 +389,24 @@ export default function AgendaPage() {
   // profissional.servicos é array de nomes cadastrados na aba servicos
   // Mostra SOMENTE servicos vinculados ao profissional
   // Se profissional nao tem servicos marcados, lista fica vazia
-  const servicosDoProf = profSelecionado
-    ? (profSelecionado.servicos && profSelecionado.servicos.length > 0
-        ? servicos.filter((s:any) => profSelecionado.servicos.includes(s.nome))
-        : [])
-    : servicos
+  const servicosDoProf = !profSelecionado ? servicos : (profSelecionado.servicos && profSelecionado.servicos.length > 0 ? servicos.filter((s:any) => profSelecionado.servicos.includes(s.nome)) : [])
   const diaSemanaForm   = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
-  const horarioDoDiaForm: HorarioDB | undefined = profSelecionado
-    ? horariosProfissional.find(h => h.profissional_id === profSelecionado.id && h.dia_semana === diaSemanaForm)
-    : undefined
+  const horarioDoDiaForm = (profSelecionado ? horariosProfissional.find(h => h.profissional_id === profSelecionado.id && h.dia_semana === diaSemanaForm) : undefined) as HorarioDB | undefined
   const naoAtende = !!(profSelecionado && form.dataISO && !horarioDoDiaForm)
 
-  const slotsDisponiveis = useMemo(() => {
-    if (!horarioDoDiaForm || !form.dataISO || !profSelecionado) return []
-    const slots: { hora:number; min:number; label:string; disponivel:boolean; clienteOcupa?:string }[] = []
-    const [hIni, mIni] = horarioDoDiaForm.hora_inicio.split(':').map(Number)
-    const [hFim, mFim] = horarioDoDiaForm.hora_fim.split(':').map(Number)
-    const inicioMin = hIni*60 + mIni
-    const fimMin    = hFim*60 + mFim
-    const durMin    = parseInt(form.duracao) || 60
-    let min = inicioMin
-    while (min + durMin <= fimMin) {
-      const hora  = Math.floor(min / 60)
-      const resto = min % 60
-      const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
-      // Conflito 1: mesmo profissional no mesmo horario
-      const conflitoProf = agendamentos.find(ag => {
-        if (ag.dataISO !== form.dataISO) return false
-        if (ag.profissional !== form.profissional) return false
-        if (ag.status === 'cancelado' || ag.status === 'fechado') return false
-        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        return min === Math.round(ag.horaInicio * 60)
-      })
-      // Conflito 2: mesmo cliente no mesmo horario (mesmo com profissional diferente)
-      const conflitoCliente = form.clienteId ? agendamentos.find(ag => {
-        if (ag.dataISO !== form.dataISO) return false
-        if (ag.clienteId !== form.clienteId) return false
-        if (ag.status === 'cancelado' || ag.status === 'fechado') return false
-        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        return min === Math.round(ag.horaInicio * 60)
-      }) : undefined
-      const conflito = conflitoProf || conflitoCliente
-      const clienteOcupa = conflitoProf ? conflitoProf.cliente : conflitoCliente ? conflitoCliente.cliente + ' (outro prof.)' : undefined
-      slots.push({ hora, min, label, disponivel:!conflito, clienteOcupa })
-      min += intervaloMin
-    }
-    return slots
-  }, [horarioDoDiaForm, form.dataISO, form.profissional, form.duracao, intervaloMin, agendamentos, modoEdicao, selecionado])
-
+  const slotsDisponiveis = useMemo(() => calcSlots(horarioDoDiaForm, form, profSelecionado, agendamentos, intervaloMin, modoEdicao, selecionado), [horarioDoDiaForm, form, profSelecionado, agendamentos, intervaloMin, modoEdicao, selecionado])
   const horaSel    = form.horaInicio
   const slotSel    = slotsDisponiveis.find(s => s.label === horaSel)
-  const btnBloqueado = (naoAtende && !!profSelecionado) || (slotSel != null && !slotSel.disponivel) || !form.profissional || !form.clienteId
+  const btnBloqueado = (naoAtende && !!profSelecionado) || (slotSel !== null && slotSel !== undefined && !slotSel.disponivel) || !form.profissional || !form.clienteId
 
   const diasParaMostrar = visualizacao==='dia' ? [diaAtivo] : diasSemana
 
   // Agendamentos filtrados pelo profissional selecionado no filtro
-  const agsFiltrados = useMemo(() =>
-    filtroProfissional === 'todos'
-      ? agendamentos
-      : agendamentos.filter(a => a.profissional === filtroProfissional),
-    [agendamentos, filtroProfissional]
-  )
+  const agsFiltrados = useMemo(() => filtroProfissional === 'todos' ? agendamentos : agendamentos.filter(a => a.profissional === filtroProfissional), [agendamentos, filtroProfissional])
   const colunas         = diasParaMostrar.length
   const posLinha        = linhaHoraAtual()
 
-  const agendamentosPeriodo = useMemo(() => {
-    return agendamentos
-      .filter(a => a.dataISO >= periodoInicio && a.dataISO <= periodoFim)
-      .sort((a,b) => a.dataISO.localeCompare(b.dataISO) || a.horaInicio - b.horaInicio)
-  }, [agendamentos, periodoInicio, periodoFim])
+  const agendamentosPeriodo = useMemo(() => agendamentos.filter(a => { const c1=a.dataISO.localeCompare(periodoInicio); const c2=a.dataISO.localeCompare(periodoFim); return c1 > -1 && c2 < 1 }).sort((a,b) => a.dataISO.localeCompare(b.dataISO) || a.horaInicio - b.horaInicio), [agendamentos, periodoInicio, periodoFim])
 
   const labelPeriodoFiltro = (!periodoInicio || !periodoFim) ? 'Periodo' : (isoParaDate(periodoInicio).toLocaleDateString('pt-BR',{day:'numeric',month:'short',timeZone:'America/Sao_Paulo'}) + ' - ' + isoParaDate(periodoFim).toLocaleDateString('pt-BR',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Sao_Paulo'}))
 

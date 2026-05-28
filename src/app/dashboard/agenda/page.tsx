@@ -332,9 +332,13 @@ export default function AgendaPage() {
   
   // Servicos vinculados ao profissional selecionado (da aba servicos do cadastro)
   // profissional.servicos é array de nomes cadastrados na aba servicos
-  const servicosDoProf = profSelecionado?.servicos && profSelecionado.servicos.length > 0
-    ? servicos.filter((s:any) => profSelecionado.servicos.includes(s.nome))
-    : servicos // Se profissional nao tem servicos vinculados, mostra todos
+  // Mostra SOMENTE servicos vinculados ao profissional
+  // Se profissional nao tem servicos marcados, lista fica vazia
+  const servicosDoProf = profSelecionado
+    ? (profSelecionado.servicos && profSelecionado.servicos.length > 0
+        ? servicos.filter((s:any) => profSelecionado.servicos.includes(s.nome))
+        : [])
+    : servicos
   const diaSemanaForm   = form.dataISO ? isoParaDate(form.dataISO).getDay() : -1
   const horarioDoDiaForm: HorarioDB | undefined = profSelecionado
     ? horariosProfissional.find(h => h.profissional_id === profSelecionado.id && h.dia_semana === diaSemanaForm)
@@ -354,15 +358,25 @@ export default function AgendaPage() {
       const hora  = Math.floor(min / 60)
       const resto = min % 60
       const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
-      const conflito = agendamentos.find(ag => {
+      // Conflito 1: mesmo profissional no mesmo horario
+      const conflitoProf = agendamentos.find(ag => {
         if (ag.dataISO !== form.dataISO) return false
         if (ag.profissional !== form.profissional) return false
-        // Libera horario de agendamentos fechados ou cancelados
         if (ag.status === 'cancelado' || ag.status === 'fechado') return false
         if (modoEdicao && selecionado && ag.id === selecionado.id) return false
         return min === ag.horaInicio * 60
       })
-      slots.push({ hora, min, label, disponivel:!conflito, clienteOcupa:conflito?.cliente })
+      // Conflito 2: mesmo cliente no mesmo horario (mesmo com profissional diferente)
+      const conflitoCliente = form.clienteId ? agendamentos.find(ag => {
+        if (ag.dataISO !== form.dataISO) return false
+        if (ag.clienteId !== form.clienteId) return false
+        if (ag.status === 'cancelado' || ag.status === 'fechado') return false
+        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
+        return min === ag.horaInicio * 60
+      }) : undefined
+      const conflito = conflitoProf || conflitoCliente
+      const clienteOcupa = conflitoProf ? conflitoProf.cliente : conflitoCliente ? conflitoCliente.cliente + ' (outro prof.)' : undefined
+      slots.push({ hora, min, label, disponivel:!conflito, clienteOcupa })
       min += intervaloMin
     }
     return slots
@@ -514,23 +528,23 @@ export default function AgendaPage() {
                           style={{ position:'absolute', top:((ag.horaInicio-HORA_INICIO)*ALTURA_HORA) + 'px', left:'3px', right:'3px', height:altura + 'px', background:bgBase, border:'1px solid ' + borda + '30', borderLeft:'3px solid ' + borda, borderRadius:'8px', padding:'4px 7px', cursor:'pointer', overflow:'hidden', transition:'background .15s', zIndex:5, opacity:isCancelado?0.75:1 }}
                           onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
                           onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                          {/* Linha 1: hora + badge status */}
-                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'2px', marginBottom:'2px' }}>
-                            <span style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', flexShrink:0, letterSpacing:'-0.3px' }}>{hora}</span>
+                          {/* Hora + badge status */}
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'2px', marginBottom:'1px' }}>
+                            <span style={{ fontSize:'11px', fontWeight:'800', color:textCor, fontFamily:'monospace', flexShrink:0, background:'rgba(0,0,0,0.08)', borderRadius:'4px', padding:'0 4px', lineHeight:'16px' }}>{hora}</span>
                             <div style={{ display:'flex', gap:'2px', flexShrink:0 }}>
                               {isFinalizado && <div style={{ width:'13px', height:'13px', borderRadius:'50%', background:'#10b981', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'white', fontSize:'7px', fontWeight:'900', lineHeight:1 }}>v</span></div>}
                               {isCancelado  && <div style={{ width:'13px', height:'13px', borderRadius:'50%', background:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ color:'white', fontSize:'8px', fontWeight:'900', lineHeight:1 }}>x</span></div>}
                             </div>
                           </div>
-                          {/* Linha 2: nome do cliente */}
+                          {/* Nome do cliente - sempre visivel */}
                           <div style={{ fontSize:'11px', fontWeight:'700', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.cliente}</div>
-                          {/* Linha 3: servico (se tiver altura) */}
-                          {altura >= 42 && ag.servico && (
-                            <div style={{ fontSize:'10px', color:textCor, opacity:0.8, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.servico}</div>
+                          {/* Profissional - 2a prioridade */}
+                          {altura >= 40 && ag.profissional && (
+                            <div style={{ fontSize:'10px', color:textCor, opacity:0.75, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.profissional}</div>
                           )}
-                          {/* Linha 4: profissional (se tiver mais altura) */}
-                          {altura >= 56 && ag.profissional && (
-                            <div style={{ fontSize:'9px', color:textCor, opacity:0.6, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3' }}>{ag.profissional}</div>
+                          {/* Servico - 3a prioridade */}
+                          {altura >= 54 && ag.servico && (
+                            <div style={{ fontSize:'9px', color:textCor, opacity:0.6, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'1.3', fontStyle:'italic' }}>{ag.servico}</div>
                           )}
                         </div>
                       )

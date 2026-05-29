@@ -145,7 +145,7 @@ export default function EmpresasPage() {
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <div style={ display:'flex', alignItems:'center', gap:'14px' }>
+          <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
             <button onClick={()=>router.push('/dashboard')}
               style={ display:'flex', alignItems:'center', gap:'8px', background:'white', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'9px 16px', cursor:'pointer', fontSize:'13px', fontWeight:'600', color:'#4f46e5', boxShadow:'0 1px 4px rgba(99,102,241,0.12)', transition:'all .15s', flexShrink:0 }
               onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff'}}

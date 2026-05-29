@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useEmpresa, EmpresaResumo } from '@/context/EmpresaContext'
+import { permPadrao, buscarPermissoes, type Permissao } from '@/lib/permissoes'
 
 const navItems = [
   { href:'/dashboard',               icon:'DASH', label:'Dashboard'     },
@@ -131,6 +132,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [menuMobile, setMenuMobile]       = useState(false)
   const [isMobile, setIsMobile]           = useState(false)
   const [dropEmpresa, setDropEmpresa]     = useState(false)
+  const [permMap, setPermMap] = useState<Record<string, Permissao>>({})
+
+  useEffect(() => {
+    if (!usuario?.id || isMaster) return
+    buscarPermissoes(usuario.id).then(mapa => {
+      if (Object.keys(mapa).length > 0) {
+        setPermMap(mapa)
+      } else {
+        setPermMap(permPadrao(usuario.nivel_acesso || 'profissional'))
+      }
+    })
+  }, [usuario?.id, isMaster, usuario?.nivel_acesso])
   const [loadingTimeout, setLoadingTimeout] = useState(false)
 
   useEffect(() => {
@@ -173,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     )
   }
 
-  const sidebarProps = { sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile:false, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa }
+  const sidebarProps = { sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile:false, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa, permMap }
 
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'#f8f8fc' }}>
@@ -212,7 +225,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   )
 }
 
-function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile, onClose, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa }: any) {
+function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile, onClose, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa, permMap }: any) {
   return (
     <>
       {/* Logo */}
@@ -282,6 +295,9 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
       <nav style={{ flex:1, padding:'8px 8px', display:'flex', flexDirection:'column', gap:'2px', overflowY:'auto' }}>
         {navItems.map(item => {
           const ativo = pathname === item.href
+          const telaKey = item.href === '/dashboard' ? 'dashboard' : item.href.replace('/dashboard/','')
+          const temAcesso = isMaster || !permMap || Object.keys(permMap).length === 0 || (permMap[telaKey] ? permMap[telaKey].visualizar !== false : true)
+          if (!temAcesso) return null
           return (
             <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(99,102,241,0.15)':'transparent', transition:'all .15s', whiteSpace:'nowrap', position:'relative' }}>
               {ativo && <div style={{ position:'absolute', left:0, top:'50%', transform:'translateY(-50%)', width:'3px', height:'20px', background:'#3b82f6', borderRadius:'0 3px 3px 0' }}/>}

@@ -13,9 +13,9 @@ type Usuario = {
 type Empresa = { id: string; nome: string }
 type Profissional = { id: string; nome: string; empresa_id: string }
 
-const nivelLabel: Record<string,string> = { master:'Master', admin:'Administrador', profissional:'Profissional' }
-const nivelCor:   Record<string,string> = { master:'#6366f1', admin:'#06b6d4', profissional:'#10b981' }
-const nivelBg:    Record<string,string> = { master:'#eef2ff', admin:'#ecfeff', profissional:'#ecfdf5' }
+const nivelLabel: Record<string,string> = { master:'Master', admin:'Administrador', profissional:'Profissional', usuario:'Usuario' }
+const nivelCor:   Record<string,string> = { master:'#6366f1', admin:'#06b6d4', profissional:'#10b981', usuario:'#f59e0b' }
+const nivelBg:    Record<string,string> = { master:'#eef2ff', admin:'#ecfeff', profissional:'#ecfdf5', usuario:'#fffbeb' }
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 
 export default function UsuariosMasterPage() {
@@ -162,6 +162,7 @@ export default function UsuariosMasterPage() {
           <option value="master">Master</option>
           <option value="admin">Administrador</option>
           <option value="profissional">Profissional</option>
+          <option value="usuario">Usuario</option>
         </select>
       </div>
 
@@ -236,7 +237,7 @@ export default function UsuariosMasterPage() {
               <div style={{ gridColumn:'1/-1' }}>
                 <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nivel de acesso *</label>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
-                  {(['profissional','admin','master'] as const).map(nivel => (
+                  {(['usuario','profissional','admin','master'] as const).map(nivel => (
                     <div key={nivel} onClick={() => setForm(p => ({...p, nivel_acesso:nivel, empresa_id:nivel==='master'?'':p.empresa_id}))}
                       style={{ padding:'10px 8px', borderRadius:'10px', cursor:'pointer', textAlign:'center', border:form.nivel_acesso===nivel?'2px solid ' + nivelCor[nivel]:'2px solid #e5e7eb', background:form.nivel_acesso===nivel?nivelBg[nivel]:'white' }}>
                       <p style={{ fontSize:'12px', fontWeight:'600', color:form.nivel_acesso===nivel?nivelCor[nivel]:'#6b7280' }}>{nivelLabel[nivel]}</p>
@@ -256,7 +257,7 @@ export default function UsuariosMasterPage() {
                   </select>
                 </div>
               )}
-              {form.nivel_acesso === 'profissional' && form.empresa_id && (
+              {(form.nivel_acesso === 'profissional' || form.nivel_acesso === 'usuario') && form.empresa_id && (
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Profissional vinculado</label>
                   <select value={form.profissional_id} onChange={f('profissional_id')} style={{ ...inputStyle, padding:'9px 12px' }}>
@@ -266,8 +267,9 @@ export default function UsuariosMasterPage() {
                     ))}
                   </select>
                   <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'4px' }}>
-                    Vinculando um profissional, este usuario vera e agendara somente para ele.
-                    Sem vinculo, vera todas as agendas da empresa.
+                    {form.nivel_acesso === 'usuario' 
+                      ? 'Nivel Usuario: ve SOMENTE a agenda do profissional vinculado.'
+                      : 'Nivel Profissional: sem vinculo ve todas as agendas; com vinculo ve so a dele.'}
                   </p>
                 </div>
               )}

@@ -18,7 +18,7 @@ export type UsuarioLogado = {
   id: string
   nome: string
   email: string
-  nivel_acesso: 'master' | 'admin' | 'profissional'
+  nivel_acesso: 'master' | 'admin' | 'profissional' | 'usuario'
   empresa_id?: string
   profissional_id?: string
 }

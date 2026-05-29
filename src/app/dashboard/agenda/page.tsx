@@ -263,7 +263,8 @@ export default function AgendaPage() {
     if (!empresaAtiva?.id) return
     setCarregando(true)
     const sb = createClient()
-    const ehProf = usuario?.nivel_acesso === 'profissional' && !!usuario?.profissional_id
+    // Nivel usuario e profissional com vinculo: filtrar so suas agendas
+    const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
     let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id', empresaAtiva.id)
     if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')

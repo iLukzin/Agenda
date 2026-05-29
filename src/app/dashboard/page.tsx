@@ -3,7 +3,7 @@
 
 
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { createClient } from '@/lib/supabase'
 import { formatarMoeda, corStatus, labelStatus } from '@/lib/supabase'
@@ -47,6 +47,22 @@ function CardMetrica({ label, valor, sublabel, corBg, corText }: { label:string;
   )
 }
 
+
+function useVisibilityRefresh(fn: () => void) {
+  const ref = useRef(fn)
+  ref.current = fn
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let t = Date.now()
+    const onVis = () => { if (document.visibilityState==='visible' && Date.now()-t>15000) ref.current(); t=Date.now() }
+    const onFoc = () => { if (Date.now()-t>120000) ref.current(); t=Date.now() }
+    const onBlr = () => { t=Date.now() }
+    document.addEventListener('visibilitychange',onVis)
+    window.addEventListener('focus',onFoc)
+    window.addEventListener('blur',onBlr)
+    return () => { document.removeEventListener('visibilitychange',onVis); window.removeEventListener('focus',onFoc); window.removeEventListener('blur',onBlr) }
+  }, [])
+}
 export default function DashboardPage() {
   const { empresaAtiva } = useEmpresa()
   const [metricas, setMetricas] = useState<Metrica>({ totalAgendamentos:0, finalizados:0, cancelados:0, abertos:0, clientes:0, faturamento:0, ticketMedio:0 })

@@ -1,8 +1,7 @@
 // BUILD: 1779992105
 'use client'
-import { useVisibilityRefresh } from '@/hooks/useVisibilityRefresh'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
@@ -15,6 +14,22 @@ type Servico = {
 const CORES    = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6']
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 
+
+function useVisibilityRefresh(fn: () => void) {
+  const ref = useRef(fn)
+  ref.current = fn
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let t = Date.now()
+    const onVis = () => { if (document.visibilityState==='visible' && Date.now()-t>15000) ref.current(); t=Date.now() }
+    const onFoc = () => { if (Date.now()-t>120000) ref.current(); t=Date.now() }
+    const onBlr = () => { t=Date.now() }
+    document.addEventListener('visibilitychange',onVis)
+    window.addEventListener('focus',onFoc)
+    window.addEventListener('blur',onBlr)
+    return () => { document.removeEventListener('visibilitychange',onVis); window.removeEventListener('focus',onFoc); window.removeEventListener('blur',onBlr) }
+  }, [])
+}
 export default function ServicosPage() {
   const { empresaAtiva } = useEmpresa()
   const perm = usePermissao('servicos')

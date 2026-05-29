@@ -1,5 +1,4 @@
 'use client'
-import { useVisibilityRefresh } from '@/hooks/useVisibilityRefresh'
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { corStatus, labelStatus, createClient } from '@/lib/supabase'
@@ -210,6 +209,22 @@ function ListaPeriodo({ agendamentos, onEditar }: { agendamentos: AgendamentoLoc
   )
 }
 
+
+function useVisibilityRefresh(fn: () => void) {
+  const ref = useRef(fn)
+  ref.current = fn
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let t = Date.now()
+    const onVis = () => { if (document.visibilityState==='visible' && Date.now()-t>15000) ref.current(); t=Date.now() }
+    const onFoc = () => { if (Date.now()-t>120000) ref.current(); t=Date.now() }
+    const onBlr = () => { t=Date.now() }
+    document.addEventListener('visibilitychange',onVis)
+    window.addEventListener('focus',onFoc)
+    window.addEventListener('blur',onBlr)
+    return () => { document.removeEventListener('visibilitychange',onVis); window.removeEventListener('focus',onFoc); window.removeEventListener('blur',onBlr) }
+  }, [])
+}
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
   const hoje = useMemo(() => hojeNoBrasil(), [])

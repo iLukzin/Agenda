@@ -121,3 +121,36 @@ body {
     font-weight: 500;
   }
 }
+
+/* ===== RESPONSIVO GLOBAL ===== */
+* { box-sizing: border-box; }
+
+@media (max-width: 768px) {
+  /* Agenda - grade compacta em mobile */
+  .agenda-grade { font-size: 11px !important; }
+  .agenda-card  { padding: 3px 5px !important; }
+}
+
+/* Scroll horizontal suave em mobile */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Botoes e inputs - tamanho minimo para touch */
+button, input, select, textarea {
+  min-height: 36px;
+  font-size: 14px;
+}
+
+/* Modal fullscreen em mobile */
+@media (max-width: 600px) {
+  .modal-bottom {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 95vh !important;
+  }
+}
+
+/* Tabelas responsivas */
+@media (max-width: 640px) {
+  .table-responsive { display: block; overflow-x: auto; }
+}
+
+/* Sidebar colapsada em mobile - ja tratado no layout.tsx */

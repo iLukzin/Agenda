@@ -9,7 +9,7 @@ import { useEmpresa } from '@/context/EmpresaContext'
 type Empresa = {
   id: string; nome: string; cnpj: string; email: string
   telefone: string; endereco: string; plano: string
-  status: string; vencimento: string
+  status: string; vencimento: string; bloqueada: boolean; motivo_bloqueio: string
 }
 
 const inputStyle = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
@@ -28,7 +28,7 @@ export default function EmpresasPage() {
   const [selecionada, setSelecionada] = useState<Empresa|null>(null)
   const [form, setForm] = useState({
     nome:'', cnpj:'', email:'', telefone:'', endereco:'',
-    plano:'profissional', status:'ativo', vencimento:''
+    plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:''
   })
 
   const carregar = useCallback(async () => {
@@ -36,15 +36,17 @@ export default function EmpresasPage() {
     const sb = createClient()
     const { data } = await sb
       .from('empresas')
-      .select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento')
+      .select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio')
       .order('nome')
     setEmpresas((data || []).map((e: any) => ({
       ...e,
-      cnpj:       e.cnpj || '',
-      email:      e.email || '',
-      telefone:   e.telefone || '',
-      endereco:   e.endereco || '',
-      vencimento: e.vencimento || '',
+      cnpj:            e.cnpj || '',
+      email:           e.email || '',
+      telefone:        e.telefone || '',
+      endereco:        e.endereco || '',
+      vencimento:      e.vencimento || '',
+      bloqueada:       e.bloqueada || false,
+      motivo_bloqueio: e.motivo_bloqueio || '',
     })))
     setCarregando(false)
   }, [])
@@ -65,7 +67,7 @@ export default function EmpresasPage() {
 
   function abrirEdicao(e: Empresa) {
     setModoEdicao(true); setSelecionada(e); setErro('')
-    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento })
+    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'' })
     setModalAberto(true)
   }
 
@@ -76,14 +78,16 @@ export default function EmpresasPage() {
     setSalvando(true); setErro('')
     const sb = createClient()
     const payload = {
-      nome:       form.nome.trim(),
-      cnpj:       form.cnpj || null,
-      email:      form.email || null,
-      telefone:   form.telefone || null,
-      endereco:   form.endereco || null,
-      plano:      form.plano,
-      status:     form.status,
-      vencimento: form.vencimento || null,
+      nome:            form.nome.trim(),
+      cnpj:            form.cnpj || null,
+      email:           form.email || null,
+      telefone:        form.telefone || null,
+      endereco:        form.endereco || null,
+      plano:           form.plano,
+      status:          form.status,
+      vencimento:      form.vencimento || null,
+      bloqueada:       form.bloqueada,
+      motivo_bloqueio: form.bloqueada ? (form.motivo_bloqueio || 'Falta de pagamento') : null,
     }
     let error: any
     if (modoEdicao && selecionada) {
@@ -244,6 +248,24 @@ export default function EmpresasPage() {
                   <option value="inativo">Inativo</option>
                   <option value="bloqueado">Bloqueado</option>
                 </select>
+              </div>
+              {/* Bloqueio de acesso */}
+              <div style={{ gridColumn:'1/-1', background:form.bloqueada?'#fef2f2':'#f9fafb', borderRadius:'12px', padding:'14px 16px', border:form.bloqueada?'1.5px solid #fca5a5':'1px solid #e5e7eb' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:form.bloqueada?'12px':'0' }}>
+                  <div>
+                    <p style={{ fontSize:'13px', fontWeight:'600', color:form.bloqueada?'#dc2626':'#374151' }}>Bloquear acesso da empresa</p>
+                    <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'2px' }}>Usuarios desta empresa nao conseguirao fazer login</p>
+                  </div>
+                  <div onClick={()=>setForm(p=>({...p, bloqueada:!p.bloqueada}))} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.bloqueada?'#ef4444':'#e5e7eb', position:'relative', transition:'background .2s', flexShrink:0 }}>
+                    <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:form.bloqueada?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
+                  </div>
+                </div>
+                {form.bloqueada && (
+                  <div>
+                    <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#dc2626', marginBottom:'6px' }}>Motivo da suspensao</label>
+                    <input value={form.motivo_bloqueio} onChange={e=>setForm(p=>({...p,motivo_bloqueio:e.target.value}))} style={{ ...inputStyle, borderColor:'#fca5a5', background:'white' }} placeholder="Ex: Falta de pagamento - mensalidade vencida"/>
+                  </div>
+                )}
               </div>
             </div>
             {erro && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 14px', marginTop:'12px', fontSize:'13px', color:'#dc2626' }}>{erro}</div>}

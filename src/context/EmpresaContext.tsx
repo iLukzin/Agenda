@@ -10,6 +10,8 @@ export type EmpresaResumo = {
   logo_url?: string
   plano: string
   status: string
+  bloqueada?: boolean
+  motivo_bloqueio?: string
 }
 
 export type UsuarioLogado = {
@@ -73,7 +75,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         })
         // Tenta carregar empresas mesmo assim
         const { data: emps } = await sb
-          .from('empresas').select('id, nome, logo_url, plano, status').order('nome')
+          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio').order('nome')
         const lista: EmpresaResumo[] = emps || []
         setEmpresas(lista)
         setEmpresaAtiva(lista[0] || null)
@@ -95,7 +97,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Master: carrega todas as empresas
         const { data: lista } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio')
           .order('nome')
 
         const l: EmpresaResumo[] = lista || []
@@ -117,11 +119,20 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Admin/profissional: somente a empresa vinculada
         const { data: emp } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio')
           .eq('id', u.empresa_id)
           .single()
 
         if (emp) {
+          // Verificar se empresa esta bloqueada
+          if (emp.bloqueada && u.nivel_acesso !== 'master') {
+            const motivo = emp.motivo_bloqueio || 'Falta de pagamento'
+            await sb.auth.signOut()
+            if (typeof window !== 'undefined') {
+              window.location.href = '/auth/login?bloqueada=1&motivo=' + encodeURIComponent(motivo)
+            }
+            return
+          }
           setEmpresas([emp])
           setEmpresaAtiva(emp)
         }

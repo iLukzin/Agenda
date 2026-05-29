@@ -1,17 +1,27 @@
 // BUILD: 1779992105
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
+  const params = useSearchParams()
   const [email, setEmail]           = useState('')
   const [senha, setSenha]           = useState('')
   const [erro, setErro]             = useState('')
   const [carregando, setCarregando] = useState(false)
   const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [empresaBloqueada, setEmpresaBloqueada] = useState(false)
+  const [motivoBloqueio, setMotivoBloqueio]     = useState('')
+
+  useEffect(() => {
+    if (params.get('bloqueada') === '1') {
+      setEmpresaBloqueada(true)
+      setMotivoBloqueio(params.get('motivo') || 'Falta de pagamento')
+    }
+  }, [params])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -49,6 +59,26 @@ export default function LoginPage() {
           <h2 style={{ fontSize:'20px', fontWeight:'700', color:'#1a1a2e', margin:'0 0 4px' }}>Entrar na sua conta</h2>
           <p style={{ fontSize:'14px', color:'#9ca3af', margin:'0 0 28px' }}>Bem-vindo de volta!</p>
 
+          {empresaBloqueada && (
+            <div style={{ background:'linear-gradient(135deg,#7f1d1d,#991b1b)', borderRadius:'14px', padding:'20px', marginBottom:'8px', border:'1px solid #fca5a5' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'10px' }}>
+                <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div>
+                  <p style={{ color:'white', fontWeight:'700', fontSize:'15px' }}>Sistema Suspenso</p>
+                  <p style={{ color:'rgba(255,255,255,0.75)', fontSize:'12px', marginTop:'2px' }}>Acesso temporariamente bloqueado</p>
+                </div>
+              </div>
+              <div style={{ background:'rgba(255,255,255,0.1)', borderRadius:'10px', padding:'12px 14px' }}>
+                <p style={{ color:'rgba(255,255,255,0.6)', fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'4px', fontWeight:'600' }}>Motivo</p>
+                <p style={{ color:'white', fontSize:'13px', fontWeight:'500' }}>{motivoBloqueio}</p>
+              </div>
+              <p style={{ color:'rgba(255,255,255,0.6)', fontSize:'12px', marginTop:'12px', textAlign:'center' }}>
+                Entre em contato com o suporte para regularizar.
+              </p>
+            </div>
+          )}
           <form onSubmit={handleLogin} style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
             {/* E-mail */}
             <div>

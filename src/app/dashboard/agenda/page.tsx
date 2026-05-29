@@ -96,34 +96,21 @@ function calcSlots(
     const resto = min % 60
     const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
 
-    // Regras de bloqueio por HORARIO DE INICIO (duracao e apenas informativo)
-    // Profissional X 8:30 aberto     -> bloqueia 8:30 para prof X, livre para prof Y
-    // Profissional X 8:30 finalizado -> bloqueia 8:30 para prof X, livre para prof Y
-    // Profissional X 8:30 cancelado  -> LIBERA 8:30 para prof X e qualquer outro
-
-    const agNoHorario = agendamentos.filter(ag => {
+    // Regra: bloquear somente pelo PROFISSIONAL selecionado no horario de inicio
+    // Prof Y NAO e bloqueado pelo horario do Prof X
+    const agDoProf = agendamentos.filter(ag => {
       if (ag.dataISO !== dataISO) return false
+      if (ag.profissional !== profissional) return false
       if (modoEdicao && selecionado && ag.id === selecionado.id) return false
       return Math.round(ag.horaInicio * 60) === min
     })
 
-    // Conflito: mesmo profissional + mesmo horario + nao cancelado
-    const confProf = agNoHorario.find(ag =>
-      ag.profissional === profissional && ag.status !== 'cancelado'
-    )
-
-    // Conflito: mesmo cliente + mesmo horario + nao cancelado (independe do prof)
-    const confCli = clienteId
-      ? agNoHorario.find(ag => ag.clienteId === clienteId && ag.status !== 'cancelado')
-      : undefined
-
-    const conflito = confProf || confCli
+    // Bloqueado se o profissional ja tem aberto ou finalizado neste horario
+    const confProf = agDoProf.find(ag => ag.status !== 'cancelado')
+    const conflito = confProf
     let clienteOcupa: string | undefined
     if (confProf) {
-      const st = confProf.status === 'fechado' ? ' (finalizado)' : ' (aberto)'
-      clienteOcupa = confProf.cliente + st
-    } else if (confCli) {
-      clienteOcupa = confCli.cliente + ' (outro profissional)'
+      clienteOcupa = confProf.cliente + (confProf.status === 'fechado' ? ' (finalizado)' : ' (aberto)')
     }
 
     result.push({ hora, min, label, disponivel: !conflito, clienteOcupa })

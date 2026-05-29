@@ -87,54 +87,45 @@ function calcSlots(
   const partsIni = horario.hora_inicio.split(':').map(Number)
   const partsFim = horario.hora_fim.split(':').map(Number)
   const inicioMin = partsIni[0] * 60 + partsIni[1]
-  const fimMin = partsFim[0] * 60 + partsFim[1]
-  const durMin = parseInt(duracao) || 60
+  const fimMin    = partsFim[0] * 60 + partsFim[1]
+  const durMin    = parseInt(duracao) || 60
   const result: SlotItem[] = []
   let min = inicioMin
   while (min + durMin - fimMin < 1) {
-    const hora = Math.floor(min / 60)
+    const hora  = Math.floor(min / 60)
     const resto = min % 60
     const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')
-    const slotIni = min
-    const slotFim = min + durMin
 
-    // Verifica sobreposicao real de intervalo: dois slots se sobrepõem se
-    // inicio do slot < fim do ag E fim do slot > inicio do ag
-    const sobrepoe = (agIniMin: number, agDurMin: number) => {
-      const agFim = agIniMin + agDurMin
-      return slotIni < agFim && slotFim > agIniMin
-    }
+    // Regras de bloqueio por HORARIO DE INICIO (duracao e apenas informativo)
+    // Profissional X 8:30 aberto     -> bloqueia 8:30 para prof X, livre para prof Y
+    // Profissional X 8:30 finalizado -> bloqueia 8:30 para prof X, livre para prof Y
+    // Profissional X 8:30 cancelado  -> LIBERA 8:30 para prof X e qualquer outro
 
-    // Conflito de profissional: cancelado libera, aberto e fechado bloqueiam
-    const confProf = agendamentos.find(ag => {
+    const agNoHorario = agendamentos.filter(ag => {
       if (ag.dataISO !== dataISO) return false
-      if (ag.profissional !== profissional) return false
-      if (ag.status === 'cancelado') return false
       if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-      const agIniMin = Math.round(ag.horaInicio * 60)
-      return sobrepoe(agIniMin, ag.duracao > 0 ? ag.duracao : 60)
+      return Math.round(ag.horaInicio * 60) === min
     })
 
-    // Conflito de cliente: cancelado libera, aberto e fechado bloqueiam
-    let confCli: AgendamentoLocal | undefined
-    if (clienteId) {
-      confCli = agendamentos.find(ag => {
-        if (ag.dataISO !== dataISO) return false
-        if (ag.clienteId !== clienteId) return false
-        if (ag.status === 'cancelado') return false
-        if (modoEdicao && selecionado && ag.id === selecionado.id) return false
-        const agIniMin = Math.round(ag.horaInicio * 60)
-        return sobrepoe(agIniMin, ag.duracao > 0 ? ag.duracao : 60)
-      })
-    }
+    // Conflito: mesmo profissional + mesmo horario + nao cancelado
+    const confProf = agNoHorario.find(ag =>
+      ag.profissional === profissional && ag.status !== 'cancelado'
+    )
+
+    // Conflito: mesmo cliente + mesmo horario + nao cancelado (independe do prof)
+    const confCli = clienteId
+      ? agNoHorario.find(ag => ag.clienteId === clienteId && ag.status !== 'cancelado')
+      : undefined
 
     const conflito = confProf || confCli
     let clienteOcupa: string | undefined
     if (confProf) {
-      clienteOcupa = confProf.cliente + (confProf.status === 'fechado' ? ' (finalizado)' : '')
+      const st = confProf.status === 'fechado' ? ' (finalizado)' : ' (aberto)'
+      clienteOcupa = confProf.cliente + st
     } else if (confCli) {
-      clienteOcupa = confCli.cliente + ' (outro prof.' + (confCli.status === 'fechado' ? ' - finalizado' : '') + ')'
+      clienteOcupa = confCli.cliente + ' (outro profissional)'
     }
+
     result.push({ hora, min, label, disponivel: !conflito, clienteOcupa })
     min += intervaloMin
   }
@@ -253,6 +244,7 @@ export default function AgendaPage() {
   const [modoEdicao, setModoEdicao] = useState(false)
   const [selecionado, setSelecionado] = useState<AgendamentoLocal | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [erroForm, setErroForm] = useState<string[]>([])
   const [finalizando, setFinalizando] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)
   const [motivoCancelamento, setMotivoCancelamento] = useState('')
@@ -362,10 +354,18 @@ export default function AgendaPage() {
     setIntervaloMin(30); setModalAberto(true)
   }
 
-  function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento('') }
+  function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }
 
   async function salvar() {
-    if (!form.clienteId || !form.profissional || !form.servico) return
+    // Validacao completa dos campos obrigatorios
+    const erros: string[] = []
+    if (!form.clienteId)    erros.push('Cliente e obrigatorio')
+    if (!form.profissional) erros.push('Profissional e obrigatorio')
+    if (!form.servico)      erros.push('Servico e obrigatorio')
+    if (!form.dataISO)      erros.push('Data e obrigatoria')
+    if (!form.horaInicio)   erros.push('Horario e obrigatorio')
+    if (erros.length > 0) { setErroForm(erros); return }
+    setErroForm([])
     if (!empresaAtiva?.id) return
     setSalvando(true)
     const parts = form.horaInicio.split(':').map(Number)
@@ -739,7 +739,7 @@ export default function AgendaPage() {
                       <><div onClick={()=>setDropCliente(false)} style={{ position:'fixed', inset:0, zIndex:99 }}/>
                       <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'white', borderRadius:'10px', border:'1px solid #e5e7eb', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', zIndex:100, maxHeight:'200px', overflowY:'auto' }}>
                         {clientes.filter((c: any) => c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).map((c: any) => (
-                          <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome}));setBuscaCliente('');setDropCliente(false)}} style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
+                          <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome}));setBuscaCliente('');setDropCliente(false);setErroForm([])}} style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
                             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#f8f8fc'}}
                             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent'}}>
                             <p style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e' }}>{c.nome}</p>
@@ -827,13 +827,25 @@ export default function AgendaPage() {
                   <button onClick={()=>finalizar(selecionado.id)} disabled={finalizando} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>{finalizando?'Finalizando...':'Finalizar'}</button>
                 </div>
               ) : <div/>}
-              <div style={{ display:'flex', gap:'10px' }}>
-                <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
-                {!isBloqEdicao && (
-                  <button onClick={btnBloqueado?undefined:salvar} disabled={btnBloqueado||salvando} style={{ background:btnBloqueado||salvando?'#d1d5db':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:btnBloqueado||salvando?'not-allowed':'pointer' }}>
-                    {salvando?'Salvando...':modoEdicao?'Salvar':'Agendar'}
-                  </button>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px', flex:1, minWidth:'160px' }}>
+                {erroForm.length > 0 && (
+                  <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'10px', padding:'10px 14px' }}>
+                    <p style={{ fontSize:'12px', fontWeight:'700', color:'#dc2626', marginBottom:'4px' }}>Preencha os campos obrigatorios:</p>
+                    {erroForm.map((e,i) => (
+                      <p key={i} style={{ fontSize:'12px', color:'#dc2626', display:'flex', alignItems:'center', gap:'4px' }}>
+                        <span style={{ fontWeight:'700' }}>-</span> {e}
+                      </p>
+                    ))}
+                  </div>
                 )}
+                <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
+                  <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
+                  {!isBloqEdicao && (
+                    <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
+                      {salvando?'Salvando...':modoEdicao?'Salvar alteracoes':'Agendar'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

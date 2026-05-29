@@ -1,35 +1,38 @@
-// BUILD: 1779992105
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
-import { TELAS, PERM_PADRAO_PROFISSIONAL, PERM_PADRAO_ADMIN, salvarPermissoes, buscarPermissoes, type Permissao } from '@/lib/permissoes'
+import { TELAS, permPadrao, salvarPermissoes, buscarPermissoes, type Permissao } from '@/lib/permissoes'
 
 type Usuario = { id:string; nome:string; email:string; nivel_acesso:string; empresa_id:string; empresa_nome:string; status:string }
 type Empresa  = { id:string; nome:string }
 
+const NIVEL_COR:   Record<string,string> = { admin:'#0891b2', profissional:'#059669', usuario:'#d97706' }
+const NIVEL_BG:    Record<string,string> = { admin:'#e0f2fe', profissional:'#d1fae5', usuario:'#fef3c7' }
+const NIVEL_LABEL: Record<string,string> = { admin:'Admin', profissional:'Profissional', usuario:'Usuario' }
+
 export default function PermissoesPage() {
-  const { usuario: usuarioLogado } = useEmpresa()
+  const { usuario: usuarioLogado, isMaster } = useEmpresa()
+  const router = useRouter()
   const [usuarios, setUsuarios]     = useState<Usuario[]>([])
   const [empresas, setEmpresas]     = useState<Empresa[]>([])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)
   const [mensagem, setMensagem]     = useState('')
+  const [msgOk, setMsgOk]           = useState(false)
   const [filtroEmpresa, setFiltroEmpresa] = useState('')
   const [busca, setBusca]           = useState('')
   const [usuarioSel, setUsuarioSel] = useState<Usuario|null>(null)
   const [permissoes, setPermissoes] = useState<Record<string,Permissao>>({})
 
-  const isMaster = usuarioLogado?.nivel_acesso === 'master'
-
   const carregar = useCallback(async () => {
     setCarregando(true)
     const sb = createClient()
     const [{ data: us }, { data: emps }] = await Promise.all([
-      sb.from('usuarios').select('id, nome, email, nivel_acesso, empresa_id, status').neq('nivel_acesso','master').order('nome'),
-      sb.from('empresas').select('id, nome').order('nome'),
+      sb.from('usuarios').select('id,nome,email,nivel_acesso,empresa_id,status').neq('nivel_acesso','master').order('nome'),
+      sb.from('empresas').select('id,nome').order('nome'),
     ])
     const empsMap: Record<string,string> = {}
     if (emps) emps.forEach((e: any) => { empsMap[e.id] = e.nome })
@@ -43,11 +46,7 @@ export default function PermissoesPage() {
   async function selecionarUsuario(u: Usuario) {
     setUsuarioSel(u); setMensagem('')
     const perm = await buscarPermissoes(u.id)
-    if (Object.keys(perm).length === 0) {
-      setPermissoes(u.nivel_acesso === 'admin' ? PERM_PADRAO_ADMIN : PERM_PADRAO_PROFISSIONAL)
-    } else {
-      setPermissoes(perm)
-    }
+    setPermissoes(Object.keys(perm).length > 0 ? perm : permPadrao(u.nivel_acesso))
   }
 
   function togglePerm(tela: string, tipo: keyof Omit<Permissao,'tela'>) {
@@ -60,16 +59,13 @@ export default function PermissoesPage() {
     })
   }
 
-  function aplicarPadrao(nivel: 'profissional'|'admin') {
-    setPermissoes(nivel==='admin' ? PERM_PADRAO_ADMIN : PERM_PADRAO_PROFISSIONAL)
-  }
-
   async function salvar() {
-    if (!usuarioSel?.empresa_id) { setMensagem('Este usuário não tem empresa vinculada.'); return }
+    if (!usuarioSel?.empresa_id) { setMensagem('Este usuario nao tem empresa vinculada.'); setMsgOk(false); return }
     setSalvando(true); setMensagem('')
     const lista = TELAS.map(t => permissoes[t.key] || { tela:t.key, visualizar:false, criar:false, alterar:false, excluir:false })
     const { error } = await salvarPermissoes(usuarioSel.id, usuarioSel.empresa_id, lista)
-    setMensagem(error ? 'Erro: '+error.message : '? Permissões salvas!')
+    setMsgOk(!error)
+    setMensagem(error ? 'Erro: '+error.message : 'Permissoes salvas com sucesso!')
     if (!error) setTimeout(() => setMensagem(''), 3000)
     setSalvando(false)
   }
@@ -80,101 +76,127 @@ export default function PermissoesPage() {
     return buscaOk && empOk && u.status === 'ativo'
   })
 
-  const nivelCor:   Record<string,string> = { admin:'#06b6d4', profissional:'#10b981' }
-  const nivelBg:    Record<string,string> = { admin:'#ecfeff', profissional:'#ecfdf5' }
-  const nivelLabel: Record<string,string> = { admin:'Admin',    profissional:'Profissional' }
-
   if (!isMaster) return (
-    <div style={{ padding:'40px', textAlign:'center' }}>
-      <p style={{ fontSize:'36px', marginBottom:'12px' }}>🔒</p>
-      <h2 style={{ fontSize:'18px', fontWeight:'600', color:'#1a1a2e' }}>Acesso restrito ao master</h2>
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:'12px' }}>
+      <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <p style={{ fontSize:'16px', fontWeight:'700', color:'#374151' }}>Acesso restrito ao Master</p>
     </div>
   )
 
   return (
-    <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
-      <div style={{ marginBottom:'24px' }}>
-        <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>? Dashboard</Link>
-        <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>🔐 Permissões de Usuários</h1>
-        <p style={{ fontSize:'13px', color:'#9ca3af' }}>Defina o que cada usuário pode visualizar, criar, alterar e excluir</p>
+    <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f4f5fb' }}>
+      {/* Cabecalho sofisticado */}
+      <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'28px' }}>
+        <button onClick={()=>router.push('/dashboard')}
+          style={{ display:'flex', alignItems:'center', gap:'8px', background:'white', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'9px 16px', cursor:'pointer', fontSize:'13px', fontWeight:'600', color:'#4f46e5', boxShadow:'0 1px 4px rgba(99,102,241,0.12)', transition:'all .15s' }}
+          onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.boxShadow='0 4px 12px rgba(99,102,241,0.2)'}}
+          onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.boxShadow='0 1px 4px rgba(99,102,241,0.12)'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Voltar ao painel
+        </button>
+        <div>
+          <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.5px', lineHeight:1 }}>Permissoes de Usuarios</h1>
+          <p style={{ fontSize:'13px', color:'#6b7280', marginTop:'3px' }}>Defina o que cada usuario pode visualizar, criar, alterar e excluir</p>
+        </div>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:'16px', alignItems:'start' }}>
-        {/* Lista */}
-        <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8' }}>
-          <div style={{ padding:'14px 16px', borderBottom:'1px solid #f3f4f6', display:'flex', flexDirection:'column', gap:'8px' }}>
-            <input placeholder="Buscar usuário..." value={busca} onChange={e=>setBusca(e.target.value)}
-              style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 10px', fontSize:'13px', outline:'none', boxSizing:'border-box' }}/>
+        {/* Lista de usuarios */}
+        <div style={{ background:'white', borderRadius:'16px', border:'1px solid #e8e9f4', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+          <div style={{ padding:'14px 16px', background:'linear-gradient(135deg,#f8faff,#f0f4ff)', borderBottom:'1px solid #e8e9f4', display:'flex', flexDirection:'column', gap:'8px' }}>
+            <input placeholder="Buscar usuario..." value={busca} onChange={e=>setBusca(e.target.value)}
+              style={{ width:'100%', border:'1.5px solid #e0e7ff', borderRadius:'10px', padding:'9px 12px', fontSize:'13px', outline:'none', boxSizing:'border-box', background:'white' }}
+              onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
+              onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e0e7ff'}}/>
             <select value={filtroEmpresa} onChange={e=>setFiltroEmpresa(e.target.value)}
-              style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 10px', fontSize:'13px', outline:'none' }}>
+              style={{ width:'100%', border:'1.5px solid #e0e7ff', borderRadius:'10px', padding:'9px 12px', fontSize:'13px', outline:'none', background:'white' }}>
               <option value="">Todas as empresas</option>
               {empresas.map(e=><option key={e.id} value={e.id}>{e.nome}</option>)}
             </select>
           </div>
           <div style={{ maxHeight:'520px', overflowY:'auto' }}>
-            {carregando ? <div style={{ padding:'30px', textAlign:'center', color:'#9ca3af', fontSize:'13px' }}>Carregando...</div>
-            : filtrados.map(u => (
+            {carregando ? (
+              <div style={{ padding:'30px', textAlign:'center', color:'#9ca3af', fontSize:'13px' }}>Carregando...</div>
+            ) : filtrados.map(u => (
               <div key={u.id} onClick={()=>selecionarUsuario(u)}
-                style={{ padding:'12px 16px', cursor:'pointer', borderBottom:'1px solid #f9fafb', background:usuarioSel?.id===u.id?'#eef2ff':'transparent', transition:'background .1s' }}
-                onMouseEnter={e=>{if(usuarioSel?.id!==u.id)(e.currentTarget as HTMLElement).style.background='#fafafa'}}
+                style={{ padding:'12px 16px', cursor:'pointer', borderBottom:'1px solid #f5f5fb', background:usuarioSel?.id===u.id?'#eef2ff':'transparent', transition:'background .12s' }}
+                onMouseEnter={e=>{if(usuarioSel?.id!==u.id)(e.currentTarget as HTMLElement).style.background='#fafbff'}}
                 onMouseLeave={e=>{if(usuarioSel?.id!==u.id)(e.currentTarget as HTMLElement).style.background='transparent'}}>
                 <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                  <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:nivelBg[u.nivel_acesso]||'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'700', color:nivelCor[u.nivel_acesso]||'#6b7280', flexShrink:0 }}>
+                  <div style={{ width:'34px', height:'34px', borderRadius:'50%', background:usuarioSel?.id===u.id?'#6366f1':(NIVEL_BG[u.nivel_acesso]||'#f3f4f6'), display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'700', color:usuarioSel?.id===u.id?'white':(NIVEL_COR[u.nivel_acesso]||'#6b7280'), flexShrink:0 }}>
                     {u.nome.split(' ').slice(0,2).map(n=>n[0]).join('')}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:'13px', fontWeight:'600', color:usuarioSel?.id===u.id?'#6366f1':'#1a1a2e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.nome}</p>
+                    <p style={{ fontSize:'13px', fontWeight:'600', color:usuarioSel?.id===u.id?'#4f46e5':'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.nome}</p>
                     <p style={{ fontSize:'11px', color:'#9ca3af', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.empresa_nome}</p>
                   </div>
-                  <span style={{ fontSize:'10px', fontWeight:'600', padding:'2px 6px', borderRadius:'99px', background:nivelBg[u.nivel_acesso]||'#f3f4f6', color:nivelCor[u.nivel_acesso]||'#6b7280', flexShrink:0 }}>
-                    {nivelLabel[u.nivel_acesso]||u.nivel_acesso}
+                  <span style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'99px', background:NIVEL_BG[u.nivel_acesso]||'#f3f4f6', color:NIVEL_COR[u.nivel_acesso]||'#6b7280', flexShrink:0 }}>
+                    {NIVEL_LABEL[u.nivel_acesso]||u.nivel_acesso}
                   </span>
                 </div>
               </div>
             ))}
-            {filtrados.length===0&&!carregando && <div style={{ padding:'30px', textAlign:'center', color:'#9ca3af', fontSize:'13px' }}>Nenhum usuário</div>}
+            {filtrados.length===0&&!carregando && (
+              <div style={{ padding:'30px', textAlign:'center', color:'#9ca3af', fontSize:'13px' }}>Nenhum usuario encontrado</div>
+            )}
           </div>
         </div>
 
-        {/* Painel */}
+        {/* Painel de permissoes */}
         {usuarioSel ? (
-          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8' }}>
-            <div style={{ padding:'18px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
-              <div>
-                <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'2px' }}>{usuarioSel.nome}</h2>
-                <p style={{ fontSize:'12px', color:'#9ca3af' }}>{usuarioSel.email} ? {usuarioSel.empresa_nome}</p>
+          <div style={{ background:'white', borderRadius:'16px', border:'1px solid #e8e9f4', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+            {/* Header do usuario selecionado */}
+            <div style={{ padding:'18px 22px', background:'linear-gradient(135deg,#f8faff,#eef2ff)', borderBottom:'1px solid #e8e9f4', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:'linear-gradient(135deg,#6366f1,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:'700', color:'white', boxShadow:'0 3px 10px rgba(99,102,241,0.3)' }}>
+                  {usuarioSel.nome.split(' ').slice(0,2).map(n=>n[0]).join('')}
+                </div>
+                <div>
+                  <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#0f172a', marginBottom:'2px' }}>{usuarioSel.nome}</h2>
+                  <p style={{ fontSize:'12px', color:'#6b7280' }}>{usuarioSel.email} ? {usuarioSel.empresa_nome}</p>
+                </div>
               </div>
               <div style={{ display:'flex', gap:'8px' }}>
-                <button onClick={()=>aplicarPadrao('profissional')} style={{ background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:'#374151' }}>? Padrão Profissional</button>
-                <button onClick={()=>aplicarPadrao('admin')} style={{ background:'#ecfeff', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:'#06b6d4' }}>? Padrão Admin</button>
+                {(['profissional','admin','usuario'] as const).map(nivel => (
+                  <button key={nivel} onClick={()=>setPermissoes(permPadrao(nivel))}
+                    style={{ background:NIVEL_BG[nivel], border:'1.5px solid '+NIVEL_COR[nivel]+'40', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:NIVEL_COR[nivel], fontWeight:'600', transition:'all .15s' }}
+                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=NIVEL_COR[nivel];(e.currentTarget as HTMLElement).style.color='white'}}
+                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=NIVEL_BG[nivel];(e.currentTarget as HTMLElement).style.color=NIVEL_COR[nivel]}}>
+                    Padrao {NIVEL_LABEL[nivel]}
+                  </button>
+                ))}
               </div>
             </div>
 
+            {/* Tabela de permissoes */}
             <div style={{ padding:'20px', overflowX:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'500px' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'480px' }}>
                 <thead>
-                  <tr style={{ borderBottom:'2px solid #f3f4f6' }}>
-                    <th style={{ padding:'10px 14px', textAlign:'left', fontSize:'12px', fontWeight:'600', color:'#374151', width:'40%' }}>Tela / Módulo</th>
+                  <tr style={{ borderBottom:'2px solid #f0f0f8' }}>
+                    <th style={{ padding:'10px 14px', textAlign:'left', fontSize:'11px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', width:'38%' }}>Modulo</th>
                     {['Visualizar','Criar','Alterar','Excluir'].map(h=>(
-                      <th key={h} style={{ padding:'10px 8px', textAlign:'center', fontSize:'12px', fontWeight:'600', color:'#374151' }}>{h}</th>
+                      <th key={h} style={{ padding:'10px 8px', textAlign:'center', fontSize:'11px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {TELAS.map((tela, i)=>{
-                    const p = permissoes[tela.key]||{tela:tela.key,visualizar:false,criar:false,alterar:false,excluir:false}
+                  {TELAS.map((tela, i) => {
+                    const p = permissoes[tela.key] || { tela:tela.key, visualizar:false, criar:false, alterar:false, excluir:false }
                     return (
-                      <tr key={tela.key} style={{ borderBottom:'1px solid #f9fafb', background:i%2===0?'transparent':'#fafafa' }}>
-                        <td style={{ padding:'14px', fontSize:'14px', fontWeight:'500', color:'#1a1a2e' }}>{tela.label}</td>
-                        {(['visualizar','criar','alterar','excluir'] as const).map(tipo=>(
+                      <tr key={tela.key} style={{ borderBottom:'1px solid #f5f5fb', background:i%2===0?'transparent':'#fafbff' }}>
+                        <td style={{ padding:'14px', fontSize:'14px', fontWeight:'600', color:'#111827', display:'flex', alignItems:'center', gap:'8px' }}>
+                          <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:p.visualizar?'#10b981':'#e5e7eb', flexShrink:0 }}/>
+                          {tela.label}
+                        </td>
+                        {(['visualizar','criar','alterar','excluir'] as const).map(tipo => (
                           <td key={tipo} style={{ padding:'14px 8px', textAlign:'center' }}>
-                            <div onClick={()=>togglePerm(tela.key, tipo)} style={{
-                              width:'24px', height:'24px', borderRadius:'6px', cursor:'pointer',
-                              border:p[tipo]?'2px solid #6366f1':'2px solid #e5e7eb',
-                              background:p[tipo]?'#6366f1':'white',
-                              display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all .15s',
-                            }}>
-                              {p[tipo]&&<span style={{ color:'white', fontSize:'13px', fontWeight:'700', lineHeight:1 }}>?</span>}
+                            <div onClick={()=>togglePerm(tela.key, tipo)}
+                              style={{ width:'28px', height:'28px', borderRadius:'8px', cursor:'pointer', border:p[tipo]?'2px solid #6366f1':'2px solid #e5e7eb', background:p[tipo]?'#6366f1':'white', display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all .15s', boxShadow:p[tipo]?'0 2px 6px rgba(99,102,241,0.3)':'none' }}>
+                              {p[tipo] && (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              )}
                             </div>
                           </td>
                         ))}
@@ -185,20 +207,34 @@ export default function PermissoesPage() {
               </table>
             </div>
 
-            <div style={{ padding:'16px 20px', borderTop:'1px solid #f3f4f6', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
-              {mensagem
-                ? <span style={{ fontSize:'13px', fontWeight:'500', color:mensagem.startsWith('?')?'#10b981':'#ef4444' }}>{mensagem}</span>
-                : <p style={{ fontSize:'12px', color:'#9ca3af' }}>?? Marcar Criar/Alterar/Excluir habilita Visualizar automaticamente.</p>}
-              <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'10px 24px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
-                {salvando?'Salvando...':'💾 Salvar permissões'}
+            {/* Footer */}
+            <div style={{ padding:'16px 22px', borderTop:'1px solid #f0f0f8', background:'#fafbff', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
+              <div>
+                {mensagem ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px', fontSize:'13px', fontWeight:'600', color:msgOk?'#059669':'#dc2626' }}>
+                    {msgOk
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                    {mensagem}
+                  </div>
+                ) : (
+                  <p style={{ fontSize:'12px', color:'#9ca3af' }}>Marcar Criar/Alterar/Excluir habilita Visualizar automaticamente.</p>
+                )}
+              </div>
+              <button onClick={salvar} disabled={salvando}
+                style={{ display:'flex', alignItems:'center', gap:'8px', background:salvando?'#a5b4fc':'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'10px', padding:'11px 24px', fontSize:'14px', fontWeight:'700', cursor:salvando?'not-allowed':'pointer', boxShadow:salvando?'none':'0 3px 10px rgba(99,102,241,0.35)', transition:'all .15s' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                {salvando ? 'Salvando...' : 'Salvar permissoes'}
               </button>
             </div>
           </div>
         ) : (
-          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'60px', textAlign:'center', color:'#9ca3af' }}>
-            <p style={{ fontSize:'36px', marginBottom:'12px' }}>👈</p>
-            <p style={{ fontSize:'15px', fontWeight:'500', marginBottom:'6px' }}>Selecione um usuário</p>
-            <p style={{ fontSize:'13px' }}>Clique em um usuário para configurar as permissões.</p>
+          <div style={{ background:'white', borderRadius:'16px', border:'1px solid #e8e9f4', padding:'60px 40px', textAlign:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+            <div style={{ width:'64px', height:'64px', borderRadius:'50%', background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <p style={{ fontSize:'16px', fontWeight:'700', color:'#111827', marginBottom:'6px' }}>Selecione um usuario</p>
+            <p style={{ fontSize:'13px', color:'#9ca3af' }}>Clique em um usuario na lista para configurar as permissoes.</p>
           </div>
         )}
       </div>

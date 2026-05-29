@@ -10,6 +10,7 @@ export type Permissao = {
 }
 
 export const TELAS = [
+  { key:'dashboard',      label:'Dashboard'     },
   { key:'agenda',         label:'Agenda'        },
   { key:'clientes',       label:'Clientes'      },
   { key:'profissionais',  label:'Profissionais' },
@@ -21,6 +22,7 @@ export const TELAS = [
 
 // Nivel usuario: so ve e agenda para o profissional vinculado a ele
 export const PERM_PADRAO_USUARIO: Record<string, Permissao> = {
+  dashboard:     { tela:'dashboard',     visualizar:true,  criar:false, alterar:false, excluir:false },
   agenda:        { tela:'agenda',        visualizar:true,  criar:true,  alterar:false, excluir:false },
   clientes:      { tela:'clientes',      visualizar:false, criar:false, alterar:false, excluir:false },
   profissionais: { tela:'profissionais', visualizar:false, criar:false, alterar:false, excluir:false },
@@ -32,6 +34,7 @@ export const PERM_PADRAO_USUARIO: Record<string, Permissao> = {
 
 // Nivel profissional: ve agenda de todos, pode criar/alterar, nao exclui
 export const PERM_PADRAO_PROFISSIONAL: Record<string, Permissao> = {
+  dashboard:     { tela:'dashboard',     visualizar:true,  criar:false, alterar:false, excluir:false },
   agenda:        { tela:'agenda',        visualizar:true,  criar:true,  alterar:true,  excluir:false },
   clientes:      { tela:'clientes',      visualizar:true,  criar:true,  alterar:true,  excluir:false },
   profissionais: { tela:'profissionais', visualizar:true,  criar:false, alterar:false, excluir:false },
@@ -43,6 +46,7 @@ export const PERM_PADRAO_PROFISSIONAL: Record<string, Permissao> = {
 
 // Nivel admin: acesso total exceto exclusao de usuarios
 export const PERM_PADRAO_ADMIN: Record<string, Permissao> = {
+  dashboard:     { tela:'dashboard',     visualizar:true,  criar:false, alterar:false, excluir:false },
   agenda:        { tela:'agenda',        visualizar:true, criar:true, alterar:true, excluir:true  },
   clientes:      { tela:'clientes',      visualizar:true, criar:true, alterar:true, excluir:true  },
   profissionais: { tela:'profissionais', visualizar:true, criar:true, alterar:true, excluir:true  },

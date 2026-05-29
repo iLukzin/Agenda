@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
 
@@ -17,7 +18,9 @@ const planoCor: Record<string,string> = { basico:'#6b7280', profissional:'#6366f
 const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
 
 export default function EmpresasPage() {
+  const router = useRouter()
   const { recarregar } = useEmpresa()
+  const router = useRouter()
   const [empresas, setEmpresas]     = useState<Empresa[]>([])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)
@@ -142,7 +145,18 @@ export default function EmpresasPage() {
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <Link href="/dashboard" style={{ fontSize:'13px', color:'#9ca3af', textDecoration:'none', display:'block', marginBottom:'4px' }}>Painel</Link>
+          <div style={ display:'flex', alignItems:'center', gap:'14px' }>
+            <button onClick={()=>router.push('/dashboard')}
+              style={ display:'flex', alignItems:'center', gap:'8px', background:'white', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'9px 16px', cursor:'pointer', fontSize:'13px', fontWeight:'600', color:'#4f46e5', boxShadow:'0 1px 4px rgba(99,102,241,0.12)', transition:'all .15s', flexShrink:0 }
+              onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff'}}
+              onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white'}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Voltar
+            </button>
+            <div>
+              <h1 style={ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.5px', lineHeight:1 }>Gerenciar Empresas</h1>
+              <p style={ fontSize:'13px', color:'#6b7280', marginTop:'3px' }>Painel Master -- todas as empresas</p>
+            </div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Gerenciar Empresas</h1>
           <p style={{ fontSize:'13px', color:'#9ca3af' }}>Painel Master -- todas as empresas</p>
         </div>

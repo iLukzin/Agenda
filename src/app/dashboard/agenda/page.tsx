@@ -91,7 +91,8 @@ function calcSlots(
   const durMin    = parseInt(duracao) || 60
   const result: SlotItem[] = []
   let min = inicioMin
-  while (min + durMin - fimMin < 1) {
+  // Permite agendar no horario exato de fechamento (ex: ate as 21:00 inclusive)
+  while (min - fimMin <= 0) {
     const hora  = Math.floor(min / 60)
     const resto = min % 60
     const label = String(hora).padStart(2,'0') + ':' + String(resto).padStart(2,'0')

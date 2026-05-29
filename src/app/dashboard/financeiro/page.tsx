@@ -1,5 +1,6 @@
 // BUILD: 1779992105
 'use client'
+import { useVisibilityRefresh } from '@/hooks/useVisibilityRefresh'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
@@ -108,6 +109,7 @@ export default function FinanceiroPage() {
   }, [empresaAtiva?.id, periodoIni, periodoFim])
 
   useEffect(() => { carregar() }, [carregar])
+  useVisibilityRefresh(carregar)
 
   // Totais
   const receitasLanc = lancamentos.filter(l=>l.tipo==='receita'&&l.status==='pago').reduce((s,l)=>s+l.valor,0)

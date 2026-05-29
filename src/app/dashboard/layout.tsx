@@ -182,13 +182,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {!isMobile && (
-        <aside style={{ width:sidebarW, background:'#0f172a', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transition:'width .2s ease', overflow:'hidden' }}>
+        <aside style={{ width:sidebarW, background:'#0d1117', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transition:'width .2s ease', overflow:'hidden' }}>
           <SidebarConteudo {...sidebarProps} isMobile={false}/>
         </aside>
       )}
 
       {isMobile && (
-        <aside style={{ width:'260px', background:'#0f172a', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transform:menuMobile?'translateX(0)':'translateX(-100%)', transition:'transform .25s ease' }}>
+        <aside style={{ width:'260px', background:'#0d1117', display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:50, transform:menuMobile?'translateX(0)':'translateX(-100%)', transition:'transform .25s ease' }}>
           <SidebarConteudo {...sidebarProps} sidebarAberta={true} isMobile={true} onClose={()=>setMenuMobile(false)}/>
         </aside>
       )}
@@ -242,7 +242,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
       {sidebarAberta && empresaAtiva && (
         <div style={{ margin:'10px 10px 6px', position:'relative' }}>
           <button onClick={() => setDropEmpresa(!dropEmpresa)} style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'9px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px' }}>
-            <div style={{ width:'26px', height:'26px', borderRadius:'7px', background:'linear-gradient(135deg,#3b82f6,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:'white', fontWeight:'700', flexShrink:0 }}>
+            <div style={{ width:'26px', height:'26px', borderRadius:'7px', background:'linear-gradient(135deg,#6366f1,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:'white', fontWeight:'700', flexShrink:0 }}>
               {empresaAtiva.nome.charAt(0)}
             </div>
             <div style={{ flex:1, textAlign:'left', overflow:'hidden' }}>
@@ -260,7 +260,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
             <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'#1e293b', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', zIndex:60, overflow:'hidden', maxHeight:'200px', overflowY:'auto' }}>
               {empresas.map((emp: EmpresaResumo) => (
                 <button key={emp.id} onClick={() => { trocarEmpresa(emp); setDropEmpresa(false) }} style={{ width:'100%', padding:'10px 12px', background:emp.id===empresaAtiva?.id?'rgba(59,130,246,0.15)':'transparent', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ width:'24px', height:'24px', borderRadius:'6px', background:'linear-gradient(135deg,#3b82f6,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'white', fontWeight:'700', flexShrink:0 }}>
+                  <div style={{ width:'24px', height:'24px', borderRadius:'6px', background:'linear-gradient(135deg,#6366f1,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'white', fontWeight:'700', flexShrink:0 }}>
                     {emp.nome.charAt(0)}
                   </div>
                   <div style={{ textAlign:'left', flex:1 }}>
@@ -283,9 +283,9 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
         {navItems.map(item => {
           const ativo = pathname === item.href
           return (
-            <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(59,130,246,0.18)':'transparent', transition:'all .15s', whiteSpace:'nowrap', position:'relative' }}>
+            <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(99,102,241,0.15)':'transparent', transition:'all .15s', whiteSpace:'nowrap', position:'relative' }}>
               {ativo && <div style={{ position:'absolute', left:0, top:'50%', transform:'translateY(-50%)', width:'3px', height:'20px', background:'#3b82f6', borderRadius:'0 3px 3px 0' }}/>}
-              <span style={{ width:'20px', textAlign:'center', flexShrink:0, color:ativo?'#60a5fa':'rgba(255,255,255,0.4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ width:'20px', textAlign:'center', flexShrink:0, color:ativo?'#a5b4fc':'rgba(255,255,255,0.38)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <NavIcon code={item.icon} size={16}/>
               </span>
               {sidebarAberta && <span>{item.label}</span>}
@@ -300,8 +300,8 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
             {navMaster.map(item => {
               const ativo = pathname.startsWith(item.href)
               return (
-                <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(59,130,246,0.18)':'transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
-                  <span style={{ width:'20px', textAlign:'center', flexShrink:0, color:ativo?'#60a5fa':'rgba(255,255,255,0.4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(99,102,241,0.15)':'transparent', transition:'all .15s', whiteSpace:'nowrap' }}>
+                  <span style={{ width:'20px', textAlign:'center', flexShrink:0, color:ativo?'#a5b4fc':'rgba(255,255,255,0.38)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <NavIcon code={item.icon} size={16}/>
                   </span>
                   {sidebarAberta && <span>{item.label}</span>}
@@ -315,7 +315,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
       {/* Usuario */}
       {sidebarAberta && usuario && (
         <div style={{ padding:'10px 12px', borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', gap:'8px' }}>
-          <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#3b82f6,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'700', color:'white', flexShrink:0 }}>
+          <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#6366f1,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'700', color:'white', flexShrink:0 }}>
             {usuario.nome.charAt(0)}
           </div>
           <div style={{ flex:1, overflow:'hidden' }}>

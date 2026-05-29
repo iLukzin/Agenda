@@ -1,5 +1,6 @@
 // BUILD: 1779992105
 'use client'
+import { useVisibilityRefresh } from '@/hooks/useVisibilityRefresh'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
@@ -89,6 +90,7 @@ export default function ProfissionaisPage() {
   }, [empresaAtiva?.id])
 
   useEffect(() => { carregar() }, [carregar])
+  useVisibilityRefresh(carregar)
 
   const filtrados = profissionais.filter(p =>
     p.nome.toLowerCase().includes(busca.toLowerCase()) ||

@@ -41,13 +41,13 @@ export function formatarData(
 
 export function corStatus(status: string): string {
   const cores: Record<string, string> = {
-    aberto:         'bg-blue-100 text-blue-700',
-    fechado:        'bg-green-100 text-green-700',
-    cancelado:      'bg-red-100 text-red-700',
+    aberto:         'badge-aberto',
+    fechado:        'badge-fechado',
+    cancelado:      'badge-cancelado',
     // legado
-    agendado:       'bg-blue-100 text-blue-700',
-    confirmado:     'bg-green-100 text-green-700',
-    em_atendimento: 'bg-yellow-100 text-yellow-700',
+    agendado:       'badge-aberto',
+    confirmado:     'badge-fechado',
+    em_atendimento: 'badge badge-warning',
     finalizado:     'bg-green-100 text-green-600',
     nao_compareceu: 'bg-orange-100 text-orange-700',
   }

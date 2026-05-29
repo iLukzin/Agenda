@@ -1,5 +1,6 @@
 // BUILD: 1779992105
 'use client'
+import { useVisibilityRefresh } from '@/hooks/useVisibilityRefresh'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
@@ -96,6 +97,7 @@ export default function ClientesPage() {
   }, [empresaAtiva?.id])
 
   useEffect(() => { carregar() }, [carregar])
+  useVisibilityRefresh(carregar)
 
   const filtrados = clientes.filter(c => {
     const buscaOk = c.nome?.toLowerCase().includes(busca.toLowerCase()) ||

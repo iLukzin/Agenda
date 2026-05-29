@@ -1,4 +1,5 @@
 'use client'
+import { useVisibilityRefresh } from '@/hooks/useVisibilityRefresh'
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { corStatus, labelStatus, createClient } from '@/lib/supabase'
@@ -300,6 +301,7 @@ export default function AgendaPage() {
   useEffect(() => { carregarRef.current = carregar }, [carregar])
 
   useEffect(() => { carregar() }, [carregar])
+  useVisibilityRefresh(carregar)
 
   // Realtime: canal separado que nao re-subscribe a cada render
   useEffect(() => {

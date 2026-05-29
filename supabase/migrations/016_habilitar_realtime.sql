@@ -1,11 +1,9 @@
--- IMPORTANTE: Execute este SQL no Supabase para habilitar Realtime
--- Dashboard Supabase -> Database -> Replication -> Tables
-
--- Habilitar realtime na tabela agendamentos
+-- Habilitar Realtime nas tabelas necessarias
 ALTER PUBLICATION supabase_realtime ADD TABLE agendamentos;
+ALTER PUBLICATION supabase_realtime ADD TABLE empresas;
 
--- Verificar se foi habilitado
-SELECT schemaname, tablename
+-- Verificar
+SELECT tablename
 FROM pg_publication_tables
 WHERE pubname = 'supabase_realtime'
-  AND tablename = 'agendamentos';
+  AND tablename IN ('agendamentos', 'empresas');

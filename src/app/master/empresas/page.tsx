@@ -111,6 +111,27 @@ export default function EmpresasPage() {
     recarregar()
   }
 
+  async function toggleBloqueio(e: Empresa) {
+    const novoBloqueio = !e.bloqueada
+    const motivo = novoBloqueio
+      ? (prompt('Motivo do bloqueio (ex: Falta de pagamento):') || 'Falta de pagamento')
+      : null
+    if (novoBloqueio && motivo === null) return // cancelou o prompt
+
+    const sb = createClient()
+    await sb.from('empresas').update({
+      bloqueada: novoBloqueio,
+      motivo_bloqueio: motivo,
+    }).eq('id', e.id)
+
+    await carregar()
+    recarregar()
+
+    if (novoBloqueio) {
+      alert('Empresa bloqueada. Usuarios serao deslogados automaticamente.')
+    }
+  }
+
   const f = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
       setForm(p => ({...p, [k]: e.target.value}))
@@ -188,7 +209,17 @@ export default function EmpresasPage() {
                     </div>
                   </td>
                   <td style={{ padding:'14px 16px' }}>
+                    <div style={{ display:'flex', gap:'6px' }}>
                     <button onClick={() => abrirEdicao(e)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>Editar</button>
+                    <button onClick={() => toggleBloqueio(e)}
+                      style={{ background:e.bloqueada?'#ecfdf5':'#fef2f2', color:e.bloqueada?'#10b981':'#ef4444', border:e.bloqueada?'1px solid #6ee7b7':'1px solid #fecaca', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+                      {e.bloqueada ? (
+                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Desbloquear</>
+                      ) : (
+                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>Bloquear</>
+                      )}
+                    </button>
+                  </div>
                   </td>
                 </tr>
               ))}

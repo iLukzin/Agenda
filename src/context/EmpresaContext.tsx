@@ -148,14 +148,14 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   // Monitorar bloqueio em tempo real - deslogar se empresa for bloqueada
   useEffect(() => {
     if (!empresaAtiva?.id) return
-    const u = usuario
-    if (!u || u.nivel_acesso === 'master') return // master nunca e bloqueado
+    if (!usuario || usuario.nivel_acesso === 'master') return
 
     const empresaId = empresaAtiva.id
+    const nivelAcesso = usuario.nivel_acesso
     const sb = createClient()
 
     const channel = sb
-      .channel('bloqueio-empresa-' + empresaId)
+      .channel('bloqueio-' + empresaId)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
@@ -163,8 +163,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         filter: 'id=eq.' + empresaId,
       }, async (payload: any) => {
         const rec = payload.new
-        if (rec && rec.bloqueada === true) {
-          // Empresa foi bloqueada - deslogar imediatamente
+        if (rec && rec.bloqueada === true && nivelAcesso !== 'master') {
           const motivo = rec.motivo_bloqueio || 'Falta de pagamento'
           await sb.auth.signOut()
           if (typeof window !== 'undefined') {
@@ -175,7 +174,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       .subscribe()
 
     return () => { sb.removeChannel(channel) }
-  }, [empresaAtiva?.id, usuario])
+  }, [empresaAtiva?.id, usuario?.nivel_acesso])
 
   useEffect(() => {
     if (!iniciou) { setIniciou(true); carregar() }

@@ -235,7 +235,7 @@ export default function AgendaPage() {
   const [servicos, setServicos] = useState<any[]>([])
   const [horariosProfissional, setHorariosProfissional] = useState<HorarioDB[]>([])
   const [carregando, setCarregando] = useState(false)
-  const [visualizacao, setVisualizacao] = useState<VisualizacaoTipo>('semana')
+  const [visualizacao, setVisualizacao] = useState<VisualizacaoTipo>('dia')
   const [semanaBase, setSemanaBase] = useState<Date>(() => inicioSemana(hojeNoBrasil()))
   const [diaAtivo, setDiaAtivo] = useState<Date>(() => hojeNoBrasil())
   const [calAberto, setCalAberto] = useState(false)
@@ -353,7 +353,7 @@ export default function AgendaPage() {
     }
   }, [empresaAtiva?.id]) // SEM carregar no dep - evita loop
 
-  const diasSemana = useMemo(() => Array.from({length:6}, (_,i) => addDias(semanaBase, i)), [semanaBase])
+  const diasSemana = useMemo(() => Array.from({length:7}, (_,i) => addDias(semanaBase, i)), [semanaBase])
 
   function semanaAnterior() { setSemanaBase(d => addDias(d, -7)) }
   function semanaSeguinte() { setSemanaBase(d => addDias(d, 7)) }
@@ -477,12 +477,25 @@ export default function AgendaPage() {
       {/* Cabecalho */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px', flexShrink:0, flexWrap:'wrap', gap:'10px' }}>
         <div style={{ position:'relative' }}>
-          <button onClick={()=>setCalAberto(c=>!c)} style={{ background:'none', border:'none', cursor:'pointer', textAlign:'left', padding:0 }}>
-            <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#1a1a2e' }}>Agenda</h1>
-            <p style={{ fontSize:'13px', color:'#6366f1', fontWeight:'500', textTransform:'capitalize', textDecoration:'underline dotted' }}>
-              {visualizacao === 'periodo' ? getLabelPeriodo() : visualizacao === 'semana' ? labelPeriodoSemana(semanaBase) : labelDia(diaAtivo)}
-            </p>
-          </button>
+          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+            <div>
+              <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.5px', lineHeight:1 }}>Agenda</h1>
+            </div>
+            <button onClick={()=>setCalAberto(c=>!c)}
+              style={{ display:'flex', alignItems:'center', gap:'8px', background:'white', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'7px 14px', cursor:'pointer', boxShadow:'0 1px 4px rgba(99,102,241,0.1)', transition:'all .15s' }}
+              onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.borderColor='#6366f1';el.style.boxShadow='0 2px 8px rgba(99,102,241,0.2)'}}
+              onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.borderColor='#e0e7ff';el.style.boxShadow='0 1px 4px rgba(99,102,241,0.1)'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <span style={{ fontSize:'13px', fontWeight:'600', color:'#4f46e5', textTransform:'capitalize', letterSpacing:'-0.2px', whiteSpace:'nowrap' }}>
+                {visualizacao === 'periodo' ? getLabelPeriodo() : visualizacao === 'semana' ? labelPeriodoSemana(semanaBase) : labelDia(diaAtivo)}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </div>
           {calAberto && (
             <><div onClick={()=>setCalAberto(false)} style={{ position:'fixed', inset:0, zIndex:199 }}/>
             <MiniCalendario dataSel={diaAtivo} onChange={d=>{irParaData(d);setVisualizacao('dia')}} onFechar={()=>setCalAberto(false)}/></>
@@ -519,10 +532,27 @@ export default function AgendaPage() {
             )}
           </div>
           {visualizacao !== 'periodo' && (
-            <div style={{ display:'flex', gap:'4px' }}>
-              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>{'<'}</button>
-              <button onClick={irParaHoje} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', color:'#6366f1' }}>Hoje</button>
-              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'6px', padding:'6px 10px', cursor:'pointer', fontSize:'16px' }}>{'>'}</button>
+            <div style={{ display:'flex', gap:'6px', alignItems:'center' }}>
+              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior}
+                style={{ width:'36px', height:'36px', background:'white', border:'1.5px solid #e5e7eb', borderRadius:'10px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151', transition:'all .15s', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}
+                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#f5f3ff';el.style.borderColor='#6366f1';el.style.color='#6366f1'}}
+                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.borderColor='#e5e7eb';el.style.color='#374151'}}
+                title={visualizacao==='semana'?'Semana anterior':'Dia anterior'}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <button onClick={irParaHoje}
+                style={{ height:'36px', padding:'0 14px', background:'#eef2ff', border:'1.5px solid #c7d2fe', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'700', color:'#6366f1', transition:'all .15s', letterSpacing:'-0.2px' }}
+                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#6366f1';el.style.color='white'}}
+                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.color='#6366f1'}}>
+                Hoje
+              </button>
+              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte}
+                style={{ width:'36px', height:'36px', background:'white', border:'1.5px solid #e5e7eb', borderRadius:'10px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151', transition:'all .15s', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}
+                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#f5f3ff';el.style.borderColor='#6366f1';el.style.color='#6366f1'}}
+                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.borderColor='#e5e7eb';el.style.color='#374151'}}
+                title={visualizacao==='semana'?'Proxima semana':'Proximo dia'}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
             </div>
           )}
           <div style={{ display:'flex', background:'#f3f4f6', borderRadius:'8px', padding:'3px' }}>
@@ -684,9 +714,9 @@ export default function AgendaPage() {
 
       {/* Modal agendamento */}
       {modalAberto && (
-        <div onClick={fecharModal} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'540px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
-            <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 18px' }}/>
+        <div onClick={fecharModal} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'560px', borderRadius:'20px', padding:'28px 24px', maxHeight:'92vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.25)', animation:'slideUp .25s ease both' }}>
+            <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
               <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao?'Editar agendamento':'+ Novo agendamento'}</h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>

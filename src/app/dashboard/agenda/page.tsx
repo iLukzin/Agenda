@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { corStatus, labelStatus, createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { criarAgendamento, atualizarAgendamento } from '@/lib/api'
@@ -294,26 +294,47 @@ export default function AgendaPage() {
     setCarregando(false)
   }, [empresaAtiva?.id, usuario?.nivel_acesso, usuario?.profissional_id])
 
-  useEffect(() => {
-    carregar()
+  // Carregar dados iniciais
+  // Ref estavel para o carregar - evita closure stale no Realtime
+  const carregarRef = useRef(carregar)
+  useEffect(() => { carregarRef.current = carregar }, [carregar])
 
-    // Realtime: recarrega quando qualquer agendamento da empresa muda
+  useEffect(() => { carregar() }, [carregar])
+
+  // Realtime: canal separado que nao re-subscribe a cada render
+  useEffect(() => {
     if (!empresaAtiva?.id) return
+    const empresaId = empresaAtiva.id
     const sb = createClient()
+
+    // Sem filter para garantir compatibilidade - filtramos no callback
     const channel = sb
-      .channel('agenda-realtime-' + empresaAtiva.id)
+      .channel('agenda-rt-' + empresaId)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'agendamentos',
-        filter: 'empresa_id=eq.' + empresaAtiva.id,
-      }, () => {
-        carregar()
+      }, (payload: any) => {
+        // Verificar se e da empresa correta antes de recarregar
+        const rec = payload.new || payload.old
+        if (!rec || rec.empresa_id === empresaId) {
+          carregarRef.current()
+        }
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] Conectado - agenda', empresaId)
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('[Realtime] Erro no canal - tentando reconectar')
+        }
+      })
 
-    return () => { sb.removeChannel(channel) }
-  }, [carregar, empresaAtiva?.id])
+    return () => {
+      console.log('[Realtime] Desconectando canal')
+      sb.removeChannel(channel)
+    }
+  }, [empresaAtiva?.id]) // SEM carregar no dep - evita loop
 
   const diasSemana = useMemo(() => Array.from({length:6}, (_,i) => addDias(semanaBase, i)), [semanaBase])
 

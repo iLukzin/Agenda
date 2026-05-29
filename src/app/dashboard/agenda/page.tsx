@@ -85,8 +85,8 @@ function calcSlots(
   selecionado: AgendamentoLocal | null
 ): SlotItem[] {
   if (!horario || !dataISO || !profissional) return []
-  const partsIni = horario.hora_inicio.split(':').map(Number)
-  const partsFim = horario.hora_fim.split(':').map(Number)
+  const partsIni = (horario.hora_inicio || '08:00').split(':').map(Number)
+  const partsFim = (horario.hora_fim   || '18:00').split(':').map(Number)
   const inicioMin = partsIni[0] * 60 + partsIni[1]
   const fimMin    = partsFim[0] * 60 + partsFim[1]
   const durMin    = parseInt(duracao) || 60
@@ -378,7 +378,7 @@ export default function AgendaPage() {
     setErroForm([])
     if (!empresaAtiva?.id) return
     setSalvando(true)
-    const parts = form.horaInicio.split(':').map(Number)
+    const parts = (form.horaInicio || '09:00').split(':').map(Number)
     const dataInicio = form.dataISO + 'T' + String(parts[0]).padStart(2,'0') + ':' + String(parts[1]).padStart(2,'0') + ':00'
     const srv = servicos.find((s: any) => s.nome === form.servico)
     const prof = profissionais.find((p: any) => p.nome === form.profissional)

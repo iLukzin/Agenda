@@ -1,23 +1,25 @@
 'use client'
-import { useEffect, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 
 export function useVisibilityRefresh(onRefresh: () => void, idleMs = 120000) {
-  const refresh = useCallback(onRefresh, [onRefresh])
+  const onRefreshRef = useRef(onRefresh)
+  onRefreshRef.current = onRefresh
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
     let lastActive = Date.now()
-    let hidden = false
+    let wasHidden = false
 
     function onVisible() {
       if (document.visibilityState === 'visible') {
         const idle = Date.now() - lastActive
-        if (hidden && idle > 10000) {
-          refresh()
+        if (wasHidden && idle > 10000) {
+          onRefreshRef.current()
         }
-        hidden = false
+        wasHidden = false
         lastActive = Date.now()
       } else {
-        hidden = true
+        wasHidden = true
         lastActive = Date.now()
       }
     }
@@ -25,7 +27,7 @@ export function useVisibilityRefresh(onRefresh: () => void, idleMs = 120000) {
     function onFocus() {
       const idle = Date.now() - lastActive
       if (idle > idleMs) {
-        refresh()
+        onRefreshRef.current()
       }
       lastActive = Date.now()
     }
@@ -43,5 +45,5 @@ export function useVisibilityRefresh(onRefresh: () => void, idleMs = 120000) {
       window.removeEventListener('focus', onFocus)
       window.removeEventListener('blur', onBlur)
     }
-  }, [refresh, idleMs])
+  }, [idleMs])
 }

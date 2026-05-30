@@ -20,7 +20,6 @@ const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2f
 export default function EmpresasPage() {
   const router = useRouter()
   const { recarregar } = useEmpresa()
-  const router = useRouter()
   const [empresas, setEmpresas]     = useState<Empresa[]>([])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)
@@ -28,7 +27,7 @@ export default function EmpresasPage() {
   const [busca, setBusca]           = useState('')
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao]   = useState(false)
-  const [selecionada, setSelecionada] = useState<Empresa|null>(null)
+  const [selecionada, setSelecionada] = useState(null as Empresa | null)
   const [form, setForm] = useState({
     nome:'', cnpj:'', email:'', telefone:'', endereco:'',
     plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:''

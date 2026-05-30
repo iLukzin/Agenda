@@ -31,7 +31,7 @@ export default function UsuariosMasterPage() {
   const [filtroNivel, setFiltroNivel] = useState('todos')
   const [modalAberto, setModalAberto]   = useState(false)
   const [modoEdicao, setModoEdicao]     = useState(false)
-  const [selecionado, setSelecionado]   = useState<Usuario|null>(null)
+  const [selecionado, setSelecionado]   = useState(null as Usuario | null)
   const [form, setForm] = useState({
     nome:'', email:'', telefone:'', cargo:'',
     nivel_acesso:'profissional', empresa_id:'', status:'ativo', senha:'', profissional_id:''
@@ -84,7 +84,8 @@ export default function UsuariosMasterPage() {
 
   async function salvar() {
     if (!form.nome.trim() || !form.email.trim()) return setErro('Nome e e-mail sao obrigatorios.')
-    if (!modoEdicao && form.senha.length < 6) return setErro('Senha deve ter pelo menos 6 caracteres.')
+    const senhaOk = modoEdicao || form.senha.length >= 6
+    if (!senhaOk) return setErro('Senha deve ter pelo menos 6 caracteres.')
     if (form.nivel_acesso !== 'master' && !form.empresa_id) return setErro('Selecione uma empresa para este usuario.')
     setSalvando(true); setErro('')
     try {

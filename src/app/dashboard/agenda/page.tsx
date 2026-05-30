@@ -273,7 +273,7 @@ export default function AgendaPage() {
     if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
     const [r1, r2, r3, r4, r5] = await Promise.all([
       qAgs.order('data_inicio'),
-      sb.from('clientes').select('id,nome,telefone,whatsapp').eq('empresa_id', empresaAtiva.id),
+      sb.from('clientes').select('id,nome,telefone,whatsapp,plano_id').eq('empresa_id', empresaAtiva.id),
       qProfs.order('nome'),
       sb.from('servicos').select('id,nome,cor,duracao_min,valor,status').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo').order('nome'),
       sb.from('horarios_prof').select('profissional_id,dia_semana,hora_inicio,hora_fim,ativo').eq('empresa_id', empresaAtiva.id).eq('ativo', true),
@@ -369,6 +369,7 @@ export default function AgendaPage() {
   function abrirNovo() {
     const dataRef = visualizacao === 'dia' ? diaAtivo : hoje
     setModoEdicao(false); setSelecionado(null); setClienteSel(null); setBuscaCliente('')
+    setPlanoCliente(null); setSessaoPlano(null)
     setIntervaloMin(30)
     setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
     setModalAberto(true)
@@ -501,8 +502,19 @@ export default function AgendaPage() {
       sb2.from('planos').select('*').eq('id', planoId).single(),
       sb2.from('cliente_plano_sessoes').select('*').eq('cliente_id', clienteId).eq('plano_id', planoId).eq('empresa_id', empresaAtiva.id).maybeSingle(),
     ])
-    if (r1.data) { setPlanoCliente(r1.data); setSessaoPlano(r2.data) }
-    else { setPlanoCliente(null); setSessaoPlano(null) }
+    if (r1.data) {
+      setPlanoCliente(r1.data)
+      setSessaoPlano(r2.data)
+      // Ativar plano por padrao quando cliente tem plano
+      const util = r2.data ? (r2.data.sessoes_utilizadas || 0) : 0
+      const total = r1.data.sessoes || r1.data.sessoes_mes || 1
+      const cobrar = (util % total) === 0
+      const valor = cobrar ? String(r1.data.valor || 0) : '0'
+      setForm(f => ({...f, usar_plano: true, valor}))
+    } else {
+      setPlanoCliente(null)
+      setSessaoPlano(null)
+    }
   }
 
   const isBloqEdicao = modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado')

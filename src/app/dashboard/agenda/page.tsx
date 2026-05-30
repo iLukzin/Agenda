@@ -407,7 +407,7 @@ export default function AgendaPage() {
     let valorFinal = parseFloat(form.valor) || 0
     if (form.usar_plano && planoCliente) {
       const ipSalvar = calcularSessaoPlano()
-      valorFinal = ipSalvar.cobrar ? (parseFloat(planoCliente.valor) || 0) : 0
+      valorFinal = ipSalvar.cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
     }
     const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, observacoes:form.observacoes||null, plano_id:form.usar_plano?planoCliente?.id:null }
     if (!modoEdicao) payload.status = 'aberto'
@@ -489,7 +489,7 @@ export default function AgendaPage() {
   const calcularSessaoPlano = () => {
     if (!planoCliente) return { cobrar: true, sessaoAtual: 1 }
     const utilizadas = sessaoPlano ? (sessaoPlano.sessoes_utilizadas || 0) : 0
-    const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
+    const total = planoCliente.sessoes_mes || planoCliente.sessoes || planoCliente.sessoes_mes || 1
     const posicaoNoCiclo = utilizadas % total
     const cobrar = posicaoNoCiclo === 0 // cobra na 1a sessao do ciclo (0, total, 2*total...)
     const sessaoAtual = posicaoNoCiclo + 1
@@ -510,7 +510,7 @@ export default function AgendaPage() {
       const util = r2.data ? (r2.data.sessoes_utilizadas || 0) : 0
       const total = r1.data.sessoes || r1.data.sessoes_mes || 1
       const cobrar = (util % total) === 0
-      const valor = cobrar ? String(r1.data.valor || 0) : '0'
+      const valor = cobrar ? String(r1.data.valor_mensal || r1.data.valor || 0) : '0'
       setForm(f => ({...f, usar_plano: true, valor}))
     } else {
       setPlanoCliente(null)
@@ -881,7 +881,7 @@ export default function AgendaPage() {
                   <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'8px' }}>Tipo de agendamento</label>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
                     {/* Opcao: Plano */}
-                    <div onClick={() => setForm(f => { const usarP = true; const ip = calcularSessaoPlano(); return {...f, usar_plano:usarP, valor:ip.cobrar ? String(planoCliente.valor||0) : '0', servico:''} })}
+                    <div onClick={() => setForm(f => { const usarP = true; const ip = calcularSessaoPlano(); return {...f, usar_plano:usarP, valor:ip.cobrar ? String(planoCliente.valor_mensal||planoCliente.valor||0) : '0', servico:''} })}
                       style={{ padding:'14px', borderRadius:'12px', cursor:'pointer', border:form.usar_plano?'2px solid #6366f1':'2px solid #e5e7eb', background:form.usar_plano?'#eef2ff':'white', transition:'all .15s' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px' }}>
                         <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:form.usar_plano?'#6366f1':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -890,12 +890,12 @@ export default function AgendaPage() {
                         <p style={{ fontSize:'12px', fontWeight:'700', color:form.usar_plano?'#4f46e5':'#374151' }}>Plano mensal</p>
                       </div>
                       <p style={{ fontSize:'12px', fontWeight:'600', color:form.usar_plano?'#4f46e5':'#6b7280', marginBottom:'2px' }}>{planoCliente.nome}</p>
-                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes || planoCliente.sessoes_mes || 1} sessoes</p>
+                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes_mes || planoCliente.sessoes || planoCliente.sessoes_mes || 1} sessoes</p>
                       {form.usar_plano && infoPlano && (
                         <div style={{ marginTop:'8px', padding:'8px', background:'white', borderRadius:'8px', border:'1px solid #c7d2fe' }}>
                           <p style={{ fontSize:'11px', color:'#6b7280', marginBottom:'2px' }}>Sessao {infoPlano.sessaoAtual} de {infoPlano.total}</p>
                           <p style={{ fontSize:'13px', fontWeight:'700', color:infoPlano.cobrar?'#059669':'#6366f1' }}>
-                            {infoPlano.cobrar ? 'Cobra: R$ ' + Number(planoCliente.valor||0).toFixed(2).replace('.',',') : 'Inclusa no plano - sem cobranca'}
+                            {infoPlano.cobrar ? 'Cobra: R$ ' + Number(planoCliente.valor_mensal||planoCliente.valor||0).toFixed(2).replace('.',',') : 'Inclusa no plano - sem cobranca'}
                           </p>
                         </div>
                       )}
@@ -1012,7 +1012,7 @@ export default function AgendaPage() {
                     <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'12px', padding:'8px 14px', textAlign:'center', flexShrink:0 }}>
                       <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Valor</p>
                       <p style={{ color:'white', fontSize:'20px', fontWeight:'800', letterSpacing:'-0.5px' }}>
-                        {infoPlano.cobrar ? 'R$ ' + Number(planoCliente?.valor||0).toFixed(2).replace('.',',') : 'R$ 0,00'}
+                        {infoPlano.cobrar ? 'R$ ' + Number(planoCliente?.valor_mensal||planoCliente?.valor||0).toFixed(2).replace('.',',') : 'R$ 0,00'}
                       </p>
                     </div>
                   </div>

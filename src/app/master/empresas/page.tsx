@@ -116,9 +116,7 @@ export default function EmpresasPage() {
 
   async function toggleBloqueio(e: Empresa) {
     const novoBloqueio = !e.bloqueada
-    const motivo = novoBloqueio
-      ? (prompt('Motivo do bloqueio (ex: Falta de pagamento):') || 'Falta de pagamento')
-      : null
+    const motivo = novoBloqueio ? (prompt('Motivo do bloqueio (ex: Falta de pagamento):') || 'Falta de pagamento') : null
     if (novoBloqueio && motivo === null) return // cancelou o prompt
 
     const sb = createClient()
@@ -135,9 +133,7 @@ export default function EmpresasPage() {
     }
   }
 
-  const f = (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) =>
-      setForm(p => ({...p, [k]: e.target.value}))
+  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) => setForm(p => ({...p, [k]: e.target.value}))
 
   const ativas = empresas.filter(e => e.status==='ativo').length
 

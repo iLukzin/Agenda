@@ -494,6 +494,17 @@ export default function AgendaPage() {
     return { cobrar, sessaoAtual, total, utilizadas }
   }
   const infoPlano = form.usar_plano && planoCliente ? calcularSessaoPlano() : null
+  async function buscarPlanoCliente(clienteId: string, planoId: string) {
+    if (!empresaAtiva?.id) return
+    const sb2 = createClient()
+    const [r1, r2] = await Promise.all([
+      sb2.from('planos').select('*').eq('id', planoId).single(),
+      sb2.from('cliente_plano_sessoes').select('*').eq('cliente_id', clienteId).eq('plano_id', planoId).eq('empresa_id', empresaAtiva.id).maybeSingle(),
+    ])
+    if (r1.data) { setPlanoCliente(r1.data); setSessaoPlano(r2.data) }
+    else { setPlanoCliente(null); setSessaoPlano(null) }
+  }
+
   const isBloqEdicao = modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado')
 
   const getLabelPeriodo = () => {
@@ -839,20 +850,7 @@ export default function AgendaPage() {
                       <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'white', borderRadius:'10px', border:'1px solid #e5e7eb', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', zIndex:100, maxHeight:'200px', overflowY:'auto' }}>
                         {clientes.filter((c: any) => c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).map((c: any) => (
                           <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome,plano_id:'',usar_plano:false,valor:''}));setBuscaCliente('');setDropCliente(false);setErroForm([]);
-              // Buscar plano vinculado ao cliente
-              if (c.plano_id && empresaAtiva?.id) {
-                const sb2 = createClient()
-                const [r1, r2] = await Promise.all([
-                  sb2.from('planos').select('*').eq('id', c.plano_id).single(),
-                  sb2.from('cliente_plano_sessoes').select('*').eq('cliente_id', c.id).eq('plano_id', c.plano_id).eq('empresa_id', empresaAtiva.id).maybeSingle(),
-                ])
-                if (r1.data) {
-                  setPlanoCliente(r1.data)
-                  setSessaoPlano(r2.data)
-                } else {
-                  setPlanoCliente(null); setSessaoPlano(null)
-                }
-              } else { setPlanoCliente(null); setSessaoPlano(null) }}} style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
+              if (c.plano_id) { buscarPlanoCliente(c.id, c.plano_id) } else { setPlanoCliente(null); setSessaoPlano(null) }}} style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
                             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#f8f8fc'}}
                             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent'}}>
                             <p style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e' }}>{c.nome}</p>

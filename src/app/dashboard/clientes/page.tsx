@@ -240,12 +240,7 @@ export default function ClientesPage() {
     fecharModal()
   }
 
-  const f = (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-      const v = e.target.value
-      const mascarados = ['telefone','whatsapp']
-      setForm(p => ({ ...p, [k]: mascarados.includes(k) ? mascaraTel(v) : v }))
-    }
+  const f = (k: keyof typeof form) => (e: any) => { const v = e.target.value; const mascarados = ['telefone','whatsapp']; setForm(p => ({ ...p, [k]: mascarados.includes(k) ? mascaraTel(v) : v })) }
 
   return (
     <div style={{ padding: '24px 16px' }}>

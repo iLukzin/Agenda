@@ -21,7 +21,7 @@ export default function ConfiguracoesPage() {
   // Plano modal
   const [modalPlano, setModalPlano]         = useState(false)
   const [modoEdicaoPlano, setModoEdicaoPlano] = useState(false)
-  const [planoSel, setPlanoSel]             = useState<Plano|null>(null)
+  const [planoSel, setPlanoSel]             = useState(null as Plano | null)
   const [formPlano, setFormPlano] = useState({ nome:'', descricao:'', valor_mensal:'', sessoes_mes:'', validade_dias:'30', status:'ativo', ilimitado:false })
   const [erroPlano, setErroPlano] = useState('')
   const [salvandoPlano, setSalvandoPlano]   = useState(false)

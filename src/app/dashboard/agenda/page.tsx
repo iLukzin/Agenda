@@ -403,10 +403,11 @@ export default function AgendaPage() {
     const srv = servicos.find((s: any) => s.nome === form.servico)
     const prof = profissionais.find((p: any) => p.nome === form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao) * 60000).toISOString()
-    // Valor: se plano ativo, usar logica de sessoes
+    // Valor: se plano ativo, SEMPRE recalcular (nao usar form.valor que pode estar desatualizado)
     let valorFinal = parseFloat(form.valor) || 0
-    if (form.usar_plano && planoCliente && infoPlano) {
-      valorFinal = infoPlano.cobrar ? (parseFloat(planoCliente.valor) || 0) : 0
+    if (form.usar_plano && planoCliente) {
+      const ipSalvar = calcularSessaoPlano()
+      valorFinal = ipSalvar.cobrar ? (parseFloat(planoCliente.valor) || 0) : 0
     }
     const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, observacoes:form.observacoes||null, plano_id:form.usar_plano?planoCliente?.id:null }
     if (!modoEdicao) payload.status = 'aberto'
@@ -993,15 +994,32 @@ export default function AgendaPage() {
                 </div>
               )}
               {form.usar_plano && infoPlano && (
-                <div style={{ background:infoPlano.cobrar?'#f0fdf4':'#f8faff', border:'1.5px solid '+(infoPlano.cobrar?'#6ee7b7':'#c7d2fe'), borderRadius:'12px', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={infoPlano.cobrar?'#059669':'#6366f1'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    {infoPlano.cobrar ? <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></> : <><polyline points="20 6 9 17 4 12"/></>}
-                  </svg>
-                  <div>
-                    <p style={{ fontSize:'13px', fontWeight:'700', color:infoPlano.cobrar?'#065f46':'#4f46e5' }}>
-                      {infoPlano.cobrar ? 'Cobranca: R$ ' + Number(planoCliente?.valor||0).toFixed(2).replace('.',',') + ' (inicio do ciclo)' : 'Sessao incluida no plano - sem cobranca'}
-                    </p>
-                    <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'2px' }}>Sessao {infoPlano.sessaoAtual} de {infoPlano.total} ? Valor nao editavel para planos</p>
+                <div style={{ borderRadius:'14px', overflow:'hidden', border:'1.5px solid '+(infoPlano.cobrar?'#6ee7b7':'#c7d2fe') }}>
+                  <div style={{ background:infoPlano.cobrar?'linear-gradient(135deg,#059669,#10b981)':'linear-gradient(135deg,#6366f1,#4f46e5)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      {infoPlano.cobrar
+                        ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ color:'white', fontWeight:'700', fontSize:'15px', letterSpacing:'-0.2px' }}>
+                        {infoPlano.cobrar ? 'Sessao cobrada - inicio do ciclo' : 'Sessao gratuita - inclusa no plano'}
+                      </p>
+                      <p style={{ color:'rgba(255,255,255,0.75)', fontSize:'12px', marginTop:'2px' }}>
+                        Sessao {infoPlano.sessaoAtual} de {infoPlano.total} - {infoPlano.utilizadas} sessoes ja realizadas
+                      </p>
+                    </div>
+                    <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'12px', padding:'8px 14px', textAlign:'center', flexShrink:0 }}>
+                      <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Valor</p>
+                      <p style={{ color:'white', fontSize:'20px', fontWeight:'800', letterSpacing:'-0.5px' }}>
+                        {infoPlano.cobrar ? 'R$ ' + Number(planoCliente?.valor||0).toFixed(2).replace('.',',') : 'R$ 0,00'}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ background:infoPlano.cobrar?'#f0fdf4':'#f5f3ff', padding:'10px 18px', display:'flex', gap:'20px', flexWrap:'wrap', alignItems:'center' }}>
+                    <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Plano</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#374151' }}>{planoCliente?.nome}</p></div>
+                    <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Sessoes do ciclo</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#374151' }}>{infoPlano.total} sessoes</p></div>
+                    <p style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'auto' }}>Valor definido pelo plano</p>
                   </div>
                 </div>
               )}

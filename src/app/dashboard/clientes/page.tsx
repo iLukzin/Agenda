@@ -67,6 +67,12 @@ export default function ClientesPage() {
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)
   const [erro, setErro]             = useState('')
+  const [modalHistorico, setModalHistorico] = useState(false)
+  const [clienteHistorico, setClienteHistorico] = useState<any>(null)
+  const [historico, setHistorico] = useState<any[]>([])
+  const [histCarregando, setHistCarregando] = useState(false)
+  const [histFiltroIni, setHistFiltroIni] = useState('')
+  const [histFiltroFim, setHistFiltroFim] = useState('')
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return

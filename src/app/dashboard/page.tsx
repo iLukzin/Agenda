@@ -72,9 +72,9 @@ export default function DashboardPage() {
   const [carregando, setCarregando] = useState(true)
 
   // Filtros
-  const [filtro, setFiltro]       = useState<'hoje'|'mes'|'periodo'>('mes')
-  const [periodoIni, setPeriodoIni] = useState(isoIniMes())
-  const [periodoFim, setPeriodoFim] = useState(isoFimMes())
+  const [filtro, setFiltro]       = useState<'hoje'|'mes'|'periodo'>('hoje')
+  const [periodoIni, setPeriodoIni] = useState(isoHoje())
+  const [periodoFim, setPeriodoFim] = useState(isoHoje())
   const [showPeriodo, setShowPeriodo] = useState(false)
 
   useEffect(() => { import('recharts').then(m => setRecharts(m)) }, [])

@@ -122,6 +122,45 @@ export default function ClientesPage() {
     return buscaOk && stOk
   })
 
+  async function abrirHistorico(c: any) {
+    setClienteHistorico(c)
+    setModalHistorico(true)
+    setHistCarregando(true)
+    const sb = createClient()
+    const { data } = await sb
+      .from('agendamentos')
+      .select('id,data_inicio,status,valor,forma_pagamento,servico_id,prof_id,motivo_cancelamento')
+      .eq('empresa_id', empresaAtiva?.id || '')
+      .eq('cliente_id', c.id)
+      .order('data_inicio', { ascending: false })
+    const servIds = Array.from(new Set((data||[]).map((a:any)=>a.servico_id).filter(Boolean)))
+    const profIds  = Array.from(new Set((data||[]).map((a:any)=>a.prof_id).filter(Boolean)))
+    const servMap: Record<string,string> = {}
+    const profMap: Record<string,string> = {}
+    if (servIds.length > 0) {
+      const { data: s } = await sb.from('servicos').select('id,nome').in('id', servIds as string[])
+      ;(s||[]).forEach((x:any)=>{ servMap[x.id]=x.nome })
+    }
+    if (profIds.length > 0) {
+      const { data: p } = await sb.from('profissionais').select('id,nome').in('id', profIds as string[])
+      ;(p||[]).forEach((x:any)=>{ profMap[x.id]=x.nome })
+    }
+    setHistorico((data||[]).map((a:any)=>({
+      id: a.id,
+      data: a.data_inicio ? a.data_inicio.slice(0,10) : '',
+      hora: a.data_inicio ? a.data_inicio.slice(11,16) : '',
+      status: a.status,
+      valor: a.valor || 0,
+      forma: a.forma_pagamento || '',
+      servico: servMap[a.servico_id] || '--',
+      profissional: profMap[a.prof_id] || '--',
+      motivo: a.motivo_cancelamento || '',
+    })))
+    setHistCarregando(false)
+  }
+
+  function fecharHistorico() { setModalHistorico(false); setClienteHistorico(null); setHistorico([]); setHistFiltroIni(''); setHistFiltroFim('') }
+
   function abrirNovo() {
     setModoEdicao(false); setSelecionado(null); setErro('')
     setForm(formVazio); setModalAberto(true)
@@ -281,6 +320,10 @@ export default function ClientesPage() {
                   </td>
                   <td style={{ padding:'14px 16px' }}>
                     <button onClick={() => abrirEdicao(c)} style={{ background:'white', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#4f46e5', display:'inline-flex', alignItems:'center', gap:'6px', transition:'all .15s', boxShadow:'0 1px 3px rgba(99,102,241,0.15)' }} onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.boxShadow='0 3px 8px rgba(99,102,241,0.25)';el.style.transform='translateY(-1px)'}} onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.boxShadow='0 1px 3px rgba(99,102,241,0.15)';el.style.transform='translateY(0)'}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>
+                    <button onClick={() => abrirHistorico(c)} style={{ background:'white', border:'1.5px solid #d1fae5', borderRadius:'10px', padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#059669', display:'inline-flex', alignItems:'center', gap:'6px', transition:'all .15s', boxShadow:'0 1px 3px rgba(5,150,105,0.15)' }} onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#f0fdf4'}} onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white'}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      Historico
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -368,6 +411,79 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Historico do Cliente */}
+      {modalHistorico && clienteHistorico && (
+        <div onClick={fecharHistorico} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'680px', borderRadius:'20px', maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 64px rgba(0,0,0,0.25)' }}>
+            {/* Header */}
+            <div style={{ padding:'22px 24px 16px', borderBottom:'1px solid #f0f0f8', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:'linear-gradient(135deg,#10b981,#059669)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:'700', color:'white', flexShrink:0 }}>
+                  {clienteHistorico.nome?.split(' ').slice(0,2).map((n:string)=>n[0]).join('')}
+                </div>
+                <div>
+                  <h2 style={{ fontSize:'17px', fontWeight:'700', color:'#0f172a' }}>Historico - {clienteHistorico.nome}</h2>
+                  <p style={{ fontSize:'12px', color:'#9ca3af' }}>{clienteHistorico.whatsapp || clienteHistorico.telefone || clienteHistorico.email || ''}</p>
+                </div>
+              </div>
+              <button onClick={fecharHistorico} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'32px', height:'32px', cursor:'pointer', fontSize:'16px' }}>x</button>
+            </div>
+            {/* Filtro de periodo */}
+            <div style={{ padding:'14px 24px', borderBottom:'1px solid #f5f5fb', display:'flex', gap:'10px', alignItems:'center', flexWrap:'wrap', flexShrink:0 }}>
+              <span style={{ fontSize:'12px', color:'#6b7280', fontWeight:'600' }}>Periodo:</span>
+              <input type="date" value={histFiltroIni} onChange={e=>setHistFiltroIni(e.target.value)} style={{ border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'13px', outline:'none' }}/>
+              <span style={{ fontSize:'12px', color:'#9ca3af' }}>ate</span>
+              <input type="date" value={histFiltroFim} onChange={e=>setHistFiltroFim(e.target.value)} style={{ border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'13px', outline:'none' }}/>
+              <button onClick={()=>{setHistFiltroIni('');setHistFiltroFim('')}} style={{ background:'#f3f4f6', border:'none', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>Limpar</button>
+              {(() => {
+                const filt = historico.filter(h => {
+                  if (histFiltroIni && h.data < histFiltroIni) return false
+                  if (histFiltroFim && h.data > histFiltroFim) return false
+                  return true
+                })
+                const total = filt.filter(h=>h.status==='fechado').reduce((s:number,h:any)=>s+(h.valor||0),0)
+                return <span style={{ marginLeft:'auto', fontSize:'13px', fontWeight:'700', color:'#059669' }}>Total recebido: R$ {total.toFixed(2).replace('.',',')}</span>
+              })()}
+            </div>
+            {/* Lista */}
+            <div style={{ flex:1, overflowY:'auto', padding:'8px 24px 20px' }}>
+              {histCarregando ? (
+                <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af' }}>Carregando...</div>
+              ) : (() => {
+                const filt = historico.filter(h => {
+                  if (histFiltroIni && h.data < histFiltroIni) return false
+                  if (histFiltroFim && h.data > histFiltroFim) return false
+                  return true
+                })
+                if (filt.length === 0) return <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af', fontSize:'14px' }}>Nenhum atendimento encontrado.</div>
+                return filt.map((h:any) => (
+                  <div key={h.id} style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 16px', borderRadius:'12px', border:'1px solid #f0f0f8', marginBottom:'8px', background:h.status==='fechado'?'#f0fdf4':h.status==='cancelado'?'#fff1f2':'#f8faff' }}>
+                    <div style={{ width:'44px', textAlign:'center', flexShrink:0 }}>
+                      <p style={{ fontSize:'13px', fontWeight:'700', color:'#374151', fontFamily:'monospace' }}>{h.hora}</p>
+                      <p style={{ fontSize:'10px', color:'#9ca3af' }}>{h.data ? new Date(h.data+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) : ''}</p>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{h.servico}</p>
+                      <p style={{ fontSize:'12px', color:'#6b7280' }}>{h.profissional}</p>
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <p style={{ fontSize:'14px', fontWeight:'700', color:h.status==='fechado'?'#059669':'#9ca3af' }}>
+                        {h.status==='fechado' ? 'R$ '+Number(h.valor).toFixed(2).replace('.',',') : '--'}
+                      </p>
+                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{h.forma || ''}</p>
+                    </div>
+                    <span style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'99px', flexShrink:0, background:h.status==='fechado'?'#d1fae5':h.status==='cancelado'?'#ffe4e6':'#dbeafe', color:h.status==='fechado'?'#065f46':h.status==='cancelado'?'#be123c':'#1d4ed8' }}>
+                      {h.status==='fechado'?'Finalizado':h.status==='cancelado'?'Cancelado':'Aberto'}
+                    </span>
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

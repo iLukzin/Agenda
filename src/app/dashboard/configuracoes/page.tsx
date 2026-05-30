@@ -165,7 +165,7 @@ export default function ConfiguracoesPage() {
                     <div onClick={()=>toggleStatusPlano(p)} style={{ width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', background:p.status==='ativo'?'#6366f1':'#e5e7eb', position:'relative', marginTop:'2px' }}>
                       <div style={{ position:'absolute', top:'2px', width:'16px', height:'16px', borderRadius:'50%', background:'white', transition:'left .2s', left:p.status==='ativo'?'18px':'2px' }}/>
                     </div>
-                    <button onClick={()=>abrirEdicaoPlano(p)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>?? Editar</button>
+                    <button onClick={()=>abrirEdicaoPlano(p)} style={{ background:'white', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#4f46e5', display:'inline-flex', alignItems:'center', gap:'6px', boxShadow:'0 1px 3px rgba(99,102,241,0.15)' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>
                     <button onClick={()=>deletarPlano(p.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
                   </div>
                 </div>
@@ -204,7 +204,7 @@ export default function ConfiguracoesPage() {
       {/* Botão salvar */}
       {(aba==='empresa'||aba==='horarios') && (
         <div style={{ marginTop:'20px', display:'flex', alignItems:'center', gap:'12px', justifyContent:'flex-end' }}>
-          {salvo && <span style={{ fontSize:'13px', color:'#10b981', fontWeight:'500' }}>? Salvo com sucesso!</span>}
+          {salvo && <span style={{ fontSize:'13px', color:'#10b981', fontWeight:'500' }}>Salvo com sucesso!</span>}
           <button onClick={salvarEmpresa} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'10px 24px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
             {salvando?'Salvando...':'Salvar configurações'}
           </button>
@@ -217,7 +217,7 @@ export default function ConfiguracoesPage() {
           <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'500px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'90vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicaoPlano?'?? Editar plano':'+ Novo plano'}</h2>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicaoPlano ? 'Editar plano' : '+ Novo plano'}</h2>
               <button onClick={fecharModalPlano} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>?</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>

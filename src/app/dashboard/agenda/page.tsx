@@ -257,7 +257,9 @@ export default function AgendaPage() {
   const [clienteSel, setClienteSel] = useState<any>(null)
   const [dropCliente, setDropCliente] = useState(false)
   const [intervaloMin, setIntervaloMin] = useState(30)
-  const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
+  const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
+  const [planoCliente, setPlanoCliente] = useState<any>(null)
+  const [sessaoPlano, setSessaoPlano]   = useState<any>(null)
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
@@ -400,12 +402,27 @@ export default function AgendaPage() {
     const srv = servicos.find((s: any) => s.nome === form.servico)
     const prof = profissionais.find((p: any) => p.nome === form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao) * 60000).toISOString()
-    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:'avulso', valor:parseFloat(form.valor)||0, forma_pagamento:form.forma_pagamento||null, observacoes:form.observacoes||null }
+    // Valor: se plano ativo, usar logica de sessoes
+    let valorFinal = parseFloat(form.valor) || 0
+    if (form.usar_plano && planoCliente && infoPlano) {
+      valorFinal = infoPlano.cobrar ? (parseFloat(planoCliente.valor) || 0) : 0
+    }
+    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, observacoes:form.observacoes||null, plano_id:form.usar_plano?planoCliente?.id:null }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }
     else { const res = await criarAgendamento(empresaAtiva.id, payload); error = res.error }
     if (error) { alert('Erro: ' + error.message); setSalvando(false); return }
+    // Registrar sessao do plano
+    if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
+      const sb3 = createClient()
+      const utilizadas = sessaoPlano ? (sessaoPlano.sessoes_utilizadas || 0) : 0
+      if (sessaoPlano?.id) {
+        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: utilizadas + 1 }).eq('id', sessaoPlano.id)
+      } else {
+        await sb3.from('cliente_plano_sessoes').insert({ empresa_id:empresaAtiva.id, cliente_id:form.clienteId, plano_id:planoCliente.id, sessoes_utilizadas:1 })
+      }
+    }
     setSemanaBase(inicioSemana(isoParaDate(form.dataISO))); setDiaAtivo(isoParaDate(form.dataISO))
     await carregar(); fecharModal(); setSalvando(false)
   }
@@ -465,6 +482,18 @@ export default function AgendaPage() {
     }).sort((a,b) => a.dataISO.localeCompare(b.dataISO) || a.horaInicio - b.horaInicio)
   }, [agendamentos, periodoInicio, periodoFim])
 
+
+  // Logica de sessoes do plano
+  const calcularSessaoPlano = () => {
+    if (!planoCliente) return { cobrar: true, sessaoAtual: 1 }
+    const utilizadas = sessaoPlano ? (sessaoPlano.sessoes_utilizadas || 0) : 0
+    const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
+    const posicaoNoCiclo = utilizadas % total
+    const cobrar = posicaoNoCiclo === 0 // cobra na 1a sessao do ciclo (0, total, 2*total...)
+    const sessaoAtual = posicaoNoCiclo + 1
+    return { cobrar, sessaoAtual, total, utilizadas }
+  }
+  const infoPlano = form.usar_plano && planoCliente ? calcularSessaoPlano() : null
   const isBloqEdicao = modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado')
 
   const getLabelPeriodo = () => {
@@ -809,7 +838,21 @@ export default function AgendaPage() {
                       <><div onClick={()=>setDropCliente(false)} style={{ position:'fixed', inset:0, zIndex:99 }}/>
                       <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'white', borderRadius:'10px', border:'1px solid #e5e7eb', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', zIndex:100, maxHeight:'200px', overflowY:'auto' }}>
                         {clientes.filter((c: any) => c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).map((c: any) => (
-                          <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome}));setBuscaCliente('');setDropCliente(false);setErroForm([])}} style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
+                          <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome,plano_id:'',usar_plano:false,valor:''}));setBuscaCliente('');setDropCliente(false);setErroForm([]);
+              // Buscar plano vinculado ao cliente
+              if (c.plano_id && empresaAtiva?.id) {
+                const sb2 = createClient()
+                const [r1, r2] = await Promise.all([
+                  sb2.from('planos').select('*').eq('id', c.plano_id).single(),
+                  sb2.from('cliente_plano_sessoes').select('*').eq('cliente_id', c.id).eq('plano_id', c.plano_id).eq('empresa_id', empresaAtiva.id).maybeSingle(),
+                ])
+                if (r1.data) {
+                  setPlanoCliente(r1.data)
+                  setSessaoPlano(r2.data)
+                } else {
+                  setPlanoCliente(null); setSessaoPlano(null)
+                }
+              } else { setPlanoCliente(null); setSessaoPlano(null) }}} style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}
                             onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#f8f8fc'}}
                             onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent'}}>
                             <p style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e' }}>{c.nome}</p>
@@ -821,6 +864,47 @@ export default function AgendaPage() {
                   </>
                 )}
               </div>
+              {/* Card de plano do cliente */}
+              {planoCliente && !modoEdicao && (
+                <div style={{ borderRadius:'14px', overflow:'hidden', border:'1.5px solid ' + (form.usar_plano ? '#6366f1' : '#e5e7eb') }}>
+                  <div style={{ background:form.usar_plano ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : '#f9fafb', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                      <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:form.usar_plano?'rgba(255,255,255,0.2)':'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={form.usar_plano?'white':'#6366f1'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                      </div>
+                      <div>
+                        <p style={{ fontSize:'13px', fontWeight:'700', color:form.usar_plano?'white':'#1a1a2e' }}>{planoCliente.nome}</p>
+                        <p style={{ fontSize:'11px', color:form.usar_plano?'rgba(255,255,255,0.7)':'#9ca3af' }}>
+                          {planoCliente.sessoes || planoCliente.sessoes_mes || 1} sessoes ? R$ {Number(planoCliente.valor||0).toFixed(2).replace('.',',')}
+                        </p>
+                      </div>
+                    </div>
+                    <div onClick={() => setForm(f => ({...f, usar_plano:!f.usar_plano, valor:!f.usar_plano && infoPlano ? (infoPlano.cobrar ? String(planoCliente.valor||0) : '0') : ''}))}
+                      style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.usar_plano?'rgba(255,255,255,0.3)':'#e5e7eb', position:'relative', flexShrink:0 }}>
+                      <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:form.usar_plano?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
+                    </div>
+                  </div>
+                  {form.usar_plano && infoPlano && (
+                    <div style={{ background:'#f0f4ff', padding:'10px 16px', display:'flex', gap:'16px', flexWrap:'wrap', borderTop:'1px solid #e0e7ff' }}>
+                      <div>
+                        <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sessao atual</p>
+                        <p style={{ fontSize:'14px', fontWeight:'700', color:'#4f46e5' }}>{infoPlano.sessaoAtual} de {infoPlano.total}</p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em' }}>Cobranca</p>
+                        <p style={{ fontSize:'14px', fontWeight:'700', color:infoPlano.cobrar?'#059669':'#9ca3af' }}>
+                          {infoPlano.cobrar ? 'R$ ' + Number(planoCliente.valor||0).toFixed(2).replace('.',',') : 'Gratis (incluso no plano)'}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sessoes usadas</p>
+                        <p style={{ fontSize:'14px', fontWeight:'700', color:'#374151' }}>{infoPlano.utilizadas} total</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Profissional">
                   <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,servico:'',horaInicio:'09:00'}))} style={selectStyle}>
@@ -876,16 +960,31 @@ export default function AgendaPage() {
                   ) : null}
                 </div>
               )}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-                <InputField label="Valor (R$)">
-                  <input type="number" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} style={inputStyle} placeholder="0,00"/>
-                </InputField>
-                <InputField label="Forma de pagamento">
-                  <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
-                    {FORMAS_PAG.map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
-                  </select>
-                </InputField>
-              </div>
+              {!form.usar_plano && (
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                  <InputField label="Valor (R$)">
+                    <input type="number" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} style={inputStyle} placeholder="0,00"/>
+                  </InputField>
+                  <InputField label="Forma de pagamento">
+                    <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
+                      {FORMAS_PAG.map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
+                    </select>
+                  </InputField>
+                </div>
+              )}
+              {form.usar_plano && infoPlano && (
+                <div style={{ background:infoPlano.cobrar?'#f0fdf4':'#f8faff', border:'1.5px solid '+(infoPlano.cobrar?'#6ee7b7':'#c7d2fe'), borderRadius:'12px', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={infoPlano.cobrar?'#059669':'#6366f1'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {infoPlano.cobrar ? <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></> : <><polyline points="20 6 9 17 4 12"/></>}
+                  </svg>
+                  <div>
+                    <p style={{ fontSize:'13px', fontWeight:'700', color:infoPlano.cobrar?'#065f46':'#4f46e5' }}>
+                      {infoPlano.cobrar ? 'Cobranca: R$ ' + Number(planoCliente?.valor||0).toFixed(2).replace('.',',') + ' (inicio do ciclo)' : 'Sessao incluida no plano - sem cobranca'}
+                    </p>
+                    <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'2px' }}>Sessao {infoPlano.sessaoAtual} de {infoPlano.total} ? Valor nao editavel para planos</p>
+                  </div>
+                </div>
+              )}
               <InputField label="Observacoes">
                 <textarea rows={2} value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))} style={{ ...inputStyle, resize:'none' }} placeholder="Anotacoes..."/>
               </InputField>

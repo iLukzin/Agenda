@@ -390,7 +390,7 @@ export default function AgendaPage() {
     const erros: string[] = []
     if (!form.clienteId)    erros.push('Cliente e obrigatorio')
     if (!form.profissional) erros.push('Profissional e obrigatorio')
-    if (!form.servico)      erros.push('Servico e obrigatorio')
+    if (!form.usar_plano && !form.servico) erros.push('Servico e obrigatorio')
     if (!form.dataISO)      erros.push('Data e obrigatoria')
     if (!form.horaInicio)   erros.push('Horario e obrigatorio')
     if (erros.length > 0) { setErroForm(erros); return }
@@ -862,44 +862,43 @@ export default function AgendaPage() {
                   </>
                 )}
               </div>
-              {/* Card de plano do cliente */}
+              {/* Escolha: Plano ou Servico avulso */}
               {planoCliente && !modoEdicao && (
-                <div style={{ borderRadius:'14px', overflow:'hidden', border:'1.5px solid ' + (form.usar_plano ? '#6366f1' : '#e5e7eb') }}>
-                  <div style={{ background:form.usar_plano ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : '#f9fafb', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                      <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:form.usar_plano?'rgba(255,255,255,0.2)':'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={form.usar_plano?'white':'#6366f1'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <div>
+                  <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'8px' }}>Tipo de agendamento</label>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+                    {/* Opcao: Plano */}
+                    <div onClick={() => setForm(f => { const usarP = true; const ip = calcularSessaoPlano(); return {...f, usar_plano:usarP, valor:ip.cobrar ? String(planoCliente.valor||0) : '0', servico:''} })}
+                      style={{ padding:'14px', borderRadius:'12px', cursor:'pointer', border:form.usar_plano?'2px solid #6366f1':'2px solid #e5e7eb', background:form.usar_plano?'#eef2ff':'white', transition:'all .15s' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px' }}>
+                        <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:form.usar_plano?'#6366f1':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={form.usar_plano?'white':'#9ca3af'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        </div>
+                        <p style={{ fontSize:'12px', fontWeight:'700', color:form.usar_plano?'#4f46e5':'#374151' }}>Plano mensal</p>
                       </div>
-                      <div>
-                        <p style={{ fontSize:'13px', fontWeight:'700', color:form.usar_plano?'white':'#1a1a2e' }}>{planoCliente.nome}</p>
-                        <p style={{ fontSize:'11px', color:form.usar_plano?'rgba(255,255,255,0.7)':'#9ca3af' }}>
-                          {planoCliente.sessoes || planoCliente.sessoes_mes || 1} sessoes ? R$ {Number(planoCliente.valor||0).toFixed(2).replace('.',',')}
-                        </p>
-                      </div>
+                      <p style={{ fontSize:'12px', fontWeight:'600', color:form.usar_plano?'#4f46e5':'#6b7280', marginBottom:'2px' }}>{planoCliente.nome}</p>
+                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes || planoCliente.sessoes_mes || 1} sessoes</p>
+                      {form.usar_plano && infoPlano && (
+                        <div style={{ marginTop:'8px', padding:'8px', background:'white', borderRadius:'8px', border:'1px solid #c7d2fe' }}>
+                          <p style={{ fontSize:'11px', color:'#6b7280', marginBottom:'2px' }}>Sessao {infoPlano.sessaoAtual} de {infoPlano.total}</p>
+                          <p style={{ fontSize:'13px', fontWeight:'700', color:infoPlano.cobrar?'#059669':'#6366f1' }}>
+                            {infoPlano.cobrar ? 'Cobra: R$ ' + Number(planoCliente.valor||0).toFixed(2).replace('.',',') : 'Inclusa no plano - sem cobranca'}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div onClick={() => setForm(f => ({...f, usar_plano:!f.usar_plano, valor:!f.usar_plano && infoPlano ? (infoPlano.cobrar ? String(planoCliente.valor||0) : '0') : ''}))}
-                      style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.usar_plano?'rgba(255,255,255,0.3)':'#e5e7eb', position:'relative', flexShrink:0 }}>
-                      <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:form.usar_plano?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
+                    {/* Opcao: Servico avulso */}
+                    <div onClick={() => setForm(f => ({...f, usar_plano:false, valor:'', servico:''}))}
+                      style={{ padding:'14px', borderRadius:'12px', cursor:'pointer', border:!form.usar_plano?'2px solid #6366f1':'2px solid #e5e7eb', background:!form.usar_plano?'#eef2ff':'white', transition:'all .15s' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px' }}>
+                        <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:!form.usar_plano?'#6366f1':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={!form.usar_plano?'white':'#9ca3af'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        </div>
+                        <p style={{ fontSize:'12px', fontWeight:'700', color:!form.usar_plano?'#4f46e5':'#374151' }}>Servico avulso</p>
+                      </div>
+                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>Cobrar por servico individual</p>
                     </div>
                   </div>
-                  {form.usar_plano && infoPlano && (
-                    <div style={{ background:'#f0f4ff', padding:'10px 16px', display:'flex', gap:'16px', flexWrap:'wrap', borderTop:'1px solid #e0e7ff' }}>
-                      <div>
-                        <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sessao atual</p>
-                        <p style={{ fontSize:'14px', fontWeight:'700', color:'#4f46e5' }}>{infoPlano.sessaoAtual} de {infoPlano.total}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em' }}>Cobranca</p>
-                        <p style={{ fontSize:'14px', fontWeight:'700', color:infoPlano.cobrar?'#059669':'#9ca3af' }}>
-                          {infoPlano.cobrar ? 'R$ ' + Number(planoCliente.valor||0).toFixed(2).replace('.',',') : 'Gratis (incluso no plano)'}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em' }}>Sessoes usadas</p>
-                        <p style={{ fontSize:'14px', fontWeight:'700', color:'#374151' }}>{infoPlano.utilizadas} total</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -910,12 +909,23 @@ export default function AgendaPage() {
                     {profissionais.map((p: any) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
                   </select>
                 </InputField>
-                <InputField label="Servico">
-                  <select value={form.servico} onChange={e=>{const srv=servicosDoProf.find((s: any)=>s.nome===e.target.value);setForm(f=>({...f,servico:e.target.value,duracao:srv?.duracao_min?String(srv.duracao_min):f.duracao,valor:srv?.valor?String(srv.valor):f.valor}))}} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
-                    <option value="">{form.profissional?'Selecione...':'Selecione o profissional primeiro'}</option>
-                    {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
-                  </select>
-                </InputField>
+                {!form.usar_plano && (
+                  <InputField label="Servico">
+                    <select value={form.servico} onChange={e=>{const srv=servicosDoProf.find((s: any)=>s.nome===e.target.value);setForm(f=>({...f,servico:e.target.value,duracao:srv?.duracao_min?String(srv.duracao_min):f.duracao,valor:srv?.valor?String(srv.valor):f.valor}))}} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
+                      <option value="">{form.profissional?'Selecione...':'Selecione o profissional primeiro'}</option>
+                      {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                    </select>
+                  </InputField>
+                )}
+                {form.usar_plano && (
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Servico (opcional)</label>
+                    <select value={form.servico} onChange={e=>setForm(f=>({...f,servico:e.target.value}))} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
+                      <option value="">Nenhum servico especifico</option>
+                      {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Data">

@@ -55,11 +55,7 @@ export default function EmpresasPage() {
 
   useEffect(() => { carregar() }, [carregar])
 
-  const filtradas = empresas.filter(e =>
-    e.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    e.cnpj.includes(busca) ||
-    e.email.toLowerCase().includes(busca.toLowerCase())
-  )
+  const filtradas = empresas.filter(e => e.nome.toLowerCase().includes(busca.toLowerCase()) || e.cnpj.includes(busca) || e.email.toLowerCase().includes(busca.toLowerCase()))
 
   function abrirNova() {
     setModoEdicao(false); setSelecionada(null); setErro('')

@@ -62,11 +62,7 @@ export default function UsuariosMasterPage() {
 
   useEffect(() => { carregar() }, [carregar])
 
-  const filtrados = usuarios.filter(u => {
-    const buscaOk = u.nome.toLowerCase().includes(busca.toLowerCase()) || u.email.toLowerCase().includes(busca.toLowerCase())
-    const nivelOk = filtroNivel === 'todos' || u.nivel_acesso === filtroNivel
-    return buscaOk && nivelOk
-  })
+  const filtrados = usuarios.filter(u => { const buscaOk = u.nome.toLowerCase().includes(busca.toLowerCase()) || u.email.toLowerCase().includes(busca.toLowerCase()); const nivelOk = filtroNivel === 'todos' || u.nivel_acesso === filtroNivel; return buscaOk && nivelOk })
 
   function abrirNovo() {
     setModoEdicao(false); setSelecionado(null); setErro('')

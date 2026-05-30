@@ -933,7 +933,7 @@ export default function AgendaPage() {
                 {form.usar_plano && (
                   <div>
                     <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Servico (opcional)</label>
-                    <select value={form.servico} onChange={e=>setForm(f=>({...f,servico:e.target.value}))} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
+                    <select value={form.servico} onChange={e=>setForm(f=>({...f,servico:e.target.value}))} style={{ ...selectStyle, background:'#f9fafb', color:'#9ca3af' }} disabled={true}>
                       <option value="">Nenhum servico especifico</option>
                       {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
                     </select>

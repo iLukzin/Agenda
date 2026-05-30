@@ -140,7 +140,7 @@ export default function UsuariosMasterPage() {
     fecharModal()
   }
 
-  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) => setForm(p => ({...p, [k]: e.target.value}))
+  const f = (k: keyof typeof form) => (e: any) => setForm((p: any) => ({...p, [k]: e.target.value}))
 
   return (
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f8f8fc' }}>

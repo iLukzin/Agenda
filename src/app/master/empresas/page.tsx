@@ -133,7 +133,7 @@ export default function EmpresasPage() {
     }
   }
 
-  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) => setForm(p => ({...p, [k]: e.target.value}))
+  const f = (k: keyof typeof form) => (e: any) => setForm((p: any) => ({...p, [k]: e.target.value}))
 
   const ativas = empresas.filter(e => e.status==='ativo').length
 

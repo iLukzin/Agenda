@@ -225,6 +225,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   )
 }
 
+function permPadraoLayout(nivel: string): Record<string, any> {
+  if (nivel === 'usuario') return {
+    dashboard: { visualizar:false }, agenda: { visualizar:true },
+    clientes: { visualizar:false }, profissionais: { visualizar:false },
+    servicos: { visualizar:false }, financeiro: { visualizar:false },
+    usuarios: { visualizar:false }, configuracoes: { visualizar:false },
+  }
+  if (nivel === 'profissional') return {
+    dashboard: { visualizar:true }, agenda: { visualizar:true },
+    clientes: { visualizar:true }, profissionais: { visualizar:true },
+    servicos: { visualizar:true }, financeiro: { visualizar:false },
+    usuarios: { visualizar:false }, configuracoes: { visualizar:false },
+  }
+  return {}
+}
+
 function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile, onClose, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa, permMap }: any) {
   return (
     <>
@@ -296,7 +312,10 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
         {navItems.map(item => {
           const ativo = pathname === item.href
           const telaKey = item.href === '/dashboard' ? 'dashboard' : item.href.replace('/dashboard/','')
-          const temAcesso = isMaster || !permMap || Object.keys(permMap).length === 0 || (permMap[telaKey] ? permMap[telaKey].visualizar !== false : true)
+          const nivelAtual = usuario?.nivel_acesso || 'profissional'
+          const padrao = Object.keys(permMap).length === 0 ? (isMaster ? null : permPadraoLayout(nivelAtual)) : null
+          const permItem = permMap[telaKey] || (padrao ? padrao[telaKey] : null)
+          const temAcesso = isMaster || (permItem ? permItem.visualizar !== false : true)
           if (!temAcesso) return null
           return (
             <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(99,102,241,0.15)':'transparent', transition:'all .15s', whiteSpace:'nowrap', position:'relative' }}>

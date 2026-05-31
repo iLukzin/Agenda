@@ -30,7 +30,7 @@ function LoginForm() {
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
       if (error) { setErro('E-mail ou senha incorretos.'); setCarregando(false); return }
-      window.location.href = '/dashboard'
+      window.location.href = '/dashboard/agenda'
     } catch {
       setErro('Erro inesperado. Tente novamente.')
       setCarregando(false)

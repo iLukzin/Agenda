@@ -76,7 +76,7 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
   // Agendamentos do dia selecionado
   const agsDia = useMemo(() => {
     return agsProfFiltrados
-      .filter(a => a.dataISO === diaSel && a.status !== 'cancelado')
+      .filter(a => a.dataISO === diaSel)
       .sort((a,b) => a.horaInicio - b.horaInicio)
   }, [agsProfFiltrados, diaSel])
 
@@ -270,24 +270,37 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
             {agsDia.map(ag => {
               const hora        = fmtHora(ag.horaInicio)
               const isFinalizado = ag.status === 'fechado'
-              const borda = isFinalizado ? '#10b981' : AZUL
-              const bg    = isFinalizado ? '#f0fdf4' : AZUL_XLIGHT
+              const isCancelado  = ag.status === 'cancelado'
+              const borda = isFinalizado ? '#10b981' : isCancelado ? '#e11d48' : AZUL
+              const bg    = isFinalizado ? '#f0fdf4' : isCancelado ? '#fff1f2' : AZUL_XLIGHT
               return (
                 <div key={ag.id} onClick={()=>onAbrirEdicao(ag)}
-                  style={{ display:'flex', alignItems:'center', gap:'10px', padding:'11px 12px', borderRadius:'12px', background:bg, border:'1px solid '+(isFinalizado?'#bbf7d0':AZUL_LIGHT), borderLeft:'3px solid '+borda, cursor:'pointer', transition:'filter .1s' }}
+                  style={{ display:'flex', alignItems:'center', gap:'10px', padding:'11px 12px', borderRadius:'12px', background:bg, border:'1px solid '+(isFinalizado?'#bbf7d0':isCancelado?'#fecdd3':AZUL_LIGHT), borderLeft:'3px solid '+borda, cursor:'pointer', transition:'filter .1s' }}
                   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.filter='brightness(0.97)'}}
                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.filter='none'}}>
-                  <div style={{ width:'50px', textAlign:'center', flexShrink:0, background:'white', borderRadius:'8px', padding:'5px 4px', border:'1px solid '+AZUL_LIGHT }}>
-                    <p style={{ fontSize:'14px', fontWeight:'800', color:AZUL, fontFamily:'monospace', letterSpacing:'-0.5px' }}>{hora}</p>
+                  <div style={{ width:'50px', textAlign:'center', flexShrink:0, background:'white', borderRadius:'8px', padding:'5px 4px', border:'1px solid '+(isFinalizado?'#bbf7d0':isCancelado?'#fecdd3':AZUL_LIGHT) }}>
+                    <p style={{ fontSize:'14px', fontWeight:'800', color:isFinalizado?'#059669':isCancelado?'#e11d48':AZUL, fontFamily:'monospace', letterSpacing:'-0.5px' }}>{hora}</p>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'2px' }}>
-                      <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:isFinalizado?'#10b981':AZUL, flexShrink:0 }}/>
+                      <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:isFinalizado?'#10b981':isCancelado?'#e11d48':AZUL, flexShrink:0 }}/>
                       <p style={{ fontSize:'14px', fontWeight:'700', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.cliente}</p>
                     </div>
                     <p style={{ fontSize:'11px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.servico||ag.profissional}</p>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  {isFinalizado && (
+                    <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'#d1fae5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                  )}
+                  {isCancelado && (
+                    <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'#ffe4e6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </div>
+                  )}
+                  {!isFinalizado && !isCancelado && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  )}
                 </div>
               )
             })}

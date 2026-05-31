@@ -16,7 +16,10 @@ function hojeNoBrasil() {
   const d = new Date(str); d.setHours(0,0,0,0); return d
 }
 function addMes(d: Date, n: number) { return new Date(d.getFullYear(), d.getMonth()+n, 1) }
-function nomeMes(d: Date) { return d.toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'America/Sao_Paulo'}).replace(/^\w/,c=>c.toUpperCase()) }
+function nomeMes(d: Date) {
+  return d.toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'America/Sao_Paulo'})
+    .replace(/^\w/,c=>c.toUpperCase())
+}
 
 type Props = {
   agendamentos: Ag[]
@@ -27,50 +30,76 @@ type Props = {
   setFiltroProfissional: (v: string) => void
 }
 
+// Paleta azul
+const AZUL        = '#2563eb'
+const AZUL_DARK   = '#1d4ed8'
+const AZUL_LIGHT  = '#dbeafe'
+const AZUL_XLIGHT = '#eff6ff'
+
 export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirNovo, onAbrirEdicao, filtroProfissional, setFiltroProfissional }: Props) {
   const hoje = hojeNoBrasil()
-  const [mesBase, setMesBase]     = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
-  const [diaSel, setDiaSel]       = useState<string>(toISO(hoje))
+  const [mesBase, setMesBase] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
+  const [diaSel, setDiaSel]   = useState<string>(toISO(hoje))
+  const [filtroPanelAberto, setFiltroPanelAberto] = useState(false)
+  const [filtroIni, setFiltroIni] = useState('')
+  const [filtroFim, setFiltroFim] = useState('')
+  const modoFiltro = !!(filtroIni || filtroFim)
 
   const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab']
 
-  // Celulas do calendario (42 = 6 semanas)
+  // Celulas do calendario
   const celulas = useMemo(() => {
     const primeiro = new Date(mesBase.getFullYear(), mesBase.getMonth(), 1)
-    const dow = primeiro.getDay() // 0=dom
+    const dow = primeiro.getDay()
     const inicio = new Date(primeiro)
     inicio.setDate(inicio.getDate() - dow)
     return Array.from({length:42}, (_,i) => {
-      const d = new Date(inicio)
-      d.setDate(d.getDate() + i)
-      return d
+      const d = new Date(inicio); d.setDate(d.getDate() + i); return d
     })
   }, [mesBase])
 
-  // Agendamentos filtrados
-  const agsFiltrados = useMemo(() => {
-    if (filtroProfissional === 'todos') return agendamentos
-    return agendamentos.filter(a => a.profissional === filtroProfissional)
+  // Agendamentos filtrados por profissional
+  const agsProfFiltrados = useMemo(() => {
+    let ags = agendamentos
+    if (filtroProfissional !== 'todos') ags = ags.filter(a => a.profissional === filtroProfissional)
+    return ags
   }, [agendamentos, filtroProfissional])
+
+  // Agendamentos filtrados por periodo (para destacar no calendario)
+  const agsVisiveis = useMemo(() => {
+    let ags = agsProfFiltrados
+    if (filtroIni) ags = ags.filter(a => a.dataISO >= filtroIni)
+    if (filtroFim) ags = ags.filter(a => a.dataISO <= filtroFim)
+    return ags
+  }, [agsProfFiltrados, filtroIni, filtroFim])
 
   // Agendamentos do dia selecionado
   const agsDia = useMemo(() => {
-    return agsFiltrados
+    return agsProfFiltrados
       .filter(a => a.dataISO === diaSel && a.status !== 'cancelado')
       .sort((a,b) => a.horaInicio - b.horaInicio)
-  }, [agsFiltrados, diaSel])
+  }, [agsProfFiltrados, diaSel])
 
-  // Contagem por dia para pontos no calendario
+  // Contagem por dia
   const contagemPorDia = useMemo(() => {
     const map: Record<string,number> = {}
-    agsFiltrados.forEach(a => {
+    agsVisiveis.forEach(a => {
       if (a.status !== 'cancelado') map[a.dataISO] = (map[a.dataISO]||0) + 1
     })
     return map
-  }, [agsFiltrados])
+  }, [agsVisiveis])
 
-  const LARANJA = '#f97316'
-  const COR_HEADER = LARANJA
+  // Label do filtro ativo
+  const labelFiltro = useMemo(() => {
+    if (!filtroIni && !filtroFim) return null
+    const fmtDate = (iso: string) => {
+      const [y,m,d] = iso.split('-').map(Number)
+      return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0')
+    }
+    if (filtroIni && filtroFim) return fmtDate(filtroIni) + ' - ' + fmtDate(filtroFim)
+    if (filtroIni) return 'A partir de ' + fmtDate(filtroIni)
+    return 'Ate ' + fmtDate(filtroFim)
+  }, [filtroIni, filtroFim])
 
   function fmtHora(h: number) {
     const hh = Math.floor(h), mm = Math.round((h-hh)*60)
@@ -79,63 +108,137 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
 
   function labelDia(iso: string) {
     const [y,m,d] = iso.split('-').map(Number)
-    const dt = new Date(y,m-1,d)
-    return dt.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',timeZone:'America/Sao_Paulo'})
+    return new Date(y,m-1,d)
+      .toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',timeZone:'America/Sao_Paulo'})
       .replace(/^\w/,c=>c.toUpperCase())
   }
 
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', gap:'0', borderRadius:'16px', overflow:'hidden', border:'1px solid #f0f0f8', background:'white' }}>
+  function limparFiltro() { setFiltroIni(''); setFiltroFim(''); setFiltroPanelAberto(false) }
 
-      {/* Header laranja com mes e navegacao */}
-      <div style={{ background:COR_HEADER, padding:'14px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-        <button onClick={()=>setMesBase(d=>addMes(d,-1))}
-          style={{ width:'36px', height:'36px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'white' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-          <span style={{ color:'white', fontSize:'18px', fontWeight:'700', letterSpacing:'-0.3px' }}>{nomeMes(mesBase)}</span>
-          <button onClick={()=>{setMesBase(new Date(hoje.getFullYear(),hoje.getMonth(),1));setDiaSel(toISO(hoje))}}
-            style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'8px', padding:'4px 10px', cursor:'pointer', color:'white', fontSize:'12px', fontWeight:'600' }}>Hoje</button>
-          <button onClick={()=>{}}
-            style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'8px', padding:'4px 8px', cursor:'pointer', color:'white', display:'flex', alignItems:'center' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', borderRadius:'16px', overflow:'hidden', border:'1px solid #dbeafe', background:'white' }}>
+
+      {/* Header azul */}
+      <div style={{ background:'linear-gradient(135deg,'+AZUL_DARK+','+AZUL+')', padding:'14px 16px', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+          {/* Navegacao mes */}
+          <button onClick={()=>setMesBase(d=>addMes(d,-1))}
+            style={{ width:'34px', height:'34px', borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span style={{ color:'white', fontSize:'17px', fontWeight:'700', letterSpacing:'-0.3px' }}>{nomeMes(mesBase)}</span>
+          <button onClick={()=>setMesBase(d=>addMes(d,1))}
+            style={{ width:'34px', height:'34px', borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
-        <button onClick={()=>setMesBase(d=>addMes(d,1))}
-          style={{ width:'36px', height:'36px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'white' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+
+        {/* Linha de acoes: Hoje + Filtro + Prof */}
+        <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
+          <button onClick={()=>{setMesBase(new Date(hoje.getFullYear(),hoje.getMonth(),1));setDiaSel(toISO(hoje))}}
+            style={{ background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'8px', padding:'5px 12px', cursor:'pointer', color:'white', fontSize:'12px', fontWeight:'600' }}>
+            Hoje
+          </button>
+
+          {/* Botao filtro periodo */}
+          <div style={{ position:'relative' }}>
+            <button onClick={()=>setFiltroPanelAberto(v=>!v)}
+              style={{ background:modoFiltro?'white':'rgba(255,255,255,0.15)', border:'1px solid '+(modoFiltro?AZUL:'rgba(255,255,255,0.3)'), borderRadius:'8px', padding:'5px 10px', cursor:'pointer', color:modoFiltro?AZUL:'white', fontSize:'12px', fontWeight:'600', display:'flex', alignItems:'center', gap:'5px' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+              {labelFiltro || 'Periodo'}
+              {modoFiltro && (
+                <span onClick={e=>{e.stopPropagation();limparFiltro()}} style={{ marginLeft:'2px', fontWeight:'700', fontSize:'13px' }}>x</span>
+              )}
+            </button>
+
+            {filtroPanelAberto && (
+              <>
+                <div onClick={()=>setFiltroPanelAberto(false)} style={{ position:'fixed', inset:0, zIndex:98 }}/>
+                <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:'calc(100% + 8px)', left:0, zIndex:99, background:'white', borderRadius:'14px', border:'1px solid #e0e7ff', boxShadow:'0 8px 32px rgba(37,99,235,0.18)', padding:'18px', width:'260px' }}>
+                  <p style={{ fontSize:'13px', fontWeight:'700', color:'#1d4ed8', marginBottom:'14px' }}>Filtrar por periodo</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom:'14px' }}>
+                    <div>
+                      <label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'5px' }}>Data inicial</label>
+                      <input type="date" value={filtroIni} onChange={e=>setFiltroIni(e.target.value)}
+                        style={{ width:'100%', border:'1.5px solid #dbeafe', borderRadius:'8px', padding:'8px 10px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const, color:'#1d4ed8' }}
+                        onFocus={e=>{(e.target as HTMLInputElement).style.borderColor=AZUL}}
+                        onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#dbeafe'}}/>
+                    </div>
+                    <div>
+                      <label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'5px' }}>Data final</label>
+                      <input type="date" value={filtroFim} onChange={e=>setFiltroFim(e.target.value)}
+                        style={{ width:'100%', border:'1.5px solid #dbeafe', borderRadius:'8px', padding:'8px 10px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const, color:'#1d4ed8' }}
+                        onFocus={e=>{(e.target as HTMLInputElement).style.borderColor=AZUL}}
+                        onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#dbeafe'}}/>
+                    </div>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', marginBottom:'12px' }}>
+                    {[{l:'Hoje',f:0,t:0},{l:'7 dias',f:0,t:6},{l:'15 dias',f:0,t:14},{l:'Mes',f:0,t:29}].map(at=>{
+                      const ini = new Date(hoje); ini.setDate(ini.getDate()+at.f)
+                      const fim = new Date(hoje); fim.setDate(fim.getDate()+at.t)
+                      return (
+                        <button key={at.l} onClick={()=>{setFiltroIni(toISO(ini));setFiltroFim(toISO(fim))}}
+                          style={{ background:AZUL_XLIGHT, border:'1px solid '+AZUL_LIGHT, borderRadius:'7px', padding:'6px 4px', fontSize:'11px', fontWeight:'600', color:AZUL_DARK, cursor:'pointer' }}>
+                          {at.l}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div style={{ display:'flex', gap:'8px' }}>
+                    <button onClick={()=>setFiltroPanelAberto(false)}
+                      style={{ flex:1, background:AZUL, color:'white', border:'none', borderRadius:'8px', padding:'9px', fontSize:'13px', fontWeight:'700', cursor:'pointer' }}>
+                      Aplicar
+                    </button>
+                    <button onClick={limparFiltro}
+                      style={{ background:'#f3f4f6', color:'#6b7280', border:'none', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', cursor:'pointer' }}>
+                      Limpar
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Filtro profissional */}
+          {profissionais.length > 1 && (
+            <select value={filtroProfissional} onChange={e=>setFiltroProfissional(e.target.value)}
+              style={{ background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'8px', padding:'5px 8px', fontSize:'12px', color:'white', cursor:'pointer', outline:'none', maxWidth:'130px' }}>
+              <option value="todos" style={{ color:'#374151' }}>Todos</option>
+              {profissionais.map((p: any) => <option key={p.id} value={p.nome} style={{ color:'#374151' }}>{p.nome}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
-      {/* Dias da semana */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', background:'white', borderBottom:'1px solid #f3f4f6', flexShrink:0 }}>
+      {/* Cabecalho dias da semana */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', background:AZUL_XLIGHT, borderBottom:'1px solid '+AZUL_LIGHT, flexShrink:0 }}>
         {DIAS_SEMANA.map(d => (
-          <div key={d} style={{ textAlign:'center', padding:'8px 0', fontSize:'12px', fontWeight:'600', color:'#9ca3af' }}>{d}</div>
+          <div key={d} style={{ textAlign:'center', padding:'7px 0', fontSize:'11px', fontWeight:'700', color:AZUL, letterSpacing:'0.03em' }}>{d}</div>
         ))}
       </div>
 
       {/* Grade do calendario */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', flexShrink:0, borderBottom:'2px solid #f3f4f6' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', flexShrink:0, borderBottom:'2px solid '+AZUL_LIGHT }}>
         {celulas.map((data, i) => {
-          const iso = toISO(data)
-          const estesMes = data.getMonth() === mesBase.getMonth()
-          const ehHoje = toISO(data) === toISO(hoje)
-          const ehSel  = iso === diaSel
-          const count  = contagemPorDia[iso] || 0
+          const iso        = toISO(data)
+          const estesMes   = data.getMonth() === mesBase.getMonth()
+          const ehHoje     = iso === toISO(hoje)
+          const ehSel      = iso === diaSel
+          const count      = contagemPorDia[iso] || 0
+          const noPeriodo  = modoFiltro && (!filtroIni || iso >= filtroIni) && (!filtroFim || iso <= filtroFim) && estesMes
 
           return (
             <div key={i} onClick={()=>setDiaSel(iso)}
-              style={{ minHeight:'52px', padding:'4px 2px', borderRight:i%7!==6?'1px solid #f9fafb':'none', borderBottom:'1px solid #f9fafb', cursor:'pointer', background:ehSel?'#fff7ed':'white', transition:'background .1s', display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
-              <span style={{ width:'26px', height:'26px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:ehHoje||ehSel?'700':'400', background:ehSel?COR_HEADER:ehHoje?'#ffedd5':'transparent', color:ehSel?'white':ehHoje?COR_HEADER:estesMes?'#374151':'#d1d5db' }}>
+              style={{ minHeight:'50px', padding:'4px 2px', borderRight:i%7!==6?'1px solid '+AZUL_LIGHT:'none', borderBottom:'1px solid '+AZUL_LIGHT, cursor:'pointer', background:ehSel?AZUL_LIGHT:noPeriodo?'#f0f9ff':'white', transition:'background .1s', display:'flex', flexDirection:'column', alignItems:'center', gap:'2px' }}>
+              <span style={{ width:'26px', height:'26px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:ehHoje||ehSel?'700':'400', background:ehSel?AZUL:ehHoje?AZUL_LIGHT:'transparent', color:ehSel?'white':ehHoje?AZUL:estesMes?'#374151':'#d1d5db' }}>
                 {data.getDate()}
               </span>
               {count > 0 && estesMes && (
                 <div style={{ display:'flex', gap:'2px', flexWrap:'wrap', justifyContent:'center' }}>
                   {Array.from({length:Math.min(count,3)}).map((_,k) => (
-                    <div key={k} style={{ width:'6px', height:'6px', borderRadius:'50%', background:ehSel?'white':COR_HEADER, opacity:0.8 }}/>
+                    <div key={k} style={{ width:'6px', height:'6px', borderRadius:'50%', background:ehSel?'white':AZUL, opacity:0.75 }}/>
                   ))}
-                  {count > 3 && <span style={{ fontSize:'9px', color:ehSel?'white':COR_HEADER, fontWeight:'700' }}>+{count-3}</span>}
+                  {count > 3 && <span style={{ fontSize:'9px', color:ehSel?'white':AZUL, fontWeight:'700' }}>+{count-3}</span>}
                 </div>
               )}
             </div>
@@ -143,43 +246,48 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
         })}
       </div>
 
-      {/* Lista de horarios do dia selecionado */}
-      <div style={{ flex:1, overflowY:'auto', padding:'0' }}>
-        <div style={{ background:COR_HEADER, padding:'10px 18px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span style={{ color:'white', fontSize:'13px', fontWeight:'700', textTransform:'capitalize' }}>
-            {labelDia(diaSel)}
-          </span>
-          <span style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px' }}>{agsDia.length} agend.</span>
-        </div>
+      {/* Header do dia selecionado */}
+      <div style={{ background:'linear-gradient(135deg,'+AZUL_DARK+','+AZUL+')', padding:'9px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+        <span style={{ color:'white', fontSize:'13px', fontWeight:'700', textTransform:'capitalize' }}>
+          {labelDia(diaSel)}
+        </span>
+        <span style={{ color:'rgba(255,255,255,0.75)', fontSize:'11px', background:'rgba(255,255,255,0.15)', borderRadius:'99px', padding:'2px 10px' }}>
+          {agsDia.length} agend.
+        </span>
+      </div>
 
+      {/* Lista de horarios */}
+      <div style={{ flex:1, overflowY:'auto' }}>
         {agsDia.length === 0 ? (
-          <div style={{ padding:'32px 20px', textAlign:'center', color:'#9ca3af', fontSize:'14px' }}>
-            <div style={{ width:'48px', height:'48px', borderRadius:'50%', background:'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 10px' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <div style={{ padding:'28px 20px', textAlign:'center', color:'#9ca3af', fontSize:'13px' }}>
+            <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:AZUL_XLIGHT, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 10px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </div>
-            Nenhum agendamento
+            Nenhum agendamento neste dia
           </div>
         ) : (
-          <div style={{ padding:'8px 14px', display:'flex', flexDirection:'column', gap:'8px' }}>
+          <div style={{ padding:'8px 12px', display:'flex', flexDirection:'column', gap:'7px' }}>
             {agsDia.map(ag => {
-              const hora = fmtHora(ag.horaInicio)
+              const hora        = fmtHora(ag.horaInicio)
               const isFinalizado = ag.status === 'fechado'
-              const borda = isFinalizado ? '#10b981' : '#3b82f6'
-              const bg    = isFinalizado ? '#f0fdf4' : '#eff6ff'
+              const borda = isFinalizado ? '#10b981' : AZUL
+              const bg    = isFinalizado ? '#f0fdf4' : AZUL_XLIGHT
               return (
                 <div key={ag.id} onClick={()=>onAbrirEdicao(ag)}
-                  style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'12px', background:bg, border:'1px solid ' + borda + '30', borderLeft:'3px solid ' + borda, cursor:'pointer' }}>
-                  <div style={{ width:'52px', textAlign:'center', flexShrink:0, background:'white', borderRadius:'8px', padding:'6px 4px' }}>
-                    <p style={{ fontSize:'15px', fontWeight:'800', color:COR_HEADER, fontFamily:'monospace', letterSpacing:'-0.5px' }}>{hora}</p>
+                  style={{ display:'flex', alignItems:'center', gap:'10px', padding:'11px 12px', borderRadius:'12px', background:bg, border:'1px solid '+(isFinalizado?'#bbf7d0':AZUL_LIGHT), borderLeft:'3px solid '+borda, cursor:'pointer', transition:'filter .1s' }}
+                  onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.filter='brightness(0.97)'}}
+                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.filter='none'}}>
+                  <div style={{ width:'50px', textAlign:'center', flexShrink:0, background:'white', borderRadius:'8px', padding:'5px 4px', border:'1px solid '+AZUL_LIGHT }}>
+                    <p style={{ fontSize:'14px', fontWeight:'800', color:AZUL, fontFamily:'monospace', letterSpacing:'-0.5px' }}>{hora}</p>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'2px' }}>
-                      <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:isFinalizado?'#10b981':'#3b82f6', flexShrink:0 }}/>
+                      <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:isFinalizado?'#10b981':AZUL, flexShrink:0 }}/>
                       <p style={{ fontSize:'14px', fontWeight:'700', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.cliente}</p>
                     </div>
-                    <p style={{ fontSize:'12px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.servico || ag.profissional}</p>
+                    <p style={{ fontSize:'11px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.servico||ag.profissional}</p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
               )
             })}
@@ -187,11 +295,11 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
         )}
       </div>
 
-      {/* Botao + flutuante */}
-      <div style={{ padding:'14px 18px', borderTop:'1px solid #f3f4f6', display:'flex', justifyContent:'flex-end', flexShrink:0 }}>
+      {/* Botao novo */}
+      <div style={{ padding:'12px 16px', borderTop:'1px solid '+AZUL_LIGHT, display:'flex', justifyContent:'flex-end', flexShrink:0 }}>
         <button onClick={onAbrirNovo}
-          style={{ width:'52px', height:'52px', borderRadius:'50%', background:COR_HEADER, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 14px rgba(249,115,22,0.4)' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          style={{ width:'50px', height:'50px', borderRadius:'50%', background:'linear-gradient(135deg,'+AZUL_DARK+','+AZUL+')', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 14px rgba(37,99,235,0.35)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       </div>
     </div>

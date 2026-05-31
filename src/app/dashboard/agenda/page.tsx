@@ -411,7 +411,7 @@ export default function AgendaPage() {
       const ipSalvar = calcularSessaoPlano()
       valorFinal = ipSalvar.cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
     }
-    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, observacoes:form.observacoes||null, plano_id:form.usar_plano?planoCliente?.id:null }
+    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }

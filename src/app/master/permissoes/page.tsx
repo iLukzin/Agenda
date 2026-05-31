@@ -102,7 +102,7 @@ export default function PermissoesPage() {
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'min(300px, 100%) 1fr', gap:'16px', alignItems:'start' }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
         {/* Lista de usuarios */}
         <div style={{ background:'white', borderRadius:'16px', border:'1px solid #e8e9f4', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
           <div style={{ padding:'14px 16px', background:'linear-gradient(135deg,#f8faff,#f0f4ff)', borderBottom:'1px solid #e8e9f4', display:'flex', flexDirection:'column', gap:'8px' }}>
@@ -116,7 +116,7 @@ export default function PermissoesPage() {
               {empresas.map(e=><option key={e.id} value={e.id}>{e.nome}</option>)}
             </select>
           </div>
-          <div style={{ maxHeight:'520px', overflowY:'auto' }}>
+          <div style={{ maxHeight:'260px', overflowY:'auto' }}>
             {carregando ? (
               <div style={{ padding:'30px', textAlign:'center', color:'#9ca3af', fontSize:'13px' }}>Carregando...</div>
             ) : filtrados.map(u => (
@@ -171,8 +171,8 @@ export default function PermissoesPage() {
             </div>
 
             {/* Tabela de permissoes */}
-            <div style={{ padding:'16px', overflowX:'auto', WebkitOverflowScrolling:'touch' } as any}>
-              <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'480px' }}>
+            <div style={{ padding:'12px', overflowX:'auto', WebkitOverflowScrolling:'touch' } as any}>
+              <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'320px' }}>
                 <thead>
                   <tr style={{ borderBottom:'2px solid #f0f0f8' }}>
                     <th style={{ padding:'10px 14px', textAlign:'left', fontSize:'11px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', width:'38%' }}>Modulo</th>
@@ -193,7 +193,7 @@ export default function PermissoesPage() {
                         {(['visualizar','criar','alterar','excluir'] as const).map(tipo => (
                           <td key={tipo} style={{ padding:'14px 8px', textAlign:'center' }}>
                             <div onClick={()=>togglePerm(tela.key, tipo)}
-                              style={{ width:'28px', height:'28px', borderRadius:'8px', cursor:'pointer', border:p[tipo]?'2px solid #6366f1':'2px solid #e5e7eb', background:p[tipo]?'#6366f1':'white', display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all .15s', boxShadow:p[tipo]?'0 2px 6px rgba(99,102,241,0.3)':'none' }}>
+                              style={{ width:'26px', height:'26px', borderRadius:'7px', cursor:'pointer', border:p[tipo]?'2px solid #6366f1':'2px solid #e5e7eb', background:p[tipo]?'#6366f1':'white', display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all .15s', boxShadow:p[tipo]?'0 2px 6px rgba(99,102,241,0.3)':'none' }}>
                               {p[tipo] && (
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                               )}

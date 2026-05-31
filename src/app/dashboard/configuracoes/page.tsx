@@ -47,7 +47,7 @@ export default function ConfiguracoesPage() {
   const [erroPlano, setErroPlano] = useState('')
   const [salvandoPlano, setSalvandoPlano]   = useState(false)
   // WhatsApp
-  const [wpp, setWpp] = useState({ api_url:'', api_token:'', instancia:'', ativo:false })
+  const [wpp, setWpp] = useState({ ativo:false })
   const [templates, setTemplates] = useState<any[]>([])
   const [testando, setTestando] = useState(false)
   const [testeNum, setTesteNum] = useState('')
@@ -69,7 +69,14 @@ export default function ConfiguracoesPage() {
     ])
     if (emp.data) {
       setEmpresa(emp.data)
-      setWpp({ api_url:emp.data.whatsapp_api_url||'', api_token:emp.data.whatsapp_api_token||'', instancia:emp.data.whatsapp_instancia||'', ativo:emp.data.whatsapp_ativo||false })
+      setWpp({ ativo:emp.data.whatsapp_ativo||false })
+      // Verificar status da conexao
+      if (empresaAtiva?.id) {
+        fetch('/api/whatsapp/status?empresa_id=' + empresaAtiva.id)
+          .then(r => r.json())
+          .then(d => { if (d.conectado) setStatusConexao('conectado') })
+          .catch(() => {})
+      }
       setAutoConfirmacao(emp.data.wpp_auto_confirmacao||false)
       setAutoAniversario(emp.data.wpp_auto_aniversario||false)
     }
@@ -111,9 +118,6 @@ export default function ConfiguracoesPage() {
     setSalvandoWpp(true); setMsgWpp('')
     const sb2 = createClient()
     const { error } = await sb2.from('empresas').update({
-      whatsapp_api_url: wpp.api_url || null,
-      whatsapp_api_token: wpp.api_token || null,
-      whatsapp_instancia: wpp.instancia || null,
       whatsapp_ativo: wpp.ativo,
       wpp_auto_confirmacao: autoConfirmacao,
       wpp_auto_aniversario: autoAniversario,
@@ -124,71 +128,63 @@ export default function ConfiguracoesPage() {
   }
 
   async function buscarQrCode() {
-    if (!wpp.api_url || !wpp.api_token || !wpp.instancia) {
-      setMsgWpp('Preencha a URL, Token e Instancia antes de conectar.')
-      return
-    }
+    if (!empresaAtiva?.id) return
     setBuscandoQr(true); setQrCode(''); setStatusConexao('aguardando'); setMsgWpp('')
     try {
-      // Verificar status primeiro
-      const urlStatus = wpp.api_url.replace(/\/$/, '') + '/instance/connectionState/' + wpp.instancia
-      const resStatus = await fetch(urlStatus, { headers: { apikey: wpp.api_token } })
-      if (resStatus.ok) {
-        const dataStatus = await resStatus.json()
-        const state = dataStatus?.instance?.state || dataStatus?.state || ''
-        if (state === 'open' || state === 'connected') {
-          setStatusConexao('conectado'); setMsgWpp('WhatsApp ja esta conectado!'); setBuscandoQr(false); return
-        }
-      }
-      // Buscar QR code
-      const urlQr = wpp.api_url.replace(/\/$/, '') + '/instance/connect/' + wpp.instancia
-      const resQr = await fetch(urlQr, { headers: { apikey: wpp.api_token } })
-      if (resQr.ok) {
-        const dataQr = await resQr.json()
-        const qr = dataQr?.qrcode?.base64 || dataQr?.base64 || dataQr?.qr || ''
-        if (qr) {
-          setQrCode(qr.startsWith('data:') ? qr : 'data:image/png;base64,' + qr)
-          setStatusConexao('aguardando')
-          // Verificar conexao a cada 3 segundos por 60 segundos
-          let tentativas = 0
-          const intervalo = setInterval(async () => {
-            tentativas++
-            if (tentativas > 20) { clearInterval(intervalo); setBuscandoQr(false); return }
-            const r2 = await fetch(urlStatus, { headers: { apikey: wpp.api_token } })
-            if (r2.ok) {
-              const d2 = await r2.json()
-              const s2 = d2?.instance?.state || d2?.state || ''
-              if (s2 === 'open' || s2 === 'connected') {
-                clearInterval(intervalo); setStatusConexao('conectado'); setQrCode(''); setMsgWpp('Conectado com sucesso!'); setBuscandoQr(false)
-              }
-            }
-          }, 3000)
-        } else {
-          setMsgWpp('QR code nao retornado. Verifique a instancia.')
-          setBuscandoQr(false); setStatusConexao('desconectado')
-        }
+      const res = await fetch('/api/whatsapp/qrcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa_id: empresaAtiva.id }),
+      })
+      const data = await res.json()
+      if (data.qr) {
+        setQrCode(data.qr)
+        // Polling status a cada 3s ate conectar (max 60s)
+        let tentativas = 0
+        const intervalo = setInterval(async () => {
+          tentativas++
+          if (tentativas > 20) { clearInterval(intervalo); setBuscandoQr(false); return }
+          const r2 = await fetch('/api/whatsapp/status?empresa_id=' + empresaAtiva.id)
+          const d2 = await r2.json()
+          if (d2.conectado) {
+            clearInterval(intervalo)
+            setStatusConexao('conectado'); setQrCode(''); setBuscandoQr(false)
+            setMsgWpp('WhatsApp conectado!')
+            setTimeout(() => setMsgWpp(''), 3000)
+          }
+        }, 3000)
+      } else if (data.conectado) {
+        setStatusConexao('conectado'); setQrCode(''); setBuscandoQr(false)
+      } else if (data.tipo === 'backend_necessario') {
+        // Mostrar modal de configuracao da Evolution API
+        setQrCode('CONFIGURAR')
+        setBuscandoQr(false); setStatusConexao('aguardando')
       } else {
-        const err = await resQr.text()
-        setMsgWpp('Erro: ' + err.slice(0, 80)); setBuscandoQr(false); setStatusConexao('desconectado')
+        setMsgWpp(data.erro || 'Erro ao gerar QR Code.')
+        setBuscandoQr(false); setStatusConexao('desconectado')
       }
     } catch (ex: any) {
-      setMsgWpp('Erro de conexao: ' + ex.message); setBuscandoQr(false); setStatusConexao('desconectado')
+      setMsgWpp('Erro: ' + ex.message); setBuscandoQr(false); setStatusConexao('desconectado')
     }
   }
 
   async function desconectarWpp() {
-    if (!wpp.api_url || !wpp.instancia) return
-    try {
-      const url = wpp.api_url.replace(/\/$/, '') + '/instance/logout/' + wpp.instancia
-      await fetch(url, { method: 'DELETE', headers: { apikey: wpp.api_token } })
-      setStatusConexao('desconectado'); setQrCode(''); setMsgWpp('Desconectado.')
-    } catch { setMsgWpp('Erro ao desconectar.') }
+    if (!empresaAtiva?.id) return
+    await fetch('/api/whatsapp/desconectar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empresa_id: empresaAtiva.id }),
+    })
+    setStatusConexao('desconectado'); setQrCode(''); setMsgWpp('Desconectado.')
   }
 
   async function testarWpp() {
     if (!testeNum) return setMsgWpp('Informe um numero para teste.')
     setTestando(true); setMsgWpp('')
-    const { ok, erro } = await enviarMensagem({ api_url:wpp.api_url, api_token:wpp.api_token, instancia:wpp.instancia }, testeNum, 'Teste de conexao AgendaFortitude. Se recebeu esta mensagem a API esta funcionando!')
+    const resT = await fetch('/api/whatsapp/enviar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ empresa_id:empresaAtiva?.id, numero:testeNum, mensagem:'Teste AgendaFortitude - conexao funcionando!' }) })
+    const dadosT = await resT.json()
+    const ok = dadosT.ok
+    const erro = dadosT.erro
     setMsgWpp(ok ? 'Mensagem enviada com sucesso!' : 'Erro: ' + erro)
     setTestando(false)
   }
@@ -213,7 +209,8 @@ export default function ConfiguracoesPage() {
       const num = c.whatsapp || c.telefone
       if (!num) { erros++; continue }
       const msg = aplicarVariaveis(tmplMassa.mensagem, { cliente: c.nome, empresa: empresaAtiva.nome || '' })
-      const { ok } = await enviarMensagem({ api_url:wpp.api_url, api_token:wpp.api_token, instancia:wpp.instancia }, num, msg)
+      const rr = await fetch('/api/whatsapp/enviar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ empresa_id:empresaAtiva?.id, numero:num, mensagem:msg }) })
+      const dr = await rr.json(); const ok = dr.ok
       if (ok) enviados++; else erros++
       await new Promise(r => setTimeout(r, 500)) // delay para nao sobrecarregar API
     }
@@ -381,7 +378,27 @@ export default function ConfiguracoesPage() {
             </div>
 
             {/* Area do QR Code */}
-            {statusConexao === 'aguardando' && qrCode && (
+            {statusConexao === 'aguardando' && qrCode === 'CONFIGURAR' && (
+              <div style={{ padding:'24px', background:'#fffbeb', borderTop:'1px solid #fde68a' }}>
+                <p style={{ fontSize:'14px', fontWeight:'700', color:'#92400e', marginBottom:'12px' }}>Configuracao necessaria</p>
+                <p style={{ fontSize:'13px', color:'#78350f', marginBottom:'16px', lineHeight:'1.6' }}>
+                  Para usar o WhatsApp diretamente voce precisa configurar a Evolution API (gratuita e self-hosted):
+                </p>
+                <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
+                  {[
+                    '1. Acesse github.com/EvolutionAPI/evolution-api e instale no seu servidor',
+                    '2. Configure URL, Token e Instancia na secao "Configuracao da API" abaixo',
+                    '3. Clique novamente em Conectar WhatsApp para gerar o QR Code',
+                  ].map((s,i) => <p key={i} style={{ fontSize:'12px', color:'#92400e', background:'#fef3c7', borderRadius:'6px', padding:'8px 12px' }}>{s}</p>)}
+                </div>
+                <a href="https://github.com/EvolutionAPI/evolution-api" target="_blank" rel="noopener noreferrer"
+                  style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'#f59e0b', color:'white', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', textDecoration:'none' }}>
+                  Ver instrucoes de instalacao
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+              </div>
+            )}
+            {statusConexao === 'aguardando' && qrCode && qrCode !== 'CONFIGURAR' && (
               <div style={{ padding:'32px 24px', display:'flex', flexDirection:'column', alignItems:'center', background:'#fafbff' }}>
                 <p style={{ fontSize:'14px', fontWeight:'600', color:'#374151', marginBottom:'6px', textAlign:'center' }}>
                   Escaneie com o WhatsApp do seu celular
@@ -434,7 +451,7 @@ export default function ConfiguracoesPage() {
                 <p style={{ fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'16px' }}>Como conectar:</p>
                 <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
                   {[
-                    { n:1, txt:'Configure a URL da API, Token e Instancia na secao abaixo' },
+                    { n:1, txt:'Clique em "Conectar WhatsApp" acima para gerar o QR Code' },
                     { n:2, txt:'Clique em "Conectar WhatsApp" acima' },
                     { n:3, txt:'Abra o WhatsApp no celular e va em Menu > Aparelhos conectados' },
                     { n:4, txt:'Toque em "Conectar aparelho" e escaneie o QR Code' },
@@ -449,48 +466,54 @@ export default function ConfiguracoesPage() {
             )}
           </div>
 
-                    {/* Configuracao API */}
-          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
-            <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Configuracao da API</h3>
-            <p style={{ fontSize:'12px', color:'#6b7280', marginBottom:'16px' }}>Compatible com Evolution API, Z-API e WPPConnect</p>
-            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f9fafb', borderRadius:'10px', padding:'12px 14px' }}>
-                <div>
-                  <p style={{ fontSize:'13px', fontWeight:'600', color:'#374151' }}>Ativar WhatsApp</p>
-                  <p style={{ fontSize:'11px', color:'#9ca3af' }}>Habilitar envio de mensagens</p>
-                </div>
-                <div onClick={()=>setWpp(p=>({...p,ativo:!p.ativo}))} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:wpp.ativo?'#22c55e':'#e5e7eb', position:'relative' }}>
-                  <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:wpp.ativo?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
-                </div>
-              </div>
-              {[{l:'URL da API',k:'api_url',ph:'https://api.seuservidor.com.br',t:'text'},{l:'API Key / Token',k:'api_token',ph:'sua-chave-api-aqui',t:'password'},{l:'Nome da Instancia',k:'instancia',ph:'minha-instancia',t:'text'}].map(f=>(
+                    {/* Configuracao Evolution API (opcional) */}
+          <details style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8' }}>
+            <summary style={{ padding:'16px 20px', cursor:'pointer', fontSize:'14px', fontWeight:'600', color:'#374151', display:'flex', alignItems:'center', gap:'8px', listStyle:'none' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+              Configuracao da Evolution API
+              <span style={{ fontSize:'11px', color:'#9ca3af', fontWeight:'400', marginLeft:'4px' }}>(necessaria para conectar)</span>
+            </summary>
+            <div style={{ padding:'0 20px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
+              <p style={{ fontSize:'12px', color:'#6b7280' }}>Instale a Evolution API gratuitamente em github.com/EvolutionAPI/evolution-api e configure abaixo:</p>
+              {[
+                {l:'URL da API',k:'whatsapp_api_url',ph:'https://api.seuservidor.com.br'},
+                {l:'API Key / Token',k:'whatsapp_api_token',ph:'sua-chave-api'},
+                {l:'Nome da Instancia',k:'whatsapp_instancia',ph:'agendafortitude'},
+              ].map(f => (
                 <div key={f.k}>
                   <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>{f.l}</label>
-                  <input type={f.t} value={(wpp as any)[f.k]} onChange={e=>setWpp(p=>({...p,[f.k]:e.target.value}))}
+                  <input
+                    defaultValue={(empresaAtiva as any)?.[f.k] || ''}
+                    onBlur={async e => {
+                      const sb2 = createClient()
+                      await sb2.from('empresas').update({ [f.k]: e.target.value || null }).eq('id', empresaAtiva?.id || '')
+                    }}
                     style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
                     placeholder={f.ph}
-                    onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
-                    onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
+                    onFocus={ev=>{(ev.target as HTMLInputElement).style.borderColor='#6366f1'}}
+                    // onBlur2={ev=>{(ev.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
                 </div>
               ))}
-              <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
-                <div style={{ flex:1, minWidth:'160px' }}>
-                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Numero para teste</label>
-                  <input value={testeNum} onChange={e=>setTesteNum(e.target.value)}
-                    style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
-                    placeholder="(34) 99999-9999"
-                    onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
-                    onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
-                </div>
-                <div style={{ display:'flex', alignItems:'flex-end', gap:'8px' }}>
-                  <button onClick={testarWpp} disabled={testando} style={{ background:'#f0fdf4', color:'#16a34a', border:'1.5px solid #86efac', borderRadius:'8px', padding:'10px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-                    {testando ? 'Enviando...' : 'Testar'}
-                  </button>
-                  <button onClick={salvarWpp} disabled={salvandoWpp} style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'10px 18px', fontSize:'13px', fontWeight:'700', cursor:'pointer' }}>
-                    {salvandoWpp ? 'Salvando...' : 'Salvar config'}
-                  </button>
-                </div>
+            </div>
+          </details>
+
+          {/* Numero de teste */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Testar envio</h3>
+            <p style={{ fontSize:'12px', color:'#6b7280', marginBottom:'14px' }}>Envie uma mensagem de teste para verificar a conexao</p>
+            <div style={{ display:'flex', gap:'10px', flexWrap:'wrap', alignItems:'flex-end' }}>
+              <div style={{ flex:1, minWidth:'160px' }}>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Numero WhatsApp</label>
+                <input value={testeNum} onChange={e=>setTesteNum(e.target.value)}
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
+                  placeholder="(34) 99999-9999"
+                  onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#22c55e'}}
+                  onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
               </div>
+              <button onClick={testarWpp} disabled={testando || statusConexao !== 'conectado'}
+                style={{ background:statusConexao==='conectado'?'#f0fdf4':'#f9fafb', color:statusConexao==='conectado'?'#16a34a':'#9ca3af', border:'1.5px solid '+(statusConexao==='conectado'?'#86efac':'#e5e7eb'), borderRadius:'8px', padding:'10px 16px', fontSize:'13px', fontWeight:'600', cursor:statusConexao==='conectado'?'pointer':'not-allowed' }}>
+                {testando ? 'Enviando...' : 'Enviar teste'}
+              </button>
             </div>
             {msgWpp && <div style={{ marginTop:'12px', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', background:msgWpp.startsWith('Erro')?'#fef2f2':'#f0fdf4', color:msgWpp.startsWith('Erro')?'#dc2626':'#16a34a', border:'1px solid '+(msgWpp.startsWith('Erro')?'#fecaca':'#bbf7d0') }}>{msgWpp}</div>}
           </div>

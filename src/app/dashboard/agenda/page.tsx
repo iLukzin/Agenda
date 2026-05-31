@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { corStatus, labelStatus, createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
+import { carregarConfigWpp, enviarMensagem, registrarEnvio, aplicarVariaveis, formatarNumero } from '@/lib/whatsapp'
 import CalendarioAgenda from './CalendarioAgenda'
 import { criarAgendamento, atualizarAgendamento } from '@/lib/api'
 
@@ -250,6 +251,8 @@ export default function AgendaPage() {
   const [modoEdicao, setModoEdicao] = useState(false)
   const [selecionado, setSelecionado] = useState<AgendamentoLocal | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [enviandoWpp, setEnviandoWpp] = useState(false)
+  const [statusWpp, setStatusWpp] = useState<'idle'|'ok'|'erro'>('idle')
   const [erroForm, setErroForm] = useState<string[]>([])
   const [finalizando, setFinalizando] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)
@@ -453,6 +456,39 @@ export default function AgendaPage() {
     if (error) { alert('Erro: ' + error.message); setCancelando(false); return }
     setCancelando(false); setModalCancelar(false)
     await carregar(); fecharModal()
+  }
+
+  async function enviarConfirmacao() {
+    if (!selecionado || !empresaAtiva?.id) return
+    setEnviandoWpp(true); setStatusWpp('idle')
+    // Buscar numero do cliente
+    const sb2 = createClient()
+    const { data: cli } = await sb2.from('clientes').select('nome,whatsapp,telefone').eq('id', selecionado.clienteId).single()
+    if (!cli) { setStatusWpp('erro'); setEnviandoWpp(false); return }
+    const numero = cli.whatsapp || cli.telefone
+    if (!numero) { alert('Cliente nao tem WhatsApp cadastrado.'); setEnviandoWpp(false); return }
+    // Buscar config wpp
+    const config = await carregarConfigWpp(empresaAtiva.id)
+    if (!config) { alert('Configure o WhatsApp em Configuracoes > WhatsApp antes de enviar.'); setEnviandoWpp(false); return }
+    // Buscar template
+    const { data: tmpl } = await sb2.from('mensagens_template').select('mensagem').eq('empresa_id', empresaAtiva.id).eq('tipo', 'confirmacao').eq('ativo', true).maybeSingle()
+    const templateMsg = tmpl?.mensagem || 'Ola {{cliente}}! Confirmando seu horario em {{data}} as {{hora}} para {{servico}}. Pode confirmar?'
+    // Formatar data e hora
+    const [y,m,d] = selecionado.dataISO.split('-')
+    const dataFmt = d + '/' + m + '/' + y
+    const hh = Math.floor(selecionado.horaInicio), mm2 = Math.round((selecionado.horaInicio - hh) * 60)
+    const horaFmt = String(hh).padStart(2,'0') + ':' + String(mm2).padStart(2,'0')
+    const msg = aplicarVariaveis(templateMsg, { cliente: selecionado.cliente, empresa: empresaAtiva.nome||'', data: dataFmt, hora: horaFmt, servico: selecionado.servico||'' })
+    const { ok, erro } = await enviarMensagem(config, numero, msg)
+    if (ok) {
+      await registrarEnvio(empresaAtiva.id, { cliente_id: selecionado.clienteId, agendamento_id: selecionado.id, tipo: 'confirmacao', numero: formatarNumero(numero), mensagem: msg, status: 'enviado' })
+      setStatusWpp('ok')
+      setTimeout(() => setStatusWpp('idle'), 4000)
+    } else {
+      alert('Erro ao enviar: ' + erro)
+      setStatusWpp('erro')
+    }
+    setEnviandoWpp(false)
   }
 
   async function finalizar(id: string) {
@@ -1063,6 +1099,17 @@ export default function AgendaPage() {
               {modoEdicao && selecionado && !isBloqEdicao ? (
                 <div style={{ display:'flex', gap:'8px' }}>
                   <button onClick={()=>{setMotivoCancelamento('');setModalCancelar(true)}} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>Cancelar agend.</button>
+                  <button onClick={enviarConfirmacao} disabled={enviandoWpp} title="Enviar confirmacao via WhatsApp"
+                    style={{ background:statusWpp==='ok'?'#dcfce7':statusWpp==='erro'?'#fef2f2':'#f0fdf4', color:statusWpp==='ok'?'#16a34a':statusWpp==='erro'?'#dc2626':'#16a34a', border:'1px solid '+(statusWpp==='ok'?'#86efac':statusWpp==='erro'?'#fca5a5':'#86efac'), borderRadius:'8px', padding:'9px 12px', fontSize:'13px', fontWeight:'600', cursor:enviandoWpp?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
+                    {enviandoWpp ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation:'spin .7s linear infinite' }}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+                    ) : statusWpp === 'ok' ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    )}
+                    {enviandoWpp ? 'Enviando...' : statusWpp === 'ok' ? 'Enviado!' : 'Confirmar Wpp'}
+                  </button>
                   <button onClick={()=>finalizar(selecionado.id)} disabled={finalizando} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>{finalizando?'Finalizando...':'Finalizar'}</button>
                 </div>
               ) : <div/>}

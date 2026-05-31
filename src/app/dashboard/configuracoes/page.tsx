@@ -482,16 +482,7 @@ export default function ConfiguracoesPage() {
               ].map(f => (
                 <div key={f.k}>
                   <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>{f.l}</label>
-                  <input
-                    defaultValue={(empresaAtiva as any)?.[f.k] || ''}
-                    onBlur={async e => {
-                      const sb2 = createClient()
-                      await sb2.from('empresas').update({ [f.k]: e.target.value || null }).eq('id', empresaAtiva?.id || '')
-                    }}
-                    style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
-                    placeholder={f.ph}
-                    onFocus={ev=>{(ev.target as HTMLInputElement).style.borderColor='#6366f1'}}
-                    // onBlur2={ev=>{(ev.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
+                  <input defaultValue={(empresaAtiva as any)?.[f.k]||''} onBlur={e=>{const sb2=createClient();sb2.from('empresas').update({[f.k]:e.target.value||null}).eq('id',empresaAtiva?.id||'')}} style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }} placeholder={f.ph}/>
                 </div>
               ))}
             </div>

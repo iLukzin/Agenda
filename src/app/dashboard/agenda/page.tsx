@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { corStatus, labelStatus, createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
+import CalendarioAgenda from './CalendarioAgenda'
 import { criarAgendamento, atualizarAgendamento } from '@/lib/api'
 
 const HORA_INICIO = 7
@@ -228,6 +229,7 @@ function useVisibilityRefresh(fn: () => void) {
 }
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
+  const tipoAgenda = (empresaAtiva as any)?.tipo_agenda || 'grade'
   const hoje = useMemo(() => hojeNoBrasil(), [])
 
   const [agendamentos, setAgendamentos] = useState<AgendamentoLocal[]>([])
@@ -529,6 +531,20 @@ export default function AgendaPage() {
 
   return (
     <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      {/* Vista Calendario */}
+      {tipoAgenda === 'calendario' && (
+        <div style={{ flex:1, overflow:'hidden' }}>
+          <CalendarioAgenda
+            agendamentos={agendamentos}
+            profissionais={profissionais}
+            onAbrirNovo={abrirNovo}
+            onAbrirEdicao={abrirEdicao}
+            filtroProfissional={filtroProfissional}
+            setFiltroProfissional={setFiltroProfissional}
+          />
+        </div>
+      )}
+      {tipoAgenda === 'grade' && (<>
       {/* Cabecalho */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px', flexShrink:0, flexWrap:'wrap', gap:'10px' }}>
         <div style={{ position:'relative' }}>
@@ -751,6 +767,8 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
+
+      </>) /* fim grade */}
 
       {/* Modal cancelamento */}
       {modalCancelar && (

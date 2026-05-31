@@ -12,6 +12,7 @@ export type EmpresaResumo = {
   status: string
   bloqueada?: boolean
   motivo_bloqueio?: string
+  tipo_agenda?: string
 }
 
 export type UsuarioLogado = {
@@ -75,7 +76,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         })
         // Tenta carregar empresas mesmo assim
         const { data: emps } = await sb
-          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio').order('nome')
+          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda').order('nome')
         const lista: EmpresaResumo[] = emps || []
         setEmpresas(lista)
         setEmpresaAtiva(lista[0] || null)
@@ -97,7 +98,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Master: carrega todas as empresas
         const { data: lista } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda')
           .order('nome')
 
         const l: EmpresaResumo[] = lista || []
@@ -119,7 +120,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Admin/profissional: somente a empresa vinculada
         const { data: emp } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda')
           .eq('id', u.empresa_id)
           .single()
 

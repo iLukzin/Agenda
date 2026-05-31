@@ -38,7 +38,7 @@ export default function ConfiguracoesPage() {
   async function salvarEmpresa() {
     if (!empresa || !empresaAtiva?.id) return
     setSalvando(true)
-    const { error } = await atualizarConfiguracoes(empresaAtiva.id, { nome:empresa.nome, cnpj:empresa.cnpj, telefone:empresa.telefone, email:empresa.email, endereco:empresa.endereco })
+    const { error } = await atualizarConfiguracoes(empresaAtiva.id, { nome:empresa.nome, cnpj:empresa.cnpj, telefone:empresa.telefone, email:empresa.email, endereco:empresa.endereco, tipo_agenda:empresa.tipo_agenda||'grade' })
     if (!error) { setSalvo(true); setTimeout(()=>setSalvo(false),2500); recarregar() }
     setSalvando(false)
   }
@@ -105,6 +105,34 @@ export default function ConfiguracoesPage() {
             <div style={{ gridColumn:'1/-1' }}>
               <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereço</label>
               <input value={empresa.endereco||''} onChange={e=>setEmpresa((p: any)=>({...p,endereco:e.target.value}))} style={inputStyle} placeholder="Rua, número, bairro, cidade"/>
+            </div>
+            {/* Tipo de agenda */}
+            <div style={{ gridColumn:'1/-1' }}>
+              <label style={{ display:'block', fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'10px' }}>Tipo de visualização da agenda</label>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                <div onClick={()=>setEmpresa((p: any)=>({...p,tipo_agenda:'grade'}))}
+                  style={{ padding:'16px', borderRadius:'12px', cursor:'pointer', border:(empresa.tipo_agenda||'grade')==='grade'?'2px solid #6366f1':'2px solid #e5e7eb', background:(empresa.tipo_agenda||'grade')==='grade'?'#eef2ff':'white', transition:'all .15s' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px' }}>
+                    <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:(empresa.tipo_agenda||'grade')==='grade'?'#6366f1':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={(empresa.tipo_agenda||'grade')==='grade'?'white':'#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </div>
+                    <p style={{ fontSize:'14px', fontWeight:'700', color:(empresa.tipo_agenda||'grade')==='grade'?'#4f46e5':'#374151' }}>Grade de horários</p>
+                  </div>
+                  <p style={{ fontSize:'12px', color:'#6b7280' }}>Visualização em colunas por profissional com grade de horários</p>
+                  {(empresa.tipo_agenda||'grade')==='grade' && <span style={{ fontSize:'11px', fontWeight:'700', color:'#4f46e5', background:'#e0e7ff', borderRadius:'99px', padding:'2px 10px', display:'inline-block', marginTop:'8px' }}>Ativo</span>}
+                </div>
+                <div onClick={()=>setEmpresa((p: any)=>({...p,tipo_agenda:'calendario'}))}
+                  style={{ padding:'16px', borderRadius:'12px', cursor:'pointer', border:empresa.tipo_agenda==='calendario'?'2px solid #f97316':'2px solid #e5e7eb', background:empresa.tipo_agenda==='calendario'?'#fff7ed':'white', transition:'all .15s' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px' }}>
+                    <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:empresa.tipo_agenda==='calendario'?'#f97316':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={empresa.tipo_agenda==='calendario'?'white':'#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                    <p style={{ fontSize:'14px', fontWeight:'700', color:empresa.tipo_agenda==='calendario'?'#ea580c':'#374151' }}>Calendário mensal</p>
+                  </div>
+                  <p style={{ fontSize:'12px', color:'#6b7280' }}>Calendário com dias do mês e lista de horários ao clicar no dia</p>
+                  {empresa.tipo_agenda==='calendario' && <span style={{ fontSize:'11px', fontWeight:'700', color:'#ea580c', background:'#ffedd5', borderRadius:'99px', padding:'2px 10px', display:'inline-block', marginTop:'8px' }}>Ativo</span>}
+                </div>
+              </div>
             </div>
           </div>
         </div>

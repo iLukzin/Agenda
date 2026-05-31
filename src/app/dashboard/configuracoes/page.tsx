@@ -71,7 +71,15 @@ export default function ConfiguracoesPage() {
     // Criar templates padrão se nao existirem
     if (tmpl.data && tmpl.data.length === 0) {
       const sb3 = createClient()
-      const msgConf = 'Ola {{cliente}}! Tudo bem?\n\nGostarmos de confirmar seu horario:\n*Data:* {{data}}\n*Horario:* {{hora}}\n*Servico:* {{servico}}\n\nPode confirmar?\n*Sim* - Estarei presente!\n*Nao* - Preciso remarcar.\n\nObrigado!'\n      const msgAniv = 'Ola {{cliente}}! Parabens pelo seu aniversario!\n\nA equipe da *{{empresa}}* deseja a voce um dia incrivel, cheio de alegria!\n\nMuitas felicidades!'\n      const msgMassa = 'Ola {{cliente}}!\n\nTemos novidades especiais para voce.\n\n*{{empresa}}*'\n      await sb3.from('mensagens_template').insert([\n        { empresa_id:empresaAtiva.id, tipo:'confirmacao', nome:'Confirmacao de Horario', mensagem:msgConf, ativo:true },\n        { empresa_id:empresaAtiva.id, tipo:'aniversario', nome:'Parabens Aniversario', mensagem:msgAniv, ativo:true },\n        { empresa_id:empresaAtiva.id, tipo:'massa', nome:'Mensagem em Massa', mensagem:msgMassa, ativo:true },\n      ])
+      const nl = String.fromCharCode(10)
+      const msgConf  = 'Ola {{cliente}}! Tudo bem?' + nl + nl + 'Confirmando seu horario:' + nl + '*Data:* {{data}}' + nl + '*Horario:* {{hora}}' + nl + '*Servico:* {{servico}}' + nl + nl + 'Pode confirmar? Responda Sim ou Nao.'
+      const msgAniv  = 'Ola {{cliente}}! Parabens pelo seu aniversario!' + nl + nl + 'A equipe da *{{empresa}}* deseja a voce um dia incrivel!' + nl + nl + 'Muitas felicidades!'
+      const msgMassa = 'Ola {{cliente}}!' + nl + nl + 'Temos novidades especiais para voce.' + nl + nl + '*{{empresa}}*'
+      await sb3.from('mensagens_template').insert([
+        { empresa_id:empresaAtiva.id, tipo:'confirmacao', nome:'Confirmacao de Horario', mensagem:msgConf, ativo:true },
+        { empresa_id:empresaAtiva.id, tipo:'aniversario', nome:'Parabens Aniversario', mensagem:msgAniv, ativo:true },
+        { empresa_id:empresaAtiva.id, tipo:'massa', nome:'Mensagem em Massa', mensagem:msgMassa, ativo:true },
+      ])
       const { data: newTmpl } = await sb3.from('mensagens_template').select('*').eq('empresa_id', empresaAtiva.id)
       if (newTmpl) setTemplates(newTmpl)
     }

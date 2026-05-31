@@ -322,6 +322,20 @@ export default function AgendaPage() {
   useEffect(() => { carregarRef.current = carregar }, [carregar])
 
   useEffect(() => { carregar() }, [carregar])
+
+  // Fechar modal com ESC
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (modalCancelar) { setModalCancelar(false); return }
+        if (modalAberto) { fecharModal(); return }
+        if (calAberto) { setCalAberto(false); return }
+        if (filtroAberto) { setFiltroAberto(false); return }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [modalAberto, modalCancelar, calAberto, filtroAberto])
   useVisibilityRefresh(carregar)
 
   // Realtime: canal separado que nao re-subscribe a cada render

@@ -88,7 +88,7 @@ export default function PermissoesPage() {
   return (
     <div style={{ padding:'24px 16px', minHeight:'100vh', background:'#f4f5fb' }}>
       {/* Cabecalho sofisticado */}
-      <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'28px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'20px', flexWrap:'wrap' }}>
         <button onClick={()=>router.push('/dashboard')}
           style={{ display:'flex', alignItems:'center', gap:'8px', background:'white', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'9px 16px', cursor:'pointer', fontSize:'13px', fontWeight:'600', color:'#4f46e5', boxShadow:'0 1px 4px rgba(99,102,241,0.12)', transition:'all .15s' }}
           onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.boxShadow='0 4px 12px rgba(99,102,241,0.2)'}}
@@ -102,7 +102,7 @@ export default function PermissoesPage() {
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:'16px', alignItems:'start' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'min(300px, 100%) 1fr', gap:'16px', alignItems:'start' }}>
         {/* Lista de usuarios */}
         <div style={{ background:'white', borderRadius:'16px', border:'1px solid #e8e9f4', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
           <div style={{ padding:'14px 16px', background:'linear-gradient(135deg,#f8faff,#f0f4ff)', borderBottom:'1px solid #e8e9f4', display:'flex', flexDirection:'column', gap:'8px' }}>
@@ -171,7 +171,7 @@ export default function PermissoesPage() {
             </div>
 
             {/* Tabela de permissoes */}
-            <div style={{ padding:'20px', overflowX:'auto' }}>
+            <div style={{ padding:'16px', overflowX:'auto', WebkitOverflowScrolling:'touch' } as any}>
               <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'480px' }}>
                 <thead>
                   <tr style={{ borderBottom:'2px solid #f0f0f8' }}>

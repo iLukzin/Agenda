@@ -38,3 +38,8 @@ DROP POLICY IF EXISTS "msg_enviadas_auth" ON mensagens_enviadas;
 CREATE POLICY "msg_enviadas_auth" ON mensagens_enviadas FOR ALL TO authenticated USING (true);
 
 SELECT 'OK' AS resultado;
+
+-- Colunas de automacao
+ALTER TABLE empresas
+  ADD COLUMN IF NOT EXISTS wpp_auto_confirmacao BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS wpp_auto_aniversario BOOLEAN DEFAULT FALSE;

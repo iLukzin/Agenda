@@ -53,6 +53,11 @@ export default function ConfiguracoesPage() {
   const [testeNum, setTesteNum] = useState('')
   const [salvandoWpp, setSalvandoWpp] = useState(false)
   const [msgWpp, setMsgWpp] = useState('')
+  const [qrCode, setQrCode] = useState('')
+  const [statusConexao, setStatusConexao] = useState<'desconectado'|'aguardando'|'conectado'>('desconectado')
+  const [buscandoQr, setBuscandoQr] = useState(false)
+  const [autoConfirmacao, setAutoConfirmacao] = useState(false)
+  const [autoAniversario, setAutoAniversario] = useState(false)
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
@@ -65,6 +70,8 @@ export default function ConfiguracoesPage() {
     if (emp.data) {
       setEmpresa(emp.data)
       setWpp({ api_url:emp.data.whatsapp_api_url||'', api_token:emp.data.whatsapp_api_token||'', instancia:emp.data.whatsapp_instancia||'', ativo:emp.data.whatsapp_ativo||false })
+      setAutoConfirmacao(emp.data.wpp_auto_confirmacao||false)
+      setAutoAniversario(emp.data.wpp_auto_aniversario||false)
     }
     if (pls.data) setPlanos(pls.data as Plano[])
     if (tmpl.data) setTemplates(tmpl.data)
@@ -108,10 +115,74 @@ export default function ConfiguracoesPage() {
       whatsapp_api_token: wpp.api_token || null,
       whatsapp_instancia: wpp.instancia || null,
       whatsapp_ativo: wpp.ativo,
+      wpp_auto_confirmacao: autoConfirmacao,
+      wpp_auto_aniversario: autoAniversario,
     }).eq('id', empresaAtiva.id)
     if (error) { setMsgWpp('Erro: ' + error.message) }
-    else { setMsgWpp('Configuracao salva!') ; setTimeout(()=>setMsgWpp(''), 3000) }
+    else { setMsgWpp('Configuracao salva!'); setTimeout(()=>setMsgWpp(''), 3000) }
     setSalvandoWpp(false)
+  }
+
+  async function buscarQrCode() {
+    if (!wpp.api_url || !wpp.api_token || !wpp.instancia) {
+      setMsgWpp('Preencha a URL, Token e Instancia antes de conectar.')
+      return
+    }
+    setBuscandoQr(true); setQrCode(''); setStatusConexao('aguardando'); setMsgWpp('')
+    try {
+      // Verificar status primeiro
+      const urlStatus = wpp.api_url.replace(/\/$/, '') + '/instance/connectionState/' + wpp.instancia
+      const resStatus = await fetch(urlStatus, { headers: { apikey: wpp.api_token } })
+      if (resStatus.ok) {
+        const dataStatus = await resStatus.json()
+        const state = dataStatus?.instance?.state || dataStatus?.state || ''
+        if (state === 'open' || state === 'connected') {
+          setStatusConexao('conectado'); setMsgWpp('WhatsApp ja esta conectado!'); setBuscandoQr(false); return
+        }
+      }
+      // Buscar QR code
+      const urlQr = wpp.api_url.replace(/\/$/, '') + '/instance/connect/' + wpp.instancia
+      const resQr = await fetch(urlQr, { headers: { apikey: wpp.api_token } })
+      if (resQr.ok) {
+        const dataQr = await resQr.json()
+        const qr = dataQr?.qrcode?.base64 || dataQr?.base64 || dataQr?.qr || ''
+        if (qr) {
+          setQrCode(qr.startsWith('data:') ? qr : 'data:image/png;base64,' + qr)
+          setStatusConexao('aguardando')
+          // Verificar conexao a cada 3 segundos por 60 segundos
+          let tentativas = 0
+          const intervalo = setInterval(async () => {
+            tentativas++
+            if (tentativas > 20) { clearInterval(intervalo); setBuscandoQr(false); return }
+            const r2 = await fetch(urlStatus, { headers: { apikey: wpp.api_token } })
+            if (r2.ok) {
+              const d2 = await r2.json()
+              const s2 = d2?.instance?.state || d2?.state || ''
+              if (s2 === 'open' || s2 === 'connected') {
+                clearInterval(intervalo); setStatusConexao('conectado'); setQrCode(''); setMsgWpp('Conectado com sucesso!'); setBuscandoQr(false)
+              }
+            }
+          }, 3000)
+        } else {
+          setMsgWpp('QR code nao retornado. Verifique a instancia.')
+          setBuscandoQr(false); setStatusConexao('desconectado')
+        }
+      } else {
+        const err = await resQr.text()
+        setMsgWpp('Erro: ' + err.slice(0, 80)); setBuscandoQr(false); setStatusConexao('desconectado')
+      }
+    } catch (ex: any) {
+      setMsgWpp('Erro de conexao: ' + ex.message); setBuscandoQr(false); setStatusConexao('desconectado')
+    }
+  }
+
+  async function desconectarWpp() {
+    if (!wpp.api_url || !wpp.instancia) return
+    try {
+      const url = wpp.api_url.replace(/\/$/, '') + '/instance/logout/' + wpp.instancia
+      await fetch(url, { method: 'DELETE', headers: { apikey: wpp.api_token } })
+      setStatusConexao('desconectado'); setQrCode(''); setMsgWpp('Desconectado.')
+    } catch { setMsgWpp('Erro ao desconectar.') }
   }
 
   async function testarWpp() {
@@ -269,40 +340,98 @@ export default function ConfiguracoesPage() {
       {aba === 'whatsapp' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
 
-          {/* Config API */}
-          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'22px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'18px' }}>
-              <div style={{ width:'42px', height:'42px', borderRadius:'12px', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          {/* Status da Conexao */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px', marginBottom:'18px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                <div style={{ width:'44px', height:'44px', borderRadius:'12px', background:statusConexao==='conectado'?'#dcfce7':statusConexao==='aguardando'?'#fef9c3':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  {statusConexao === 'conectado'
+                    ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.61 5a2 2 0 0 1 1.99-2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/></svg>
+                    : statusConexao === 'aguardando'
+                    ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                </div>
+                <div>
+                  <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a' }}>Status da Conexao</h3>
+                  <p style={{ fontSize:'12px', color:statusConexao==='conectado'?'#16a34a':statusConexao==='aguardando'?'#ca8a04':'#dc2626', fontWeight:'600' }}>
+                    {statusConexao === 'conectado' ? 'Conectado' : statusConexao === 'aguardando' ? 'Aguardando scan...' : 'Desconectado'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#0f172a' }}>Conexao WhatsApp</h2>
-                <p style={{ fontSize:'12px', color:'#6b7280' }}>Configure a Evolution API ou similar</p>
-              </div>
-              <div onClick={()=>setWpp(p=>({...p, ativo:!p.ativo}))} style={{ marginLeft:'auto', width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:wpp.ativo?'#22c55e':'#e5e7eb', position:'relative', flexShrink:0 }}>
-                <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:wpp.ativo?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
+              <div style={{ display:'flex', gap:'8px' }}>
+                {statusConexao === 'conectado'
+                  ? <button onClick={desconectarWpp} style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:'8px', padding:'8px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Desconectar</button>
+                  : <button onClick={buscarQrCode} disabled={buscandoQr} style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)', color:'white', border:'none', borderRadius:'8px', padding:'8px 16px', fontSize:'13px', fontWeight:'700', cursor:buscandoQr?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+                      {buscandoQr ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation:'spin .7s linear infinite' }}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>Conectando...</> : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>Conectar WhatsApp</>}
+                    </button>}
               </div>
             </div>
+
+            {/* QR Code */}
+            {qrCode && statusConexao === 'aguardando' && (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'20px', background:'#f8faff', borderRadius:'12px', border:'2px dashed #c7d2fe' }}>
+                <p style={{ fontSize:'14px', fontWeight:'600', color:'#4f46e5', marginBottom:'16px', textAlign:'center' }}>
+                  Abra o WhatsApp no celular e escaneie o QR Code
+                </p>
+                <div style={{ background:'white', padding:'16px', borderRadius:'12px', boxShadow:'0 4px 16px rgba(0,0,0,0.1)' }}>
+                  <img src={qrCode} alt="QR Code WhatsApp" style={{ width:'220px', height:'220px', display:'block' }}/>
+                </div>
+                <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'14px', textAlign:'center' }}>
+                  WhatsApp > Aparelhos conectados > Conectar aparelho
+                </p>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'8px' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#f59e0b', animation:'pulse 1.5s infinite' }}/>
+                  <span style={{ fontSize:'12px', color:'#f59e0b', fontWeight:'600' }}>Aguardando scan...</span>
+                </div>
+              </div>
+            )}
+            {statusConexao === 'conectado' && (
+              <div style={{ background:'#f0fdf4', borderRadius:'10px', padding:'14px 16px', display:'flex', alignItems:'center', gap:'10px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#16a34a' }}>WhatsApp conectado e pronto para enviar mensagens!</p>
+              </div>
+            )}
+          </div>
+
+          {/* Configuracao API */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Configuracao da API</h3>
+            <p style={{ fontSize:'12px', color:'#6b7280', marginBottom:'16px' }}>Compatible com Evolution API, Z-API e WPPConnect</p>
             <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-              {[{l:'URL da API',k:'api_url',ph:'https://api.seuservidor.com.br',t:'text'},{l:'Token / API Key',k:'api_token',ph:'eyJhbGciOiJIUzI1...',t:'password'},{l:'Nome da Instancia',k:'instancia',ph:'minha-instancia',t:'text'}].map(f=>(
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f9fafb', borderRadius:'10px', padding:'12px 14px' }}>
+                <div>
+                  <p style={{ fontSize:'13px', fontWeight:'600', color:'#374151' }}>Ativar WhatsApp</p>
+                  <p style={{ fontSize:'11px', color:'#9ca3af' }}>Habilitar envio de mensagens</p>
+                </div>
+                <div onClick={()=>setWpp(p=>({...p,ativo:!p.ativo}))} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:wpp.ativo?'#22c55e':'#e5e7eb', position:'relative' }}>
+                  <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:wpp.ativo?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
+                </div>
+              </div>
+              {[{l:'URL da API',k:'api_url',ph:'https://api.seuservidor.com.br',t:'text'},{l:'API Key / Token',k:'api_token',ph:'sua-chave-api-aqui',t:'password'},{l:'Nome da Instancia',k:'instancia',ph:'minha-instancia',t:'text'}].map(f=>(
                 <div key={f.k}>
-                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.04em' }}>{f.l}</label>
-                  <input type={f.t} value={(wpp as any)[f.k]} onChange={e=>setWpp(p=>({...p,[f.k]:e.target.value}))} style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }} placeholder={f.ph}
+                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>{f.l}</label>
+                  <input type={f.t} value={(wpp as any)[f.k]} onChange={e=>setWpp(p=>({...p,[f.k]:e.target.value}))}
+                    style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
+                    placeholder={f.ph}
                     onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
                     onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
                 </div>
               ))}
-              <div style={{ display:'flex', gap:'10px', marginTop:'4px', flexWrap:'wrap' }}>
-                <div style={{ flex:1, minWidth:'180px' }}>
-                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.04em' }}>Numero de teste</label>
-                  <input value={testeNum} onChange={e=>setTesteNum(e.target.value)} style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }} placeholder="(34) 99999-0000"/>
+              <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+                <div style={{ flex:1, minWidth:'160px' }}>
+                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Numero para teste</label>
+                  <input value={testeNum} onChange={e=>setTesteNum(e.target.value)}
+                    style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
+                    placeholder="(34) 99999-9999"
+                    onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
+                    onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
                 </div>
                 <div style={{ display:'flex', alignItems:'flex-end', gap:'8px' }}>
-                  <button onClick={testarWpp} disabled={testando} style={{ background:'#f0fdf4', color:'#16a34a', border:'1.5px solid #86efac', borderRadius:'8px', padding:'10px 16px', fontSize:'13px', fontWeight:'600', cursor:testando?'not-allowed':'pointer', whiteSpace:'nowrap' }}>
-                    {testando ? 'Enviando...' : 'Testar conexao'}
+                  <button onClick={testarWpp} disabled={testando} style={{ background:'#f0fdf4', color:'#16a34a', border:'1.5px solid #86efac', borderRadius:'8px', padding:'10px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                    {testando ? 'Enviando...' : 'Testar'}
                   </button>
                   <button onClick={salvarWpp} disabled={salvandoWpp} style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'10px 18px', fontSize:'13px', fontWeight:'700', cursor:'pointer' }}>
-                    {salvandoWpp ? 'Salvando...' : 'Salvar'}
+                    {salvandoWpp ? 'Salvando...' : 'Salvar config'}
                   </button>
                 </div>
               </div>
@@ -310,29 +439,62 @@ export default function ConfiguracoesPage() {
             {msgWpp && <div style={{ marginTop:'12px', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', background:msgWpp.startsWith('Erro')?'#fef2f2':'#f0fdf4', color:msgWpp.startsWith('Erro')?'#dc2626':'#16a34a', border:'1px solid '+(msgWpp.startsWith('Erro')?'#fecaca':'#bbf7d0') }}>{msgWpp}</div>}
           </div>
 
-          {/* Templates de mensagens */}
-          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'22px' }}>
-            <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#0f172a', marginBottom:'6px' }}>Templates de mensagens</h2>
-            <p style={{ fontSize:'12px', color:'#6b7280', marginBottom:'18px' }}>Variaveis disponíveis: {'{{cliente}}'} {'{{empresa}}'} {'{{data}}'} {'{{hora}}'} {'{{servico}}'}</p>
-            <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+          {/* Automacao */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Envios automaticos</h3>
+            <p style={{ fontSize:'12px', color:'#6b7280', marginBottom:'16px' }}>Configure quais mensagens serao enviadas automaticamente</p>
+            <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+              {[
+                { label:'Confirmacao de agendamento', desc:'Enviar automaticamente ao criar um novo agendamento', val:autoConfirmacao, set:setAutoConfirmacao, icon:'check', cor:'#2563eb' },
+                { label:'Parabens de aniversario', desc:'Enviar mensagem no dia do aniversario do cliente', val:autoAniversario, set:setAutoAniversario, icon:'cake', cor:'#f59e0b' },
+              ].map(item => (
+                <div key={item.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:item.val?'#f0f9ff':'#f9fafb', borderRadius:'12px', padding:'14px 16px', border:item.val?'1.5px solid #bae6fd':'1px solid #e5e7eb', transition:'all .15s' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:item.val?item.cor+'15':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      {item.icon === 'check'
+                        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={item.val?item.cor:'#9ca3af'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.61 5a2 2 0 0 1 1.99-2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/></svg>
+                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={item.val?item.cor:'#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
+                    </div>
+                    <div>
+                      <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827' }}>{item.label}</p>
+                      <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'1px' }}>{item.desc}</p>
+                    </div>
+                  </div>
+                  <div onClick={()=>item.set(!item.val)} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:item.val?item.cor:'#e5e7eb', position:'relative', flexShrink:0 }}>
+                    <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:item.val?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
+                  </div>
+                </div>
+              ))}
+              <button onClick={salvarWpp} disabled={salvandoWpp} style={{ alignSelf:'flex-end', background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'13px', fontWeight:'700', cursor:'pointer', marginTop:'4px' }}>
+                {salvandoWpp ? 'Salvando...' : 'Salvar automacoes'}
+              </button>
+            </div>
+          </div>
+
+          {/* Templates */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Templates de mensagens</h3>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginBottom:'14px' }}>
+              {['{{cliente}}','{{empresa}}','{{data}}','{{hora}}','{{servico}}'].map(v => (
+                <span key={v} style={{ background:'#eef2ff', color:'#4f46e5', borderRadius:'6px', padding:'3px 8px', fontSize:'11px', fontWeight:'700', fontFamily:'monospace' }}>{v}</span>
+              ))}
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
               {templates.map(t => {
-                const corTipo: Record<string,string> = { confirmacao:'#2563eb', aniversario:'#f59e0b', massa:'#7c3aed' }
-                const bgTipo:  Record<string,string> = { confirmacao:'#eff6ff', aniversario:'#fffbeb', massa:'#f5f3ff' }
-                const iconTipo: Record<string,any> = {
-                  confirmacao: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
-                  aniversario:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-                  massa:        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+                const meta: Record<string,any> = {
+                  confirmacao: { label:'Confirmacao de agendamento', cor:'#2563eb', bg:'#eff6ff', icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.61 5a2 2 0 0 1 1.99-2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/></svg> },
+                  aniversario:  { label:'Parabens de aniversario', cor:'#f59e0b', bg:'#fffbeb', icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                  massa:        { label:'Mensagem em massa', cor:'#7c3aed', bg:'#f5f3ff', icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> },
                 }
+                const m = meta[t.tipo] || meta['massa']
                 return (
                   <div key={t.id} style={{ border:'1.5px solid #f0f0f8', borderRadius:'12px', overflow:'hidden' }}>
-                    <div style={{ background:bgTipo[t.tipo]||'#f9fafb', padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px', borderBottom:'1px solid #f0f0f8' }}>
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:'white', borderRadius:'99px', padding:'4px 10px', fontSize:'11px', fontWeight:'700', color:corTipo[t.tipo]||'#6b7280', border:'1px solid '+(corTipo[t.tipo]||'#e5e7eb')+'30' }}>
-                        {iconTipo[t.tipo]} {t.tipo === 'confirmacao' ? 'Confirmacao' : t.tipo === 'aniversario' ? 'Aniversario' : 'Mensagem em Massa'}
+                    <div style={{ background:m.bg, padding:'11px 16px', display:'flex', alignItems:'center', gap:'8px', borderBottom:'1px solid #f0f0f8' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', background:'white', borderRadius:'99px', padding:'4px 10px', fontSize:'11px', fontWeight:'700', color:m.cor, border:'1px solid '+m.cor+'30' }}>
+                        {m.icon} {m.label}
                       </span>
-                      <span style={{ fontSize:'13px', fontWeight:'600', color:'#374151' }}>{t.nome}</span>
                       {t.tipo === 'massa' && (
-                        <button onClick={enviarMassa} style={{ marginLeft:'auto', background:'#7c3aed', color:'white', border:'none', borderRadius:'8px', padding:'6px 14px', fontSize:'12px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        <button onClick={enviarMassa} style={{ marginLeft:'auto', background:m.cor, color:'white', border:'none', borderRadius:'7px', padding:'5px 12px', fontSize:'11px', fontWeight:'600', cursor:'pointer' }}>
                           Enviar para todos
                         </button>
                       )}
@@ -345,10 +507,11 @@ export default function ConfiguracoesPage() {
               })}
             </div>
           </div>
+
         </div>
       )}
 
-      {/* Planos */}
+      {/* Planos */}      {/* Planos */}
       {aba==='planos' && (
         <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>

@@ -340,60 +340,116 @@ export default function ConfiguracoesPage() {
       {aba === 'whatsapp' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
 
-          {/* Status da Conexao */}
-          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px', marginBottom:'18px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-                <div style={{ width:'44px', height:'44px', borderRadius:'12px', background:statusConexao==='conectado'?'#dcfce7':statusConexao==='aguardando'?'#fef9c3':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  {statusConexao === 'conectado'
-                    ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.61 5a2 2 0 0 1 1.99-2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 17z"/></svg>
-                    : statusConexao === 'aguardando'
-                    ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                    : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+          {/* Conexao WhatsApp - QR Code */}
+          <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', overflow:'hidden' }}>
+            {/* Header status */}
+            <div style={{ background:statusConexao==='conectado'?'linear-gradient(135deg,#059669,#10b981)':statusConexao==='aguardando'?'linear-gradient(135deg,#d97706,#f59e0b)':'linear-gradient(135deg,#1f2937,#374151)', padding:'18px 22px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
+                <div style={{ width:'48px', height:'48px', borderRadius:'50%', background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  {statusConexao === 'conectado' ? (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : statusConexao === 'aguardando' ? (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  )}
                 </div>
                 <div>
-                  <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a' }}>Status da Conexao</h3>
-                  <p style={{ fontSize:'12px', color:statusConexao==='conectado'?'#16a34a':statusConexao==='aguardando'?'#ca8a04':'#dc2626', fontWeight:'600' }}>
-                    {statusConexao === 'conectado' ? 'Conectado' : statusConexao === 'aguardando' ? 'Aguardando scan...' : 'Desconectado'}
+                  <p style={{ color:'white', fontWeight:'700', fontSize:'16px', letterSpacing:'-0.2px' }}>
+                    {statusConexao === 'conectado' ? 'WhatsApp Conectado' : statusConexao === 'aguardando' ? 'Aguardando leitura do QR Code...' : 'WhatsApp Desconectado'}
+                  </p>
+                  <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'12px', marginTop:'2px' }}>
+                    {statusConexao === 'conectado' ? 'Pronto para enviar mensagens automaticas' : statusConexao === 'aguardando' ? 'Abra o WhatsApp e escaneie o codigo abaixo' : 'Clique em Conectar para vincular seu WhatsApp'}
                   </p>
                 </div>
               </div>
-              <div style={{ display:'flex', gap:'8px' }}>
-                {statusConexao === 'conectado'
-                  ? <button onClick={desconectarWpp} style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:'8px', padding:'8px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Desconectar</button>
-                  : <button onClick={buscarQrCode} disabled={buscandoQr} style={{ background:'linear-gradient(135deg,#22c55e,#16a34a)', color:'white', border:'none', borderRadius:'8px', padding:'8px 16px', fontSize:'13px', fontWeight:'700', cursor:buscandoQr?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
-                      {buscandoQr ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation:'spin .7s linear infinite' }}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>Conectando...</> : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>Conectar WhatsApp</>}
-                    </button>}
-              </div>
+              {statusConexao === 'conectado' ? (
+                <button onClick={desconectarWpp} style={{ background:'rgba(255,255,255,0.15)', color:'white', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'10px', padding:'9px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                  Desconectar
+                </button>
+              ) : (
+                <button onClick={buscarQrCode} disabled={buscandoQr}
+                  style={{ background:'white', color:statusConexao==='aguardando'?'#d97706':'#1f2937', border:'none', borderRadius:'10px', padding:'9px 20px', fontSize:'13px', fontWeight:'700', cursor:buscandoQr?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:'8px', boxShadow:'0 2px 8px rgba(0,0,0,0.2)', opacity:buscandoQr?0.7:1 }}>
+                  {buscandoQr ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation:'spin .8s linear infinite' }}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/><rect x="3" y="16" width="5" height="5"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                  )}
+                  {buscandoQr ? 'Gerando QR Code...' : statusConexao === 'aguardando' ? 'Novo QR Code' : 'Conectar WhatsApp'}
+                </button>
+              )}
             </div>
 
-            {/* QR Code */}
-            {qrCode && statusConexao === 'aguardando' && (
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'20px', background:'#f8faff', borderRadius:'12px', border:'2px dashed #c7d2fe' }}>
-                <p style={{ fontSize:'14px', fontWeight:'600', color:'#4f46e5', marginBottom:'16px', textAlign:'center' }}>
-                  Abra o WhatsApp no celular e escaneie o QR Code
+            {/* Area do QR Code */}
+            {statusConexao === 'aguardando' && qrCode && (
+              <div style={{ padding:'32px 24px', display:'flex', flexDirection:'column', alignItems:'center', background:'#fafbff' }}>
+                <p style={{ fontSize:'14px', fontWeight:'600', color:'#374151', marginBottom:'6px', textAlign:'center' }}>
+                  Escaneie com o WhatsApp do seu celular
                 </p>
-                <div style={{ background:'white', padding:'16px', borderRadius:'12px', boxShadow:'0 4px 16px rgba(0,0,0,0.1)' }}>
-                  <img src={qrCode} alt="QR Code WhatsApp" style={{ width:'220px', height:'220px', display:'block' }}/>
+                <p style={{ fontSize:'12px', color:'#9ca3af', marginBottom:'24px', textAlign:'center' }}>
+                  WhatsApp {'>'} Menu {'>'} Aparelhos conectados {'>'} Conectar aparelho
+                </p>
+                <div style={{ position:'relative', display:'inline-block' }}>
+                  {/* QR Code com borda estilizada */}
+                  <div style={{ background:'white', padding:'20px', borderRadius:'20px', boxShadow:'0 8px 40px rgba(0,0,0,0.12)', border:'3px solid #f0f0f8', position:'relative' }}>
+                    <img src={qrCode} alt="QR Code WhatsApp" style={{ width:'240px', height:'240px', display:'block', borderRadius:'8px' }}/>
+                    {/* Cantos decorativos */}
+                    <div style={{ position:'absolute', top:'12px', left:'12px', width:'28px', height:'28px', borderTop:'3px solid #25d366', borderLeft:'3px solid #25d366', borderRadius:'4px 0 0 0' }}/>
+                    <div style={{ position:'absolute', top:'12px', right:'12px', width:'28px', height:'28px', borderTop:'3px solid #25d366', borderRight:'3px solid #25d366', borderRadius:'0 4px 0 0' }}/>
+                    <div style={{ position:'absolute', bottom:'12px', left:'12px', width:'28px', height:'28px', borderBottom:'3px solid #25d366', borderLeft:'3px solid #25d366', borderRadius:'0 0 0 4px' }}/>
+                    <div style={{ position:'absolute', bottom:'12px', right:'12px', width:'28px', height:'28px', borderBottom:'3px solid #25d366', borderRight:'3px solid #25d366', borderRadius:'0 0 4px 0' }}/>
+                  </div>
+                  {/* Logo WhatsApp no centro */}
+                  <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'44px', height:'44px', background:'#25d366', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(37,211,102,0.4)' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                  </div>
                 </div>
-                <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'14px', textAlign:'center' }}>
-                  WhatsApp > Aparelhos conectados > Conectar aparelho
+                {/* Indicador de espera animado */}
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', marginTop:'24px', background:'#fff9e6', borderRadius:'99px', padding:'8px 18px', border:'1px solid #fde68a' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#f59e0b', animation:'pulse 1.2s ease-in-out infinite' }}/>
+                  <span style={{ fontSize:'13px', color:'#92400e', fontWeight:'600' }}>Aguardando leitura...</span>
+                </div>
+                <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'12px', textAlign:'center' }}>
+                  O QR Code expira em 60 segundos. Se expirar, clique em "Novo QR Code".
                 </p>
-                <div style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'8px' }}>
-                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#f59e0b', animation:'pulse 1.5s infinite' }}/>
-                  <span style={{ fontSize:'12px', color:'#f59e0b', fontWeight:'600' }}>Aguardando scan...</span>
+              </div>
+            )}
+
+            {/* Conectado - info */}
+            {statusConexao === 'conectado' && (
+              <div style={{ padding:'20px 22px', display:'flex', alignItems:'center', gap:'14px', background:'#f0fdf4' }}>
+                <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                </div>
+                <div>
+                  <p style={{ fontSize:'14px', fontWeight:'700', color:'#065f46' }}>Conectado com sucesso!</p>
+                  <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'2px' }}>Mensagens automaticas e confirmacoes estao ativas</p>
                 </div>
               </div>
             )}
-            {statusConexao === 'conectado' && (
-              <div style={{ background:'#f0fdf4', borderRadius:'10px', padding:'14px 16px', display:'flex', alignItems:'center', gap:'10px' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <p style={{ fontSize:'13px', fontWeight:'600', color:'#16a34a' }}>WhatsApp conectado e pronto para enviar mensagens!</p>
+
+            {/* Desconectado - instrucoes */}
+            {statusConexao === 'desconectado' && !qrCode && (
+              <div style={{ padding:'28px 24px' }}>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'16px' }}>Como conectar:</p>
+                <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                  {[
+                    { n:1, txt:'Configure a URL da API, Token e Instancia na secao abaixo' },
+                    { n:2, txt:'Clique em "Conectar WhatsApp" acima' },
+                    { n:3, txt:'Abra o WhatsApp no celular e va em Menu > Aparelhos conectados' },
+                    { n:4, txt:'Toque em "Conectar aparelho" e escaneie o QR Code' },
+                  ].map(s => (
+                    <div key={s.n} style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
+                      <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:'#eef2ff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:'700', color:'#6366f1', flexShrink:0 }}>{s.n}</div>
+                      <p style={{ fontSize:'13px', color:'#6b7280', paddingTop:'4px' }}>{s.txt}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Configuracao API */}
+                    {/* Configuracao API */}
           <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
             <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Configuracao da API</h3>
             <p style={{ fontSize:'12px', color:'#6b7280', marginBottom:'16px' }}>Compatible com Evolution API, Z-API e WPPConnect</p>

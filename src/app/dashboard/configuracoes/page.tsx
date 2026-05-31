@@ -71,33 +71,7 @@ export default function ConfiguracoesPage() {
     // Criar templates padrão se nao existirem
     if (tmpl.data && tmpl.data.length === 0) {
       const sb3 = createClient()
-      await sb3.from('mensagens_template').insert([
-        { empresa_id:empresaAtiva.id, tipo:'confirmacao', nome:'Confirmacao de Horario', mensagem:'Ola {{cliente}}! Tudo bem?
-
-Gostarmos de confirmar seu horario:
-*Data:* {{data}}
-*Horario:* {{hora}}
-*Servico:* {{servico}}
-
-Pode confirmar?
-*Sim* - Estarei presente!
-*Nao* - Preciso remarcar.
-
-Obrigado! 😊', ativo:true },
-        { empresa_id:empresaAtiva.id, tipo:'aniversario', nome:'Parabens Aniversario', mensagem:'Ola {{cliente}}! 🎂🎉
-
-Hoje e um dia muito especial - SEU ANIVERSARIO!
-
-A equipe da *{{empresa}}* deseja a voce um dia incrivel, cheio de alegria e realizacoes!
-
-Muitas felicidades! 🥳', ativo:true },
-        { empresa_id:empresaAtiva.id, tipo:'massa', nome:'Mensagem em Massa', mensagem:'Ola {{cliente}}!
-
-Temos novidades especiais para voce.
-
-*{{empresa}}*
-📞 Entre em contato conosco!', ativo:true },
-      ])
+      const msgConf = 'Ola {{cliente}}! Tudo bem?\n\nGostarmos de confirmar seu horario:\n*Data:* {{data}}\n*Horario:* {{hora}}\n*Servico:* {{servico}}\n\nPode confirmar?\n*Sim* - Estarei presente!\n*Nao* - Preciso remarcar.\n\nObrigado!'\n      const msgAniv = 'Ola {{cliente}}! Parabens pelo seu aniversario!\n\nA equipe da *{{empresa}}* deseja a voce um dia incrivel, cheio de alegria!\n\nMuitas felicidades!'\n      const msgMassa = 'Ola {{cliente}}!\n\nTemos novidades especiais para voce.\n\n*{{empresa}}*'\n      await sb3.from('mensagens_template').insert([\n        { empresa_id:empresaAtiva.id, tipo:'confirmacao', nome:'Confirmacao de Horario', mensagem:msgConf, ativo:true },\n        { empresa_id:empresaAtiva.id, tipo:'aniversario', nome:'Parabens Aniversario', mensagem:msgAniv, ativo:true },\n        { empresa_id:empresaAtiva.id, tipo:'massa', nome:'Mensagem em Massa', mensagem:msgMassa, ativo:true },\n      ])
       const { data: newTmpl } = await sb3.from('mensagens_template').select('*').eq('empresa_id', empresaAtiva.id)
       if (newTmpl) setTemplates(newTmpl)
     }

@@ -244,7 +244,7 @@ export default function ConfiguracoesPage() {
     await carregar()
   }
 
-  const abas = [{ key:'empresa', label:'Empresa' },{ key:'horarios', label:'Horários' },{ key:'planos', label:'Planos' },{ key:'notificacoes', label:'Notificações' }]
+  const abas = [{ key:'empresa', label:'Empresa' },{ key:'horarios', label:'Horarios' },{ key:'planos', label:'Planos' },{ key:'whatsapp', label:'WhatsApp' }]
 
   return (
     <div style={{ padding:'24px 16px', maxWidth:'740px' }}>
@@ -549,31 +549,6 @@ export default function ConfiguracoesPage() {
             ))}
             {planos.length===0 && <div style={{ textAlign:'center', padding:'40px 0', color:'#9ca3af', fontSize:'14px' }}>Nenhum plano cadastrado.</div>}
           </div>
-        </div>
-      )}
-
-      {/* Notificações */}
-      {aba==='notificacoes' && (
-        <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
-          <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'6px' }}>Notificações</h2>
-          <p style={{ fontSize:'13px', color:'#9ca3af', marginBottom:'20px' }}>Configure quando notificar clientes e profissionais</p>
-          {[
-            { label:'Confirmação de agendamento por e-mail', desc:'Envia e-mail ao cliente quando agendado', ativo:true },
-            { label:'Lembrete 24h antes', desc:'Lembra o cliente 1 dia antes', ativo:true },
-            { label:'Lembrete 1h antes', desc:'Lembra o cliente 1 hora antes', ativo:true },
-            { label:'Notificar profissional ao agendar', desc:'Avisa o profissional sobre novos agendamentos', ativo:false },
-            { label:'Alerta de cancelamento', desc:'Notifica quando um agendamento é cancelado', ativo:false },
-          ].map((n,i)=>(
-            <div key={n.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom:'1px solid #f9fafb', gap:'12px' }}>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e', marginBottom:'2px' }}>{n.label}</p>
-                <p style={{ fontSize:'12px', color:'#9ca3af' }}>{n.desc}</p>
-              </div>
-              <div style={{ width:'40px', height:'22px', borderRadius:'99px', cursor:'pointer', background:n.ativo?'#6366f1':'#e5e7eb', position:'relative', flexShrink:0 }}>
-                <div style={{ position:'absolute', top:'3px', width:'16px', height:'16px', borderRadius:'50%', background:'white', left:n.ativo?'21px':'3px' }}/>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 

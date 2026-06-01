@@ -73,11 +73,18 @@ export default function ConfiguracoesPage() {
       setEmpresa(emp.data)
       setWpp({ ativo:emp.data.whatsapp_ativo||false })
       setEvoConfig({ url:emp.data.whatsapp_api_url||'', token:emp.data.whatsapp_api_token||'', instancia:emp.data.whatsapp_instancia||'' })
-      // Verificar status da conexao
-      if (empresaAtiva?.id) {
-        fetch('/api/whatsapp/status?empresa_id=' + empresaAtiva.id)
-          .then(r => r.json())
-          .then(d => { if (d.conectado) setStatusConexao('conectado') })
+      // Verificar status direto na Evolution API
+      const urlEvo = emp.data.whatsapp_api_url
+      const tokenEvo = emp.data.whatsapp_api_token
+      const instEvo  = emp.data.whatsapp_instancia
+      if (urlEvo && tokenEvo && instEvo) {
+        fetch(urlEvo.replace(/\/$/, '') + '/instance/connectionState/' + instEvo, { headers: { 'apikey': tokenEvo } })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            if (!d) return
+            const st = d?.instance?.state || d?.state || ''
+            if (st === 'open' || st === 'connected') setStatusConexao('conectado')
+          })
           .catch(() => {})
       }
       setAutoConfirmacao(emp.data.wpp_auto_confirmacao||false)
@@ -144,64 +151,105 @@ export default function ConfiguracoesPage() {
     setSalvandoWpp(false)
   }
 
+  // Chamar Evolution API diretamente do browser (evita bloqueio da Vercel para IPs privados)
   async function buscarQrCode() {
-    if (!empresaAtiva?.id) return
+    if (!evoConfig.url || !evoConfig.token || !evoConfig.instancia) {
+      setMsgWpp('Preencha e salve a URL da API, Token e Instancia antes de conectar.')
+      return
+    }
     setBuscandoQr(true); setQrCode(''); setStatusConexao('aguardando'); setMsgWpp('')
+    const base = evoConfig.url.replace(/\/$/, '')
+    const hdrs: Record<string,string> = { 'apikey': evoConfig.token, 'Content-Type': 'application/json' }
     try {
-      const res = await fetch('/api/whatsapp/qrcode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empresa_id: empresaAtiva.id }),
-      })
-      const data = await res.json()
-      if (data.qr) {
-        setQrCode(data.qr)
-        // Polling status a cada 3s ate conectar (max 60s)
-        let tentativas = 0
-        const intervalo = setInterval(async () => {
-          tentativas++
-          if (tentativas > 20) { clearInterval(intervalo); setBuscandoQr(false); return }
-          const r2 = await fetch('/api/whatsapp/status?empresa_id=' + empresaAtiva.id)
-          const d2 = await r2.json()
-          if (d2.conectado) {
-            clearInterval(intervalo)
-            setStatusConexao('conectado'); setQrCode(''); setBuscandoQr(false)
-            setMsgWpp('WhatsApp conectado!')
-            setTimeout(() => setMsgWpp(''), 3000)
+      // 1. Verificar se ja esta conectado
+      try {
+        const sRes = await fetch(base + '/instance/connectionState/' + evoConfig.instancia, { headers: hdrs })
+        if (sRes.ok) {
+          const sData = await sRes.json()
+          const state = sData?.instance?.state || sData?.state || ''
+          if (state === 'open' || state === 'connected') {
+            setStatusConexao('conectado'); setBuscandoQr(false); setMsgWpp('Ja conectado!')
+            return
           }
-        }, 3000)
-      } else if (data.conectado) {
-        setStatusConexao('conectado'); setQrCode(''); setBuscandoQr(false)
-      } else if (data.tipo === 'config_incompleta') {
-        setQrCode('CONFIGURAR')
-        setBuscandoQr(false); setStatusConexao('desconectado')
-        setMsgWpp(data.erro || 'Preencha e salve a configuracao da API primeiro.')
-      } else {
-        setMsgWpp(data.erro || 'Erro ao gerar QR Code.')
-        setBuscandoQr(false); setStatusConexao('desconectado')
+        }
+      } catch {}
+
+      // 2. Criar instancia se nao existir
+      try {
+        await fetch(base + '/instance/create', {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({ instanceName: evoConfig.instancia, qrcode: true }),
+        })
+      } catch {}
+
+      // 3. Buscar QR Code
+      const qrRes = await fetch(base + '/instance/connect/' + evoConfig.instancia, { headers: hdrs })
+      if (!qrRes.ok) {
+        const errTxt = await qrRes.text().catch(() => 'sem resposta')
+        setMsgWpp('Erro ' + qrRes.status + ': ' + errTxt.slice(0, 120))
+        setBuscandoQr(false); setStatusConexao('desconectado'); return
       }
+      const qrData = await qrRes.json()
+      const b64 = qrData?.qrcode?.base64 || qrData?.base64 || qrData?.qr || qrData?.code || ''
+      if (!b64) {
+        setMsgWpp('QR Code nao retornado. Instancia: ' + evoConfig.instancia + '. Resposta: ' + JSON.stringify(qrData).slice(0,100))
+        setBuscandoQr(false); setStatusConexao('desconectado'); return
+      }
+      const qrFinal = b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64
+      setQrCode(qrFinal)
+
+      // 4. Polling direto na Evolution API a cada 3s
+      let tentativas = 0
+      const intervalo = setInterval(async () => {
+        tentativas++
+        if (tentativas > 20) { clearInterval(intervalo); setBuscandoQr(false); return }
+        try {
+          const r2 = await fetch(base + '/instance/connectionState/' + evoConfig.instancia, { headers: hdrs })
+          if (r2.ok) {
+            const d2 = await r2.json()
+            const s2 = d2?.instance?.state || d2?.state || ''
+            if (s2 === 'open' || s2 === 'connected') {
+              clearInterval(intervalo)
+              setStatusConexao('conectado'); setQrCode(''); setBuscandoQr(false)
+              setMsgWpp('WhatsApp conectado!'); setTimeout(()=>setMsgWpp(''), 3000)
+            }
+          }
+        } catch {}
+      }, 3000)
+
     } catch (ex: any) {
-      setMsgWpp('Erro: ' + ex.message); setBuscandoQr(false); setStatusConexao('desconectado')
+      setMsgWpp('Erro: ' + ex.message + '. Verifique se a URL da API esta correta e acessivel.')
+      setBuscandoQr(false); setStatusConexao('desconectado')
     }
   }
 
   async function desconectarWpp() {
-    if (!empresaAtiva?.id) return
-    await fetch('/api/whatsapp/desconectar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ empresa_id: empresaAtiva.id }),
-    })
+    if (!evoConfig.url || !evoConfig.instancia) { setStatusConexao('desconectado'); setQrCode(''); return }
+    const base = evoConfig.url.replace(/\/$/, '')
+    try {
+      await fetch(base + '/instance/logout/' + evoConfig.instancia, {
+        method: 'DELETE', headers: { 'apikey': evoConfig.token }
+      })
+    } catch {}
     setStatusConexao('desconectado'); setQrCode(''); setMsgWpp('Desconectado.')
   }
 
   async function testarWpp() {
     if (!testeNum) return setMsgWpp('Informe um numero para teste.')
     setTestando(true); setMsgWpp('')
-    const resT = await fetch('/api/whatsapp/enviar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ empresa_id:empresaAtiva?.id, numero:testeNum, mensagem:'Teste AgendaFortitude - conexao funcionando!' }) })
-    const dadosT = await resT.json()
-    const ok = dadosT.ok
-    const erro = dadosT.erro
+    if (!evoConfig.url || !evoConfig.token || !evoConfig.instancia) {
+      setMsgWpp('Configure e salve a API primeiro.'); setTestando(false); return
+    }
+    const digits = testeNum.replace(/\D/g,'')
+    const numFmt = digits.startsWith('55') ? digits : '55' + digits
+    const base = evoConfig.url.replace(/\/$/, '')
+    const resT = await fetch(base + '/message/sendText/' + evoConfig.instancia, {
+      method: 'POST',
+      headers: { 'apikey': evoConfig.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: numFmt, options:{ delay:1000 }, textMessage:{ text:'Teste AgendaFortitude - conexao funcionando!' } }),
+    })
+    const ok = resT.ok
+    const erro = ok ? '' : await resT.text().catch(() => 'erro desconhecido')
     setMsgWpp(ok ? 'Mensagem enviada com sucesso!' : 'Erro: ' + erro)
     setTestando(false)
   }

@@ -168,41 +168,63 @@ export default function ConfiguracoesPage() {
           const sData = await sRes.json()
           const state = sData?.instance?.state || sData?.state || ''
           if (state === 'open' || state === 'connected') {
-            setStatusConexao('conectado'); setBuscandoQr(false); setMsgWpp('Ja conectado!')
-            return
+            setStatusConexao('conectado'); setBuscandoQr(false); setMsgWpp('Ja conectado!'); return
           }
         }
       } catch {}
 
-      // 2. Criar instancia se nao existir
+      // 2. Deletar instancia anterior se existir (para garantir QR novo)
       try {
-        await fetch(base + '/instance/create', {
-          method: 'POST', headers: hdrs,
-          body: JSON.stringify({ instanceName: evoConfig.instancia, qrcode: true }),
-        })
+        await fetch(base + '/instance/delete/' + evoConfig.instancia, { method: 'DELETE', headers: hdrs })
       } catch {}
+      await new Promise(r => setTimeout(r, 800))
 
-      // 3. Buscar QR Code
-      const qrRes = await fetch(base + '/instance/connect/' + evoConfig.instancia, { headers: hdrs })
-      if (!qrRes.ok) {
-        const errTxt = await qrRes.text().catch(() => 'sem resposta')
-        setMsgWpp('Erro ' + qrRes.status + ': ' + errTxt.slice(0, 120))
-        setBuscandoQr(false); setStatusConexao('desconectado'); return
-      }
-      const qrData = await qrRes.json()
-      const b64 = qrData?.qrcode?.base64 || qrData?.base64 || qrData?.qr || qrData?.code || ''
-      if (!b64) {
-        setMsgWpp('QR Code nao retornado. Instancia: ' + evoConfig.instancia + '. Resposta: ' + JSON.stringify(qrData).slice(0,100))
-        setBuscandoQr(false); setStatusConexao('desconectado'); return
-      }
-      const qrFinal = b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64
-      setQrCode(qrFinal)
+      // 3. Criar instancia com qrcode=true
+      const createRes = await fetch(base + '/instance/create', {
+        method: 'POST', headers: hdrs,
+        body: JSON.stringify({
+          instanceName: evoConfig.instancia,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS',
+        }),
+      })
+      const createData = await createRes.json()
 
-      // 4. Polling direto na Evolution API a cada 3s
+      // QR pode vir direto na criacao
+      const qrNaCriacao = createData?.qrcode?.base64 || createData?.hash?.qrcode || createData?.qr || ''
+      if (qrNaCriacao) {
+        const qrFinal = qrNaCriacao.startsWith('data:') ? qrNaCriacao : 'data:image/png;base64,' + qrNaCriacao
+        setQrCode(qrFinal)
+      } else {
+        // 4. Aguardar e buscar QR via /instance/connect
+        await new Promise(r => setTimeout(r, 1500))
+        const connectRes = await fetch(base + '/instance/connect/' + evoConfig.instancia, { headers: hdrs })
+        const connectData = await connectRes.json()
+        const b64 = connectData?.qrcode?.base64 || connectData?.base64 || connectData?.qr || connectData?.code || ''
+        if (!b64) {
+          // 5. Tentar buscar QR via fetchInstances
+          await new Promise(r => setTimeout(r, 1000))
+          const fetchRes = await fetch(base + '/instance/fetchInstances', { headers: hdrs })
+          const fetchData = await fetchRes.json()
+          const instData = Array.isArray(fetchData) ? fetchData.find((i: any) => i.instance?.instanceName === evoConfig.instancia) : null
+          const qrFetch = instData?.instance?.qrcode?.base64 || instData?.qrcode?.base64 || ''
+          if (!qrFetch) {
+            setMsgWpp('Nao foi possivel gerar o QR Code. Resposta: ' + JSON.stringify(connectData).slice(0, 120))
+            setBuscandoQr(false); setStatusConexao('desconectado'); return
+          }
+          const qrFinal2 = qrFetch.startsWith('data:') ? qrFetch : 'data:image/png;base64,' + qrFetch
+          setQrCode(qrFinal2)
+        } else {
+          const qrFinal3 = b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64
+          setQrCode(qrFinal3)
+        }
+      }
+
+      // 6. Polling a cada 3s ate conectar (max 90s = 30 tentativas)
       let tentativas = 0
       const intervalo = setInterval(async () => {
         tentativas++
-        if (tentativas > 20) { clearInterval(intervalo); setBuscandoQr(false); return }
+        if (tentativas > 30) { clearInterval(intervalo); setBuscandoQr(false); setMsgWpp('QR Code expirou. Clique em Conectar novamente.'); return }
         try {
           const r2 = await fetch(base + '/instance/connectionState/' + evoConfig.instancia, { headers: hdrs })
           if (r2.ok) {
@@ -218,7 +240,7 @@ export default function ConfiguracoesPage() {
       }, 3000)
 
     } catch (ex: any) {
-      setMsgWpp('Erro: ' + ex.message + '. Verifique se a URL da API esta correta e acessivel.')
+      setMsgWpp('Erro: ' + ex.message)
       setBuscandoQr(false); setStatusConexao('desconectado')
     }
   }

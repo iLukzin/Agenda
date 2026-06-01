@@ -52,6 +52,7 @@ export default function ConfiguracoesPage() {
   const [testando, setTestando] = useState(false)
   const [testeNum, setTesteNum] = useState('')
   const [evoConfig, setEvoConfig] = useState({ url:'', token:'', instancia:'' })
+  const [configGlobalCarregada, setConfigGlobalCarregada] = useState(false)
   const [salvandoEvo, setSalvandoEvo] = useState(false)
   const [salvandoWpp, setSalvandoWpp] = useState(false)
   const [msgWpp, setMsgWpp] = useState('')
@@ -72,7 +73,14 @@ export default function ConfiguracoesPage() {
     if (emp.data) {
       setEmpresa(emp.data)
       setWpp({ ativo:emp.data.whatsapp_ativo||false })
-      setEvoConfig({ url:emp.data.whatsapp_api_url||'', token:emp.data.whatsapp_api_token||'', instancia:emp.data.whatsapp_instancia||'' })
+      // Instancia = ID da empresa (unica por empresa)
+      const instanciaEmpresa = 'emp-' + (empresaAtiva?.id || '').slice(0, 8)
+      // Buscar URL e Token globais da config_sistema
+      const { data: cfgGlobal } = await sb2.from('config_sistema').select('chave,valor').in('chave', ['evolution_api_url','evolution_api_key'])
+      const cfgMap: Record<string,string> = {}
+      if (cfgGlobal) cfgGlobal.forEach((c: any) => { cfgMap[c.chave] = c.valor || '' })
+      setEvoConfig({ url: cfgMap['evolution_api_url'] || '', token: cfgMap['evolution_api_key'] || '', instancia: emp.data.whatsapp_instancia || instanciaEmpresa })
+      setConfigGlobalCarregada(true)
       // Verificar status direto na Evolution API
       const urlEvo = emp.data.whatsapp_api_url
       const tokenEvo = emp.data.whatsapp_api_token
@@ -127,11 +135,13 @@ export default function ConfiguracoesPage() {
     if (!empresaAtiva?.id) return
     setSalvandoEvo(true)
     const sb2 = createClient()
-    const { error } = await sb2.from('empresas').update({
-      whatsapp_api_url: evoConfig.url.trim() || null,
-      whatsapp_api_token: evoConfig.token.trim() || null,
-      whatsapp_instancia: evoConfig.instancia.trim() || null,
-    }).eq('id', empresaAtiva.id)
+    // Salvar URL e Token globalmente (compartilhado por todas empresas)
+    await Promise.all([
+      sb2.from('config_sistema').upsert({ chave:'evolution_api_url', valor:evoConfig.url.trim() }, { onConflict:'chave' }),
+      sb2.from('config_sistema').upsert({ chave:'evolution_api_key', valor:evoConfig.token.trim() }, { onConflict:'chave' }),
+    ])
+    // Salvar instancia da empresa (unica por empresa)
+    const { error } = await sb2.from('empresas').update({ whatsapp_instancia: evoConfig.instancia.trim() || null }).eq('id', empresaAtiva.id)
     setSalvandoEvo(false)
     if (error) { setMsgWpp('Erro ao salvar: ' + error.message) }
     else { setMsgWpp('Configuracao salva!'); setTimeout(()=>setMsgWpp(''), 2000) }
@@ -161,6 +171,20 @@ export default function ConfiguracoesPage() {
     const base = evoConfig.url.replace(/\/$/, '')
     const hdrs: Record<string,string> = { 'apikey': evoConfig.token, 'Content-Type': 'application/json' }
     try {
+      // Funcao auxiliar para extrair base64 de qualquer resposta
+      function extrairQR(data: any): string {
+        if (!data) return ''
+        const candidatos = [
+          data?.qrcode?.base64, data?.base64, data?.qr, data?.code,
+          data?.qrCode?.base64, data?.qrCode, data?.QRCode,
+          data?.instance?.qrcode?.base64, data?.instance?.qr,
+          data?.hash?.qrcode,
+          typeof data === 'string' && data.length > 100 ? data : '',
+        ]
+        const b64 = candidatos.find(v => typeof v === 'string' && v.length > 50) || ''
+        return b64 ? (b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64) : ''
+      }
+
       // 1. Verificar se ja esta conectado
       try {
         const sRes = await fetch(base + '/instance/connectionState/' + evoConfig.instancia, { headers: hdrs })
@@ -173,58 +197,49 @@ export default function ConfiguracoesPage() {
         }
       } catch {}
 
-      // 2. Deletar instancia anterior se existir (para garantir QR novo)
+      // 2. Deletar instancia antiga
       try {
+        await fetch(base + '/instance/logout/' + evoConfig.instancia, { method: 'DELETE', headers: hdrs })
         await fetch(base + '/instance/delete/' + evoConfig.instancia, { method: 'DELETE', headers: hdrs })
       } catch {}
-      await new Promise(r => setTimeout(r, 800))
+      await new Promise(r => setTimeout(r, 1000))
 
-      // 3. Criar instancia com qrcode=true
-      const createRes = await fetch(base + '/instance/create', {
+      // 3. Deletar instancia existente e recriar
+      try { await fetch(base + '/instance/delete/' + evoConfig.instancia, { method:'DELETE', headers:hdrs }) } catch {}
+      await new Promise(r => setTimeout(r, 1500))
+
+      // 4. Criar nova instancia
+      await fetch(base + '/instance/create', {
         method: 'POST', headers: hdrs,
-        body: JSON.stringify({
-          instanceName: evoConfig.instancia,
-          qrcode: true,
-          integration: 'WHATSAPP-BAILEYS',
-        }),
+        body: JSON.stringify({ instanceName: evoConfig.instancia, qrcode: true, integration: 'WHATSAPP-BAILEYS' }),
       })
-      const createData = await createRes.json()
 
-      // QR pode vir direto na criacao
-      const qrNaCriacao = createData?.qrcode?.base64 || createData?.hash?.qrcode || createData?.qr || ''
-      if (qrNaCriacao) {
-        const qrFinal = qrNaCriacao.startsWith('data:') ? qrNaCriacao : 'data:image/png;base64,' + qrNaCriacao
-        setQrCode(qrFinal)
-      } else {
-        // 4. Aguardar e buscar QR via /instance/connect
-        await new Promise(r => setTimeout(r, 1500))
-        const connectRes = await fetch(base + '/instance/connect/' + evoConfig.instancia, { headers: hdrs })
-        const connectData = await connectRes.json()
-        const b64 = connectData?.qrcode?.base64 || connectData?.base64 || connectData?.qr || connectData?.code || ''
-        if (!b64) {
-          // 5. Tentar buscar QR via fetchInstances
-          await new Promise(r => setTimeout(r, 1000))
-          const fetchRes = await fetch(base + '/instance/fetchInstances', { headers: hdrs })
-          const fetchData = await fetchRes.json()
-          const instData = Array.isArray(fetchData) ? fetchData.find((i: any) => i.instance?.instanceName === evoConfig.instancia) : null
-          const qrFetch = instData?.instance?.qrcode?.base64 || instData?.qrcode?.base64 || ''
-          if (!qrFetch) {
-            setMsgWpp('Nao foi possivel gerar o QR Code. Resposta: ' + JSON.stringify(connectData).slice(0, 120))
-            setBuscandoQr(false); setStatusConexao('desconectado'); return
+      // 5. Aguardar Baileys inicializar e tentar /connect em loop ate ter QR
+      setMsgWpp('Inicializando... aguarde ate 15 segundos.')
+      let qrEncontrado = ''
+      for (let tentQr = 0; tentQr < 8; tentQr++) {
+        await new Promise(r => setTimeout(r, 2000))
+        try {
+          const cRes = await fetch(base + '/instance/connect/' + evoConfig.instancia, { headers: hdrs })
+          if (cRes.ok) {
+            const cData = await cRes.json()
+            const q = extrairQR(cData)
+            if (q) { qrEncontrado = q; break }
           }
-          const qrFinal2 = qrFetch.startsWith('data:') ? qrFetch : 'data:image/png;base64,' + qrFetch
-          setQrCode(qrFinal2)
-        } else {
-          const qrFinal3 = b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64
-          setQrCode(qrFinal3)
-        }
+        } catch {}
       }
+      if (!qrEncontrado) {
+        setMsgWpp('Nao foi possivel gerar o QR Code. Verifique se o container da Evolution API esta rodando e tente novamente.')
+        setBuscandoQr(false); setStatusConexao('desconectado'); return
+      }
+      setMsgWpp('')
+      setQrCode(qrEncontrado)
 
-      // 6. Polling a cada 3s ate conectar (max 90s = 30 tentativas)
+      // 6. Polling conexao
       let tentativas = 0
       const intervalo = setInterval(async () => {
         tentativas++
-        if (tentativas > 30) { clearInterval(intervalo); setBuscandoQr(false); setMsgWpp('QR Code expirou. Clique em Conectar novamente.'); return }
+        if (tentativas > 30) { clearInterval(intervalo); setBuscandoQr(false); setMsgWpp('QR expirou. Clique em Conectar novamente.'); return }
         try {
           const r2 = await fetch(base + '/instance/connectionState/' + evoConfig.instancia, { headers: hdrs })
           if (r2.ok) {
@@ -580,12 +595,14 @@ export default function ConfiguracoesPage() {
                   onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
               </div>
               <div>
-                <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#374151', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.04em' }}>Nome da Instancia</label>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#374151', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                  Instancia desta empresa
+                  <span style={{ fontSize:'10px', color:'#9ca3af', fontWeight:'400', marginLeft:'6px' }}>(gerada automaticamente)</span>
+                </label>
                 <input value={evoConfig.instancia} onChange={e=>setEvoConfig(p=>({...p,instancia:e.target.value}))}
-                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
-                  placeholder="minha-instancia"
-                  onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
-                  onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const, background:'#f9fafb', color:'#6b7280' }}
+                  placeholder="emp-xxxxxxxx"/>
+                <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'4px' }}>Cada empresa tem sua instancia unica. Nao altere sem necessidade.</p>
               </div>
               <button onClick={salvarEvoConfig} disabled={salvandoEvo}
                 style={{ background:salvandoEvo?'#a5b4fc':'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'9px', padding:'10px 20px', fontSize:'13px', fontWeight:'700', cursor:salvandoEvo?'not-allowed':'pointer', alignSelf:'flex-start', boxShadow:'0 2px 8px rgba(99,102,241,0.3)' }}>

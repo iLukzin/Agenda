@@ -43,3 +43,21 @@ SELECT 'OK' AS resultado;
 ALTER TABLE empresas
   ADD COLUMN IF NOT EXISTS wpp_auto_confirmacao BOOLEAN DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS wpp_auto_aniversario BOOLEAN DEFAULT FALSE;
+
+-- Configuracao global da Evolution API (gerenciada pelo master)
+CREATE TABLE IF NOT EXISTS config_sistema (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chave TEXT UNIQUE NOT NULL,
+  valor TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE config_sistema ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "config_sistema_auth" ON config_sistema;
+CREATE POLICY "config_sistema_auth" ON config_sistema FOR ALL TO authenticated USING (true);
+
+-- Inserir config inicial
+INSERT INTO config_sistema (chave, valor) VALUES
+  ('evolution_api_url', ''),
+  ('evolution_api_key', '')
+ON CONFLICT (chave) DO NOTHING;

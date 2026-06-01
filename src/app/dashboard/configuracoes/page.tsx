@@ -51,6 +51,8 @@ export default function ConfiguracoesPage() {
   const [templates, setTemplates] = useState<any[]>([])
   const [testando, setTestando] = useState(false)
   const [testeNum, setTesteNum] = useState('')
+  const [evoConfig, setEvoConfig] = useState({ url:'', token:'', instancia:'' })
+  const [salvandoEvo, setSalvandoEvo] = useState(false)
   const [salvandoWpp, setSalvandoWpp] = useState(false)
   const [msgWpp, setMsgWpp] = useState('')
   const [qrCode, setQrCode] = useState('')
@@ -70,6 +72,7 @@ export default function ConfiguracoesPage() {
     if (emp.data) {
       setEmpresa(emp.data)
       setWpp({ ativo:emp.data.whatsapp_ativo||false })
+      setEvoConfig({ url:emp.data.whatsapp_api_url||'', token:emp.data.whatsapp_api_token||'', instancia:emp.data.whatsapp_instancia||'' })
       // Verificar status da conexao
       if (empresaAtiva?.id) {
         fetch('/api/whatsapp/status?empresa_id=' + empresaAtiva.id)
@@ -113,6 +116,20 @@ export default function ConfiguracoesPage() {
   function abrirEdicaoPlano(p: Plano) { setModoEdicaoPlano(true); setPlanoSel(p); setErroPlano(''); setFormPlano({nome:p.nome,descricao:p.descricao||'',valor_mensal:String(p.valor_mensal),sessoes_mes:p.sessoes_mes!=null?String(p.sessoes_mes):'',validade_dias:String(p.validade_dias),status:p.status,ilimitado:p.sessoes_mes===null}); setModalPlano(true) }
   function fecharModalPlano() { setModalPlano(false); setPlanoSel(null) }
 
+  async function salvarEvoConfig() {
+    if (!empresaAtiva?.id) return
+    setSalvandoEvo(true)
+    const sb2 = createClient()
+    const { error } = await sb2.from('empresas').update({
+      whatsapp_api_url: evoConfig.url.trim() || null,
+      whatsapp_api_token: evoConfig.token.trim() || null,
+      whatsapp_instancia: evoConfig.instancia.trim() || null,
+    }).eq('id', empresaAtiva.id)
+    setSalvandoEvo(false)
+    if (error) { setMsgWpp('Erro ao salvar: ' + error.message) }
+    else { setMsgWpp('Configuracao salva!'); setTimeout(()=>setMsgWpp(''), 2000) }
+  }
+
   async function salvarWpp() {
     if (!empresaAtiva?.id) return
     setSalvandoWpp(true); setMsgWpp('')
@@ -155,10 +172,10 @@ export default function ConfiguracoesPage() {
         }, 3000)
       } else if (data.conectado) {
         setStatusConexao('conectado'); setQrCode(''); setBuscandoQr(false)
-      } else if (data.tipo === 'backend_necessario') {
-        // Mostrar modal de configuracao da Evolution API
+      } else if (data.tipo === 'config_incompleta') {
         setQrCode('CONFIGURAR')
-        setBuscandoQr(false); setStatusConexao('aguardando')
+        setBuscandoQr(false); setStatusConexao('desconectado')
+        setMsgWpp(data.erro || 'Preencha e salve a configuracao da API primeiro.')
       } else {
         setMsgWpp(data.erro || 'Erro ao gerar QR Code.')
         setBuscandoQr(false); setStatusConexao('desconectado')
@@ -451,7 +468,8 @@ export default function ConfiguracoesPage() {
                 <p style={{ fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'16px' }}>Como conectar:</p>
                 <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
                   {[
-                    { n:1, txt:'Clique em "Conectar WhatsApp" acima para gerar o QR Code' },
+                    { n:1, txt:'Preencha URL da API, Token e Instancia em "Configuracao da Evolution API" abaixo' },
+                  { n:2, txt:'Clique em "Salvar configuracao" para guardar os dados' },
                     { n:2, txt:'Clique em "Conectar WhatsApp" acima' },
                     { n:3, txt:'Abra o WhatsApp no celular e va em Menu > Aparelhos conectados' },
                     { n:4, txt:'Toque em "Conectar aparelho" e escaneie o QR Code' },
@@ -475,16 +493,34 @@ export default function ConfiguracoesPage() {
             </summary>
             <div style={{ padding:'0 20px 20px', display:'flex', flexDirection:'column', gap:'12px' }}>
               <p style={{ fontSize:'12px', color:'#6b7280' }}>Instale a Evolution API gratuitamente em github.com/EvolutionAPI/evolution-api e configure abaixo:</p>
-              {[
-                {l:'URL da API',k:'whatsapp_api_url',ph:'https://api.seuservidor.com.br'},
-                {l:'API Key / Token',k:'whatsapp_api_token',ph:'sua-chave-api'},
-                {l:'Nome da Instancia',k:'whatsapp_instancia',ph:'agendafortitude'},
-              ].map(f => (
-                <div key={f.k}>
-                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>{f.l}</label>
-                  <input defaultValue={(empresaAtiva as any)?.[f.k]||''} onBlur={e=>{const sb2=createClient();sb2.from('empresas').update({[f.k]:e.target.value||null}).eq('id',empresaAtiva?.id||'')}} style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }} placeholder={f.ph}/>
-                </div>
-              ))}
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#374151', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.04em' }}>URL da API</label>
+                <input value={evoConfig.url} onChange={e=>setEvoConfig(p=>({...p,url:e.target.value}))}
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
+                  placeholder="https://api.seuservidor.com.br"
+                  onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
+                  onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#374151', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.04em' }}>API Key / Token</label>
+                <input type="password" value={evoConfig.token} onChange={e=>setEvoConfig(p=>({...p,token:e.target.value}))}
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
+                  placeholder="sua-chave-api"
+                  onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
+                  onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#374151', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.04em' }}>Nome da Instancia</label>
+                <input value={evoConfig.instancia} onChange={e=>setEvoConfig(p=>({...p,instancia:e.target.value}))}
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }}
+                  placeholder="minha-instancia"
+                  onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#6366f1'}}
+                  onBlur={e=>{(e.target as HTMLInputElement).style.borderColor='#e5e7eb'}}/>
+              </div>
+              <button onClick={salvarEvoConfig} disabled={salvandoEvo}
+                style={{ background:salvandoEvo?'#a5b4fc':'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'9px', padding:'10px 20px', fontSize:'13px', fontWeight:'700', cursor:salvandoEvo?'not-allowed':'pointer', alignSelf:'flex-start', boxShadow:'0 2px 8px rgba(99,102,241,0.3)' }}>
+                {salvandoEvo ? 'Salvando...' : 'Salvar configuracao'}
+              </button>
             </div>
           </details>
 

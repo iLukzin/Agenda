@@ -58,7 +58,7 @@ type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
   cor: string; status: string; observacoes: string; forma_pagamento: string
-  valor: number; motivoCancelamento?: string; planoId?: string; sessaoNumero?: number; sessaoTotal?: number
+  valor: number; motivoCancelamento?: string; planoId?: string; sessaoNumero?: number; sessaoTotal?: number; createdAt?: string
 }
 type HorarioDB = {
   profissional_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
@@ -278,7 +278,7 @@ export default function AgendaPage() {
     const sb = createClient()
     // Nivel usuario e profissional com vinculo: filtrar so suas agendas
     const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
-    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
     if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
@@ -322,6 +322,7 @@ export default function AgendaPage() {
       valor: a.valor || 0,
       motivoCancelamento: a.motivo_cancelamento || undefined,
       planoId: !a.servico_id ? 'plano' : undefined,
+      createdAt: a.created_at || a.data_inicio,
       sessaoNumero: a.sessao_numero || undefined,
       sessaoTotal: a.sessao_total || undefined,
     })))
@@ -439,17 +440,21 @@ export default function AgendaPage() {
       const sb2 = createClient()
       Promise.all([
         sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single(),
-        sb2.from('agendamentos').select('id,data_inicio').eq('cliente_id', ag.clienteId).is('servico_id', null).neq('status','cancelado').order('data_inicio', { ascending:true }),
+        // Ordenar por created_at para pegar a ordem real de criacao
+        sb2.from('agendamentos').select('id,created_at,sessao_numero,sessao_total').eq('cliente_id', ag.clienteId).is('servico_id', null).neq('status','cancelado').order('created_at', { ascending:true }),
       ]).then(([cliRes, agsRes]) => {
         if (cliRes.data?.plano_id) buscarPlanoCliente(ag.clienteId, cliRes.data.plano_id, true)
-        // Calcular posicao deste agendamento no ciclo
         const agsPlano = agsRes.data || []
+        // Se ja tem sessao_numero salvo, usar ele
+        if (ag.sessaoNumero && ag.sessaoTotal) {
+          setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: ag.sessaoNumero, sessaoTotal: ag.sessaoTotal }) : prev)
+          return
+        }
+        // Senao calcular pela posicao de criacao
         const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
         if (posicao >= 0) {
-          // Calcular numero da sessao baseado na posicao real (1-based)
-          const numSessao = posicao + 1
           const totalPlano = ag.sessaoTotal || agsPlano.length || 1
-          const sessaoNoCiclo = ((posicao) % totalPlano) + 1
+          const sessaoNoCiclo = (posicao % totalPlano) + 1
           setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: sessaoNoCiclo, sessaoTotal: totalPlano }) : prev)
         }
       })
@@ -493,30 +498,36 @@ export default function AgendaPage() {
     if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
       const sb3 = createClient()
       const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
-      // Contar agendamentos de plano do cliente NAO cancelados (inclui o recem criado)
-      const { count } = await sb3.from('agendamentos')
-        .select('id', { count:'exact', head:true })
+      // Contar agendamentos de plano ANTES deste (o recem criado ja esta no banco)
+      // Ordenar por created_at e pegar o ultimo inserido = o recem criado
+      const { data: agsExist } = await sb3.from('agendamentos')
+        .select('id,created_at,sessao_numero')
         .eq('empresa_id', empresaAtiva.id)
         .eq('cliente_id', form.clienteId)
         .is('servico_id', null)
         .neq('status', 'cancelado')
-      const totalAgs = count || 1
-      // Posicao no ciclo atual (1-based)
-      const sessaoNoCiclo = ((totalAgs - 1) % total) + 1
+        .order('created_at', { ascending:true })
+      const lista = agsExist || []
+      // O recem criado e o ultimo da lista
+      const lastAg = lista[lista.length - 1]
+      // Posicao na lista (0-based) = index do ultimo
+      const posicao = lista.length - 1
+      const sessaoNoCiclo = (posicao % total) + 1
       const cobrar = sessaoNoCiclo === 1
+      const valorCorreto = cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
+      // Salvar sessao_numero, sessao_total e valor correto no agendamento recem criado
+      if (lastAg?.id) {
+        await sb3.from('agendamentos').update({
+          sessao_numero: sessaoNoCiclo,
+          sessao_total: total,
+          valor: valorCorreto,
+        }).eq('id', lastAg.id)
+      }
       // Atualizar sessoes_utilizadas
       if (sessaoPlano?.id) {
-        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: totalAgs }).eq('id', sessaoPlano.id)
+        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: lista.length }).eq('id', sessaoPlano.id)
       } else {
         await sb3.from('cliente_plano_sessoes').insert({ empresa_id:empresaAtiva.id, cliente_id:form.clienteId, plano_id:planoCliente.id, sessoes_utilizadas:1 })
-      }
-      // Salvar numero da sessao no agendamento recem criado
-      const { data: lastAg } = await sb3.from('agendamentos').select('id').eq('cliente_id', form.clienteId).eq('empresa_id', empresaAtiva.id).is('servico_id', null).neq('status','cancelado').order('created_at', { ascending:false }).limit(1).single()
-      if (lastAg?.id) await sb3.from('agendamentos').update({ sessao_numero: sessaoNoCiclo, sessao_total: total }).eq('id', lastAg.id)
-      // Corrigir valor se necessario (cobrar so na sessao 1 do ciclo)
-      const valorCorreto = cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
-      if (Math.abs(valorCorreto - valorFinal) > 0.01 && lastAg?.id) {
-        await sb3.from('agendamentos').update({ valor: valorCorreto }).eq('id', lastAg.id)
       }
     }
     setSemanaBase(inicioSemana(isoParaDate(form.dataISO))); setDiaAtivo(isoParaDate(form.dataISO))
@@ -669,12 +680,13 @@ export default function AgendaPage() {
   const calcularSessaoPlano = () => {
     if (!planoCliente) return { cobrar: true, sessaoAtual: 1, total: 1, utilizadas: 0 }
     const total = planoCliente.sessoes_mes || planoCliente.sessoes || 1
-    // Contar agendamentos de plano do cliente (nao cancelados) para saber a posicao real
+    // Contar agendamentos de plano existentes do cliente (nao cancelados)
+    // O novo ainda nao foi criado, entao este e o proximo
     const agsPlano = agendamentos.filter(a => !a.servico && a.clienteId === form.clienteId && a.status !== 'cancelado')
-    const utilizadas = agsPlano.length
-    const posicaoNoCiclo = utilizadas % total
-    const cobrar = posicaoNoCiclo === 0 // cobra na 1a sessao do ciclo
-    const sessaoAtual = posicaoNoCiclo + 1
+    const utilizadas = agsPlano.length // quantos ja existem
+    const proximaPosicao = utilizadas % total // posicao do proximo (0-based)
+    const cobrar = proximaPosicao === 0 // cobra quando e inicio de ciclo
+    const sessaoAtual = proximaPosicao + 1 // sessao do novo (1-based)
     return { cobrar, sessaoAtual, total, utilizadas }
   }
   const infoPlano = form.usar_plano && planoCliente ? calcularSessaoPlano() : null

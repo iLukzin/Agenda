@@ -33,22 +33,23 @@ export default function RelProfissionalPage() {
     if (!empresaAtiva?.id) return
     setCarregando(true)
     const sb = createClient()
-    const { data: profs } = await sb.from('profissionais').select('id,nome').eq('empresa_id', empresaAtiva.id).eq('ativo', true).order('nome')
+    // Buscar profissionais ativos (campo status, nao ativo)
+    const { data: profs } = await sb.from('profissionais')
+      .select('id,nome').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo').order('nome')
+    // Buscar todos agendamentos do periodo (prof_id OU profissional_id)
     const { data: ags } = await sb.from('agendamentos')
-      .select('prof_id,status,valor')
+      .select('id,prof_id,profissional_id,status,valor')
       .eq('empresa_id', empresaAtiva.id)
       .gte('data_inicio', ini + 'T00:00:00')
       .lte('data_inicio', fim + 'T23:59:59')
-      .neq('status', 'cancelado')
-    const agsCancelados = await sb.from('agendamentos')
-      .select('prof_id,status')
-      .eq('empresa_id', empresaAtiva.id)
-      .gte('data_inicio', ini + 'T00:00:00')
-      .lte('data_inicio', fim + 'T23:59:59')
-      .eq('status', 'cancelado')
     const lista = (profs || []).map((p: any) => {
-      const mine = (ags.data || []).filter((a: any) => a.prof_id === p.id)
-      const canc = (agsCancelados.data || []).filter((a: any) => a.prof_id === p.id)
+      // Usar prof_id com fallback para profissional_id
+      const mine = (ags || []).filter((a: any) =>
+        (a.prof_id === p.id || a.profissional_id === p.id) && a.status !== 'cancelado'
+      )
+      const canc = (ags || []).filter((a: any) =>
+        (a.prof_id === p.id || a.profissional_id === p.id) && a.status === 'cancelado'
+      )
       const fin = mine.filter((a: any) => a.status === 'fechado')
       const abertos = mine.filter((a: any) => a.status !== 'fechado')
       return {

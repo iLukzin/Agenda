@@ -332,17 +332,15 @@ export default function AgendaPage() {
 
   useEffect(() => { carregar() }, [carregar])
 
-  // Verificar conexao WhatsApp
+  // Verificar conexao WhatsApp (busca direto do banco, sem depender do contexto)
   useEffect(() => {
     if (!empresaAtiva?.id) return
-    // Verificar direto no contexto se WPP esta habilitado
-    if (!empresaAtiva?.whatsapp_habilitado) return
     const sb2 = createClient()
     Promise.all([
       sb2.from('config_sistema').select('chave,valor').in('chave', ['evolution_api_url','evolution_api_key']),
-      sb2.from('empresas').select('whatsapp_instancia').eq('id', empresaAtiva.id).single(),
+      sb2.from('empresas').select('whatsapp_instancia,whatsapp_habilitado').eq('id', empresaAtiva.id).single(),
     ]).then(([cfg, emp]) => {
-      if (!empresaAtiva?.whatsapp_habilitado) return
+      if (!emp.data?.whatsapp_habilitado) return
       const cfgMap: Record<string,string> = {}
       if (cfg.data) cfg.data.forEach((c: any) => { cfgMap[c.chave] = c.valor || '' })
       const url = cfgMap['evolution_api_url']
@@ -486,6 +484,12 @@ export default function AgendaPage() {
     if (error) { alert('Erro: ' + error.message); setCancelando(false); return }
     setCancelando(false); setModalCancelar(false)
     await carregar(); fecharModal()
+  }
+
+  function mascaraTel(v: string) {
+    const d = v.replace(/\D/g,'').slice(0,11)
+    if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3').replace(/-$/,'')
+    return d.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3').replace(/-$/,'')
   }
 
   async function salvarNovoClienteInline() {
@@ -906,18 +910,26 @@ export default function AgendaPage() {
               <button onClick={()=>setModalNovoCliente(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'28px', height:'28px', cursor:'pointer', fontSize:'14px' }}>x</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-              {([
-                { label:'Nome *', key:'nome', placeholder:'Nome completo' },
-                { label:'Telefone', key:'telefone', placeholder:'(34) 99999-9999' },
-                { label:'WhatsApp', key:'whatsapp', placeholder:'(34) 99999-9999' },
-                { label:'E-mail', key:'email', placeholder:'email@exemplo.com' },
-              ] as {label:string;key:string;placeholder:string}[]).map(({ label, key, placeholder }) => (
-                <div key={key}>
-                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'4px' }}>{label}</label>
-                  <input value={(formNovoCliente as any)[key]} onChange={e=>setFormNovoCliente((f:any)=>({...f,[key]:e.target.value}))} placeholder={placeholder}
-                    style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const }}/>
-                </div>
-              ))}
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'4px' }}>Nome *</label>
+                <input value={formNovoCliente.nome} onChange={e=>setFormNovoCliente(f=>({...f,nome:e.target.value}))} placeholder="Nome completo"
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const }}/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'4px' }}>Telefone</label>
+                <input value={formNovoCliente.telefone} onChange={e=>setFormNovoCliente(f=>({...f,telefone:mascaraTel(e.target.value)}))} placeholder="(34) 99999-9999" maxLength={15}
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const }}/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'4px' }}>WhatsApp</label>
+                <input value={formNovoCliente.whatsapp} onChange={e=>setFormNovoCliente(f=>({...f,whatsapp:mascaraTel(e.target.value)}))} placeholder="(34) 99999-9999" maxLength={15}
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const }}/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'4px' }}>E-mail</label>
+                <input value={formNovoCliente.email} onChange={e=>setFormNovoCliente(f=>({...f,email:e.target.value}))} placeholder="email@exemplo.com"
+                  style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const }}/>
+              </div>
             </div>
             <div style={{ display:'flex', gap:'10px', marginTop:'18px' }}>
               <button onClick={()=>setModalNovoCliente(false)} style={{ flex:1, background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'10px', fontSize:'13px', cursor:'pointer' }}>Cancelar</button>

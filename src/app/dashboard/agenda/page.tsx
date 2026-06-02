@@ -58,7 +58,7 @@ type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
   cor: string; status: string; observacoes: string; forma_pagamento: string
-  valor: number; motivoCancelamento?: string; planoId?: string
+  valor: number; motivoCancelamento?: string; planoId?: string; sessaoNumero?: number; sessaoTotal?: number
 }
 type HorarioDB = {
   profissional_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
@@ -278,7 +278,7 @@ export default function AgendaPage() {
     const sb = createClient()
     // Nivel usuario e profissional com vinculo: filtrar so suas agendas
     const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
-    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id', empresaAtiva.id)
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
     if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
@@ -322,6 +322,8 @@ export default function AgendaPage() {
       valor: a.valor || 0,
       motivoCancelamento: a.motivo_cancelamento || undefined,
       planoId: !a.servico_id ? 'plano' : undefined,
+      sessaoNumero: a.sessao_numero || undefined,
+      sessaoTotal: a.sessao_total || undefined,
     })))
     setCarregando(false)
   }, [empresaAtiva?.id, usuario?.nivel_acesso, usuario?.profissional_id])
@@ -459,12 +461,14 @@ export default function AgendaPage() {
     const srv = servicos.find((s: any) => s.nome === form.servico)
     const prof = profissionais.find((p: any) => p.nome === form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao) * 60000).toISOString()
-    // Valor: se plano ativo, SEMPRE recalcular (nao usar form.valor que pode estar desatualizado)
+    // Valor: na edicao manter o valor original; na criacao calcular pela sessao
     let valorFinal = parseFloat(form.valor) || 0
-    if (form.usar_plano && planoCliente) {
+    if (!modoEdicao && form.usar_plano && planoCliente) {
+      // Novo agendamento: calcular se e sessao de cobranca
       const ipSalvar = calcularSessaoPlano()
       valorFinal = ipSalvar.cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
     }
+    // Na edicao com plano: manter o valor original do agendamento (form.valor)
     const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
@@ -475,10 +479,19 @@ export default function AgendaPage() {
     if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
       const sb3 = createClient()
       const utilizadas = sessaoPlano ? (sessaoPlano.sessoes_utilizadas || 0) : 0
+      const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
+      const novaSessao = utilizadas + 1
+      const sessaoNoCiclo = ((utilizadas) % total) + 1
       if (sessaoPlano?.id) {
-        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: utilizadas + 1 }).eq('id', sessaoPlano.id)
+        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: novaSessao }).eq('id', sessaoPlano.id)
       } else {
         await sb3.from('cliente_plano_sessoes').insert({ empresa_id:empresaAtiva.id, cliente_id:form.clienteId, plano_id:planoCliente.id, sessoes_utilizadas:1 })
+      }
+      // Atualizar agendamento com numero da sessao
+      if (selecionado?.id || true) {
+        const sbUpd = createClient()
+        const { data: lastAg } = await sbUpd.from('agendamentos').select('id').eq('cliente_id', form.clienteId).eq('empresa_id', empresaAtiva.id).order('created_at', { ascending:false }).limit(1).single()
+        if (lastAg?.id) await sbUpd.from('agendamentos').update({ sessao_numero: sessaoNoCiclo, sessao_total: total }).eq('id', lastAg.id)
       }
     }
     setSemanaBase(inicioSemana(isoParaDate(form.dataISO))); setDiaAtivo(isoParaDate(form.dataISO))
@@ -1101,7 +1114,29 @@ export default function AgendaPage() {
                       </div>
                       <p style={{ fontSize:'12px', fontWeight:'600', color:form.usar_plano?'#4f46e5':'#6b7280', marginBottom:'2px' }}>{planoCliente.nome}</p>
                       <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes_mes || planoCliente.sessoes || planoCliente.sessoes_mes || 1} sessoes</p>
-                      {form.usar_plano && infoPlano && (
+                      {modoEdicao && form.usar_plano && planoCliente && (
+                  <div style={{ borderRadius:'12px', overflow:'hidden', border:'1.5px solid #bfdbfe' }}>
+                    <div style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
+                      <div style={{ flex:1 }}>
+                        <p style={{ color:'white', fontWeight:'700', fontSize:'14px' }}>{planoCliente.nome}</p>
+                        <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>
+                          {selecionado?.sessaoNumero ? ('Sessao ' + selecionado.sessaoNumero + ' de ' + (selecionado.sessaoTotal || planoCliente.sessoes || planoCliente.sessoes_mes || '?')) : 'Plano mensal'}
+                          {sessaoPlano ? (' - ' + (sessaoPlano.sessoes_utilizadas || 0) + ' sessoes realizadas') : ''}
+                        </p>
+                      </div>
+                      <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'10px', padding:'8px 14px', textAlign:'center' }}>
+                        <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase' }}>Valor</p>
+                        <p style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>R$ {Number(form.valor||0).toFixed(2).replace('.',',')}</p>
+                      </div>
+                    </div>
+                    <div style={{ background:'#eff6ff', padding:'8px 16px' }}>
+                      <p style={{ fontSize:'11px', color:'#6b7280' }}>
+                        {parseFloat(form.valor||'0') > 0 ? 'Sessao de cobranca (1ª do ciclo)' : 'Sessao inclusa no plano (gratuita)'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {!modoEdicao && form.usar_plano && infoPlano && (
                         <div style={{ marginTop:'8px', padding:'8px', background:'white', borderRadius:'8px', border:'1px solid #c7d2fe' }}>
                           <p style={{ fontSize:'11px', color:'#6b7280', marginBottom:'2px' }}>Sessao {infoPlano.sessaoAtual} de {infoPlano.total}</p>
                           <p style={{ fontSize:'13px', fontWeight:'700', color:infoPlano.cobrar?'#059669':'#6366f1' }}>

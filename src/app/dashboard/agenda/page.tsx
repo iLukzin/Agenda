@@ -1267,7 +1267,7 @@ export default function AgendaPage() {
                   </InputField>
                 </div>
               )}
-              {form.usar_plano && infoPlano && (
+              {!modoEdicao && form.usar_plano && infoPlano && (
                 <div style={{ borderRadius:'14px', overflow:'hidden', border:'1.5px solid '+(infoPlano.cobrar?'#6ee7b7':'#c7d2fe') }}>
                   <div style={{ background:infoPlano.cobrar?'linear-gradient(135deg,#059669,#10b981)':'linear-gradient(135deg,#6366f1,#4f46e5)', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px' }}>
                     <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>

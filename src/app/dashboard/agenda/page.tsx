@@ -1122,7 +1122,7 @@ export default function AgendaPage() {
                 )}
               </div>
               {/* Escolha: Plano ou Servico avulso */}
-              {planoCliente && !modoEdicao && (
+              {planoCliente && (
                 <div>
                   <label style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'8px' }}>Tipo de agendamento</label>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
@@ -1147,7 +1147,7 @@ export default function AgendaPage() {
                       )}
                     </div>
                     {/* Opcao: Servico avulso */}
-                    <div onClick={() => setForm(f => ({...f, usar_plano:false, valor:'', servico:''}))}
+                    <div onClick={() => { setForm(f => ({...f, usar_plano:false, valor:'', servico:''})); if (modoEdicao) setSessaoEdicao(null) }}
                       style={{ padding:'14px', borderRadius:'12px', cursor:'pointer', border:!form.usar_plano?'2px solid #6366f1':'2px solid #e5e7eb', background:!form.usar_plano?'#eef2ff':'white', transition:'all .15s' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'6px' }}>
                         <div style={{ width:'28px', height:'28px', borderRadius:'8px', background:!form.usar_plano?'#6366f1':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>

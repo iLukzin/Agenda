@@ -298,7 +298,7 @@ export default function FinanceiroPage() {
       {/* Cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:'14px', marginBottom:'20px' }}>
         {[
-          { label:'Receitas pagas',  v:totalReceitas,  cor:'#10b981', bg:'#ecfdf5', ic:'?', sub:'lançamentos + agend.' },
+          { label:'Receitas pagas',  v:totalReceitas,  cor:'#10b981', bg:'#ecfdf5', ic:'↑', sub:'lançamentos + agend.' },
           { label:'Despesas pagas',  v:totalDespesas,  cor:'#ef4444', bg:'#fef2f2', ic:'↓', sub:'do período'          },
           { label:'Lucro líquido',   v:lucro,          cor:lucro>=0?'#6366f1':'#ef4444', bg:'#eef2ff', ic:'*', sub:'receitas ? despesas' },
           { label:'A receber/pagar', v:totalPendentes, cor:'#f59e0b', bg:'#fffbeb', ic:'◷', sub:'pendentes'           },

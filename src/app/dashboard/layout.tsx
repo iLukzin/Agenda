@@ -15,7 +15,8 @@ const navItems = [
   { href:'/dashboard/clientes',      icon:'USR',  label:'Clientes'      },
   { href:'/dashboard/profissionais', icon:'DOC',  label:'Profissionais' },
   { href:'/dashboard/servicos',      icon:'SRV',  label:'Servicos'      },
-  { href:'/dashboard/financeiro',    icon:'FIN',  label:'Financeiro'    },
+  { href:'/dashboard/financeiro',       icon:'FIN',  label:'Financeiro'       },
+  { href:'/dashboard/rel-profissional', icon:'REL',  label:'Rel. Profissional' },
   { href:'/dashboard/mensagens',       icon:'WPP',  label:'Mensagens WPP' },
   { href:'/dashboard/usuarios',      icon:'PEO',  label:'Usuarios'      },
   { href:'/dashboard/configuracoes', icon:'CFG',  label:'Configuracoes' },
@@ -234,15 +235,15 @@ function permPadraoLayout(nivel: string): Record<string, any> {
     dashboard: { visualizar:false }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
     clientes: { visualizar:false }, profissionais: { visualizar:false },
     servicos: { visualizar:false }, financeiro: { visualizar:false },
-    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false },
+    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false }, rel_profissional: { visualizar:false },
   }
   if (nivel === 'profissional') return {
     dashboard: { visualizar:true }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
     clientes: { visualizar:true }, profissionais: { visualizar:true },
     servicos: { visualizar:true }, financeiro: { visualizar:false },
-    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false },
+    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false }, rel_profissional: { visualizar:false },
   }
-  return {}
+  return { dashboard:{visualizar:true}, agenda:{visualizar:true}, agenda_wpp:{visualizar:true}, clientes:{visualizar:true}, profissionais:{visualizar:true}, servicos:{visualizar:true}, financeiro:{visualizar:true}, mensagens:{visualizar:true}, usuarios:{visualizar:true}, configuracoes:{visualizar:true}, rel_profissional:{visualizar:true} }
 }
 
 function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile, onClose, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa, permMap }: any) {

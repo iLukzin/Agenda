@@ -11,6 +11,18 @@ const planoCor: Record<string,string> = { basico:'#6b7280', profissional:'#6366f
 const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
 function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:'', whatsapp_habilitado:false } }
 
+function mascaraCnpjCpf(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 14)
+  if (d.length <= 11) {
+    // CPF: 000.000.000-00
+    return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_:string, a:string, b:string, c:string, e:string) =>
+      e ? a+'.'+b+'.'+c+'-'+e : c ? a+'.'+b+'.'+c : b ? a+'.'+b : a)
+  }
+  // CNPJ: 00.000.000/0001-00
+  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, (_:string, a:string, b:string, c:string, dd:string, e:string) =>
+    e ? a+'.'+b+'.'+c+'/'+dd+'-'+e : dd ? a+'.'+b+'.'+c+'/'+dd : c ? a+'.'+b+'.'+c : b ? a+'.'+b : a)
+}
+
 export default function EmpresasPage() {
   const router = useRouter()
   const { recarregar, isMaster } = useEmpresa()
@@ -160,12 +172,17 @@ export default function EmpresasPage() {
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>×</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-              {[{l:'Nome *',k:'nome',ph:'Nome da empresa'},{l:'CNPJ',k:'cnpj',ph:'00.000.000/0001-00'},{l:'E-mail',k:'email',ph:'email@empresa.com'},{l:'Telefone',k:'telefone',ph:'(11) 99999-9999'}].map(f=>(
+              {[{l:'Nome *',k:'nome',ph:'Nome da empresa'},{l:'E-mail',k:'email',ph:'email@empresa.com'},{l:'Telefone',k:'telefone',ph:'(11) 99999-9999'}].map(f=>(
                 <div key={f.k}>
                   <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>{f.l}</label>
                   <input value={(form as any)[f.k]} onChange={sf(f.k)} style={inp} placeholder={f.ph}/>
                 </div>
               ))}
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>CNPJ / CPF</label>
+                <input value={form.cnpj} onChange={e=>setForm(f=>({...f,cnpj:mascaraCnpjCpf(e.target.value)}))} style={inp} placeholder="CPF ou CNPJ" maxLength={18}/>
+                <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'3px' }}>Digite CPF (11 digitos) ou CNPJ (14 digitos)</p>
+              </div>
               <div>
                 <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Endereço</label>
                 <input value={form.endereco} onChange={sf('endereco')} style={inp} placeholder="Rua, número, bairro, cidade"/>

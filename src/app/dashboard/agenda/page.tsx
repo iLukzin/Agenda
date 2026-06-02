@@ -433,10 +433,10 @@ export default function AgendaPage() {
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
     if (ehPlano && ag.clienteId) {
-      // Buscar plano_id real do cliente
+      // Edicao: carregar info do plano apenas para exibicao, sem recalcular valor
       const sb2 = createClient()
       sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single()
-        .then(({ data }) => { if (data?.plano_id) buscarPlanoCliente(ag.clienteId, data.plano_id) })
+        .then(({ data }) => { if (data?.plano_id) buscarPlanoCliente(ag.clienteId, data.plano_id, true) })
     }
   }
 
@@ -638,7 +638,7 @@ export default function AgendaPage() {
     return { cobrar, sessaoAtual, total, utilizadas }
   }
   const infoPlano = form.usar_plano && planoCliente ? calcularSessaoPlano() : null
-  async function buscarPlanoCliente(clienteId: string, planoId: string) {
+  async function buscarPlanoCliente(clienteId: string, planoId: string, apenasExibir = false) {
     if (!empresaAtiva?.id) return
     const sb2 = createClient()
     const [r1, r2] = await Promise.all([
@@ -648,12 +648,15 @@ export default function AgendaPage() {
     if (r1.data) {
       setPlanoCliente(r1.data)
       setSessaoPlano(r2.data)
-      // Ativar plano por padrao quando cliente tem plano
-      const util = r2.data ? (r2.data.sessoes_utilizadas || 0) : 0
-      const total = r1.data.sessoes || r1.data.sessoes_mes || 1
-      const cobrar = (util % total) === 0
-      const valor = cobrar ? String(r1.data.valor_mensal || r1.data.valor || 0) : '0'
-      setForm(f => ({...f, usar_plano: true, valor}))
+      if (!apenasExibir) {
+        // Novo agendamento: calcular valor baseado nas sessoes
+        const util = r2.data ? (r2.data.sessoes_utilizadas || 0) : 0
+        const total = r1.data.sessoes || r1.data.sessoes_mes || 1
+        const cobrar = (util % total) === 0
+        const valor = cobrar ? String(r1.data.valor_mensal || r1.data.valor || 0) : '0'
+        setForm(f => ({...f, usar_plano: true, valor}))
+      }
+      // Na edicao (apenasExibir=true): nao altera valor, apenas mostra info do plano
     } else {
       setPlanoCliente(null)
       setSessaoPlano(null)

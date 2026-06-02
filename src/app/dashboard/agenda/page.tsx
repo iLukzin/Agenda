@@ -58,7 +58,7 @@ type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
   cor: string; status: string; observacoes: string; forma_pagamento: string
-  valor: number; motivoCancelamento?: string
+  valor: number; motivoCancelamento?: string; planoId?: string
 }
 type HorarioDB = {
   profissional_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
@@ -278,7 +278,7 @@ export default function AgendaPage() {
     const sb = createClient()
     // Nivel usuario e profissional com vinculo: filtrar so suas agendas
     const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
-    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id', empresaAtiva.id)
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,plano_id').eq('empresa_id', empresaAtiva.id)
     if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
@@ -321,6 +321,7 @@ export default function AgendaPage() {
       forma_pagamento: a.forma_pagamento || '',
       valor: a.valor || 0,
       motivoCancelamento: a.motivo_cancelamento || undefined,
+      planoId: a.plano_id || undefined,
     })))
     setCarregando(false)
   }, [empresaAtiva?.id, usuario?.nivel_acesso, usuario?.profissional_id])
@@ -427,8 +428,11 @@ export default function AgendaPage() {
     const cl = clientes.find((c: any) => c.id === ag.clienteId) || null
     setClienteSel(cl); setBuscaCliente('')
     const hiH = Math.floor(ag.horaInicio), hiM = Math.round((ag.horaInicio - hiH) * 60)
-    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(ag.valor), observacoes:ag.observacoes })
+    const ehPlano = !!ag.planoId
+    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(ag.valor), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
     setIntervaloMin(30); setModalAberto(true)
+    // Carregar plano do cliente se for plano
+    if (ehPlano && ag.clienteId) buscarPlanoCliente(ag.clienteId, ag.planoId!)
   }
 
   function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }
@@ -1120,14 +1124,19 @@ export default function AgendaPage() {
                     {profissionais.map((p: any) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
                   </select>
                 </InputField>
-                {!form.usar_plano && (
-                  <InputField label="Servico">
+                <InputField label="Servico">
+                  {form.usar_plano ? (
+                    <div style={{ padding:'10px 13px', background:'#f9fafb', borderRadius:'8px', border:'1.5px solid #e5e7eb', fontSize:'14px', color:'#9ca3af', display:'flex', alignItems:'center', gap:'6px' }}>
+                      Incluso no plano mensal
+                    </div>
+                  ) : (
                     <select value={form.servico} onChange={e=>{const srv=servicosDoProf.find((s: any)=>s.nome===e.target.value);setForm(f=>({...f,servico:e.target.value,duracao:srv?.duracao_min?String(srv.duracao_min):f.duracao,valor:srv?.valor?String(srv.valor):f.valor}))}} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
                       <option value="">{form.profissional?'Selecione...':'Selecione o profissional primeiro'}</option>
                       {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
                     </select>
-                  </InputField>
-                )}
+                  )}
+                </InputField>
+
                 {form.usar_plano && (
                   <div>
                     <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Servico (opcional)</label>

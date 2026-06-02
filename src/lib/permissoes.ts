@@ -26,6 +26,7 @@ export const TELAS = [
 export const PERM_PADRAO_USUARIO: Record<string, Permissao> = {
   dashboard:     { tela:'dashboard',     visualizar:true,  criar:false, alterar:false, excluir:false },
   agenda:        { tela:'agenda',        visualizar:true,  criar:true,  alterar:false, excluir:false },
+  agenda_wpp:    { tela:'agenda_wpp',    visualizar:false, criar:false, alterar:false, excluir:false },
   clientes:      { tela:'clientes',      visualizar:false, criar:false, alterar:false, excluir:false },
   profissionais: { tela:'profissionais', visualizar:false, criar:false, alterar:false, excluir:false },
   servicos:      { tela:'servicos',      visualizar:false, criar:false, alterar:false, excluir:false },
@@ -38,6 +39,7 @@ export const PERM_PADRAO_USUARIO: Record<string, Permissao> = {
 export const PERM_PADRAO_PROFISSIONAL: Record<string, Permissao> = {
   dashboard:     { tela:'dashboard',     visualizar:true,  criar:false, alterar:false, excluir:false },
   agenda:        { tela:'agenda',        visualizar:true,  criar:true,  alterar:true,  excluir:false },
+  agenda_wpp:    { tela:'agenda_wpp',    visualizar:false, criar:false, alterar:false, excluir:false },
   clientes:      { tela:'clientes',      visualizar:true,  criar:true,  alterar:true,  excluir:false },
   profissionais: { tela:'profissionais', visualizar:true,  criar:false, alterar:false, excluir:false },
   servicos:      { tela:'servicos',      visualizar:true,  criar:false, alterar:false, excluir:false },
@@ -50,6 +52,7 @@ export const PERM_PADRAO_PROFISSIONAL: Record<string, Permissao> = {
 export const PERM_PADRAO_ADMIN: Record<string, Permissao> = {
   dashboard:     { tela:'dashboard',     visualizar:true,  criar:false, alterar:false, excluir:false },
   agenda:        { tela:'agenda',        visualizar:true, criar:true, alterar:true, excluir:true  },
+  agenda_wpp:    { tela:'agenda_wpp',    visualizar:true,  criar:false, alterar:false, excluir:false },
   clientes:      { tela:'clientes',      visualizar:true, criar:true, alterar:true, excluir:true  },
   profissionais: { tela:'profissionais', visualizar:true, criar:true, alterar:true, excluir:true  },
   servicos:      { tela:'servicos',      visualizar:true, criar:true, alterar:true, excluir:true  },

@@ -72,6 +72,7 @@ export default function ConfiguracoesPage() {
     ])
     if (emp.data) {
       setEmpresa(emp.data)
+      if (aba === 'whatsapp' && !emp.data.whatsapp_habilitado) setAba('empresa')
       setWpp({ ativo:emp.data.whatsapp_ativo||false })
       // Instancia = ID da empresa (unica por empresa)
       const instanciaEmpresa = 'emp-' + (empresaAtiva?.id || '').slice(0, 8)
@@ -343,7 +344,8 @@ export default function ConfiguracoesPage() {
     await carregar()
   }
 
-  const abas = [{ key:'empresa', label:'Empresa' },{ key:'horarios', label:'Horarios' },{ key:'planos', label:'Planos' },{ key:'whatsapp', label:'WhatsApp' }]
+  const abasBase = [{ key:'empresa', label:'Empresa' },{ key:'horarios', label:'Horarios' },{ key:'planos', label:'Planos' }]
+  const abas = [...abasBase, ...((empresa as any)?.whatsapp_habilitado ? [{ key:'whatsapp', label:'WhatsApp' }] : [])]
 
   return (
     <div style={{ padding:'24px 16px', maxWidth:'740px' }}>

@@ -16,6 +16,7 @@ export const TELAS = [
   { key:'profissionais',  label:'Profissionais' },
   { key:'servicos',       label:'Servicos'      },
   { key:'financeiro',     label:'Financeiro'    },
+  { key:'mensagens',      label:'Mensagens WPP' },
   { key:'usuarios',       label:'Usuarios'      },
   { key:'configuracoes',  label:'Configuracoes' },
 ]

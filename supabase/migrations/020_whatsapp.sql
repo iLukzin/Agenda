@@ -61,3 +61,6 @@ INSERT INTO config_sistema (chave, valor) VALUES
   ('evolution_api_url', ''),
   ('evolution_api_key', '')
 ON CONFLICT (chave) DO NOTHING;
+
+-- Campo para habilitar WhatsApp por empresa (controlado pelo master)
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS whatsapp_habilitado BOOLEAN DEFAULT FALSE;

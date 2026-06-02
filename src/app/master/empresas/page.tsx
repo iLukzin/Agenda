@@ -9,7 +9,7 @@ type Empresa = { id:string; nome:string; cnpj:string; email:string; telefone:str
 const inp = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const, minHeight:'42px' }
 const planoCor: Record<string,string> = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
 const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
-function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:'' } }
+function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:'', whatsapp_habilitado:false } }
 
 export default function EmpresasPage() {
   const router = useRouter()
@@ -51,7 +51,7 @@ export default function EmpresasPage() {
   function abrirNova() { setModoEdicao(false); setSelecionada(null); setErro(''); setForm(formVazio()); setModalAberto(true) }
   function abrirEdicao(e: Empresa) {
     setModoEdicao(true); setSelecionada(e); setErro('')
-    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio })
+    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:(e as any).whatsapp_habilitado||false })
     setModalAberto(true)
   }
   function fecharModal() { setModalAberto(false); setSelecionada(null); setErro('') }
@@ -60,7 +60,7 @@ export default function EmpresasPage() {
     if (!form.nome.trim()) return setErro('Nome é obrigatório.')
     setSalvando(true); setErro('')
     const sb = createClient()
-    const payload = { nome:form.nome.trim(), cnpj:form.cnpj||null, email:form.email||null, telefone:form.telefone||null, endereco:form.endereco||null, plano:form.plano, status:form.status, vencimento:form.vencimento||null, bloqueada:form.bloqueada, motivo_bloqueio:form.bloqueada?(form.motivo_bloqueio||'Falta de pagamento'):null }
+    const payload = { nome:form.nome.trim(), cnpj:form.cnpj||null, email:form.email||null, telefone:form.telefone||null, endereco:form.endereco||null, plano:form.plano, status:form.status, vencimento:form.vencimento||null, bloqueada:form.bloqueada, motivo_bloqueio:form.bloqueada?(form.motivo_bloqueio||'Falta de pagamento'):null, whatsapp_habilitado:form.whatsapp_habilitado }
     let error: any
     if (modoEdicao && selecionada) { const r = await sb.from('empresas').update(payload).eq('id', selecionada.id); error = r.error }
     else { const r = await sb.from('empresas').insert(payload); error = r.error }
@@ -189,6 +189,17 @@ export default function EmpresasPage() {
                   <option value="ativo">Ativo</option>
                   <option value="inativo">Inativo</option>
                 </select>
+              </div>
+              <div style={{ background:'#f0fdf4', borderRadius:'12px', padding:'14px 16px', border:'1px solid #bbf7d0', marginBottom:'4px' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div>
+                    <p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>Habilitar WhatsApp</p>
+                    <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'1px' }}>Permite a empresa conectar e usar WhatsApp no sistema</p>
+                  </div>
+                  <div onClick={()=>setForm((p: any)=>({...p,whatsapp_habilitado:!p.whatsapp_habilitado}))} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.whatsapp_habilitado?'#22c55e':'#e5e7eb', position:'relative', flexShrink:0 }}>
+                    <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:form.whatsapp_habilitado?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
+                  </div>
+                </div>
               </div>
               <div style={{ background:form.bloqueada?'#fef2f2':'#f9fafb', borderRadius:'12px', padding:'14px', border:form.bloqueada?'1.5px solid #fca5a5':'1px solid #e5e7eb' }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:form.bloqueada?'12px':'0' }}>

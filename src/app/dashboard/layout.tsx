@@ -231,13 +231,13 @@ function permPadraoLayout(nivel: string): Record<string, any> {
     dashboard: { visualizar:false }, agenda: { visualizar:true },
     clientes: { visualizar:false }, profissionais: { visualizar:false },
     servicos: { visualizar:false }, financeiro: { visualizar:false },
-    usuarios: { visualizar:false }, configuracoes: { visualizar:false },
+    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false },
   }
   if (nivel === 'profissional') return {
     dashboard: { visualizar:true }, agenda: { visualizar:true },
     clientes: { visualizar:true }, profissionais: { visualizar:true },
     servicos: { visualizar:true }, financeiro: { visualizar:false },
-    usuarios: { visualizar:false }, configuracoes: { visualizar:false },
+    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false },
   }
   return {}
 }

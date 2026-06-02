@@ -764,7 +764,7 @@ export default function ConfiguracoesPage() {
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
               <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicaoPlano ? 'Editar plano' : '+ Novo plano'}</h2>
-              <button onClick={fecharModalPlano} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>?</button>
+              <button onClick={fecharModalPlano} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>×</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
               <div><label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nome *</label><input value={formPlano.nome} onChange={e=>setFormPlano(f=>({...f,nome:e.target.value}))} style={inputStyle} placeholder="Ex: Plano 4 sessões"/></div>

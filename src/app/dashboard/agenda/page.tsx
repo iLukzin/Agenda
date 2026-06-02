@@ -329,6 +329,28 @@ export default function AgendaPage() {
 
   useEffect(() => { carregar() }, [carregar])
 
+  // Verificar conexao WhatsApp
+  useEffect(() => {
+    if (!empresaAtiva?.id) return
+    const sb2 = createClient()
+    Promise.all([
+      sb2.from('config_sistema').select('chave,valor').in('chave', ['evolution_api_url','evolution_api_key']),
+      sb2.from('empresas').select('whatsapp_instancia,whatsapp_habilitado').eq('id', empresaAtiva.id).single(),
+    ]).then(([cfg, emp]) => {
+      if (!emp.data?.whatsapp_habilitado) return
+      const cfgMap: Record<string,string> = {}
+      if (cfg.data) cfg.data.forEach((c: any) => { cfgMap[c.chave] = c.valor || '' })
+      const url = cfgMap['evolution_api_url']
+      const key = cfgMap['evolution_api_key']
+      const inst = emp.data?.whatsapp_instancia || ('emp-' + empresaAtiva.id.slice(0,8))
+      if (!url || !key) return
+      fetch(url.replace(/\/$/, '') + '/instance/connectionState/' + inst, { headers: { 'apikey': key } })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (!d) return; const st = d?.instance?.state || d?.state || ''; if (st === 'open' || st === 'connected') setWppConectado(true) })
+        .catch(() => {})
+    }).catch(() => {})
+  }, [empresaAtiva?.id])
+
   // Fechar modal com ESC
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

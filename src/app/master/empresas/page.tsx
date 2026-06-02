@@ -156,7 +156,7 @@ export default function EmpresasPage() {
           <div onClick={ev=>ev.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'520px', borderRadius:'20px', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.25)' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'18px' }}>
               <h2 style={{ fontSize:'17px', fontWeight:'700', color:'#0f172a' }}>{modoEdicao ? 'Editar empresa' : 'Nova empresa'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>?</button>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>×</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
               {[{l:'Nome *',k:'nome',ph:'Nome da empresa'},{l:'CNPJ',k:'cnpj',ph:'00.000.000/0001-00'},{l:'E-mail',k:'email',ph:'email@empresa.com'},{l:'Telefone',k:'telefone',ph:'(11) 99999-9999'}].map(f=>(

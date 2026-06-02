@@ -342,7 +342,7 @@ export default function ProfissionaisPage() {
                   <div key={s.id} onClick={() => setServicosSel(prev => prev.includes(s.nome) ? prev.filter(x=>x!==s.nome) : [...prev, s.nome])}
                     style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'10px', cursor:'pointer', border:servicosSel.includes(s.nome)?'1.5px solid #6366f1':'1px solid #e5e7eb', background:servicosSel.includes(s.nome)?'#eef2ff':'white', transition:'all .15s' }}>
                     <div style={{ width:'20px', height:'20px', borderRadius:'50%', flexShrink:0, border:servicosSel.includes(s.nome)?'none':'1.5px solid #d1d5db', background:servicosSel.includes(s.nome)?'#6366f1':'white', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {servicosSel.includes(s.nome) && <span style={{ color:'white', fontSize:'12px' }}>?</span>}
+                      {servicosSel.includes(s.nome) && <span style={{ color:'white', fontSize:'12px' }}>✓</span>}
                     </div>
                     <span style={{ fontSize:'14px', color:'#1a1a2e', fontWeight:servicosSel.includes(s.nome)?'500':'400' }}>{s.nome}</span>
                   </div>

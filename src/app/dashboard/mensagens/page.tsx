@@ -166,7 +166,7 @@ export default function MensagensPage() {
                 <h2 style={{ fontSize:'17px', fontWeight:'700', color:'#0f172a' }}>Nova campanha</h2>
                 <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'2px' }}>{clientes.filter(c=>c.whatsapp||c.telefone).length} clientes serao impactados</p>
               </div>
-              {!enviando && <button onClick={()=>setModalAberto(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>?</button>}
+              {!enviando && <button onClick={()=>setModalAberto(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>×</button>}
             </div>
 
             <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>

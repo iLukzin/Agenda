@@ -354,7 +354,7 @@ export default function FinanceiroPage() {
                     {l.status==='pago'?'Pago':'Pendente'}
                   </span>
                   <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
-                    {l.status==='pendente' && <button onClick={()=>marcarPago(l)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }} title="Marcar pago">?</button>}
+                    {l.status==='pendente' && <button onClick={()=>marcarPago(l)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }} title="Marcar pago">Ativar</button>}
                     {l.origem!=='agendamento' && <>
                       <button onClick={()=>abrirEdicao(l)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }}>edit</button>
                       <button onClick={()=>excluir(l.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'5px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>

@@ -255,6 +255,7 @@ export default function AgendaPage() {
   const [enviandoWpp, setEnviandoWpp] = useState(false)
   const [statusWpp, setStatusWpp] = useState<'idle'|'ok'|'erro'>('idle')
   const [wppConectado, setWppConectado] = useState(false)
+  const [sessaoEdicao, setSessaoEdicao] = useState<{num:number;total:number;valor:number}|null>(null)
   const permWpp = usePermissao('agenda_wpp')
   const [erroForm, setErroForm] = useState<string[]>([])
   const [finalizando, setFinalizando] = useState(false)
@@ -459,7 +460,8 @@ export default function AgendaPage() {
               numSessao = (posicao >= 0 ? posicao : 0) % totalSessoes + 1
             }
             setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: numSessao, sessaoTotal: totalSessoes }) : prev)
-            const valorSalvo = agNoBanco?.valor ?? ag.valor
+            const valorSalvo = Number(agNoBanco?.valor ?? ag.valor ?? 0)
+            setSessaoEdicao({ num: numSessao, total: totalSessoes, valor: valorSalvo })
             setForm((f: any) => ({ ...f, valor: String(valorSalvo) }))
           })
         }
@@ -467,7 +469,8 @@ export default function AgendaPage() {
     }
   }
 
-  function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }
+  function fecharModal() {
+    setSessaoEdicao(null) setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }
 
   async function salvar() {
     // Validacao completa dos campos obrigatorios
@@ -1147,26 +1150,25 @@ export default function AgendaPage() {
                       </div>
                       <p style={{ fontSize:'12px', fontWeight:'600', color:form.usar_plano?'#4f46e5':'#6b7280', marginBottom:'2px' }}>{planoCliente.nome}</p>
                       <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes_mes_mes || 1} sessoes</p>
-                      {modoEdicao && form.usar_plano && planoCliente && (
+                {modoEdicao && form.usar_plano && planoCliente && (
                   <div style={{ borderRadius:'12px', overflow:'hidden', border:'1.5px solid #bfdbfe' }}>
                     <div style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
                       <div style={{ flex:1 }}>
                         <p style={{ color:'white', fontWeight:'700', fontSize:'14px' }}>{planoCliente.nome}</p>
                         <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>
-                          {selecionado?.sessaoNumero
-                            ? ('Sessao ' + selecionado.sessaoNumero + ' de ' + (selecionado.sessaoTotal || planoCliente.sessoes_mes || '?'))
-                            : 'Plano mensal'}
-                          {selecionado?.sessaoNumero === 1 ? ' - Sessao de cobranca' : selecionado?.sessaoNumero ? ' - Sessao gratuita' : ''}
+                          {sessaoEdicao ? ('Sessao ' + sessaoEdicao.num + ' de ' + sessaoEdicao.total + (sessaoEdicao.num === 1 ? ' - Cobranca do plano' : ' - Sessao inclusa')) : 'Plano mensal'}
                         </p>
                       </div>
                       <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'10px', padding:'8px 14px', textAlign:'center' }}>
-                        <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase' }}>Valor</p>
-                        <p style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>R$ {Number(form.valor||0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</p>
+                        <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase' as const }}>Valor</p>
+                        <p style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>
+                          {'R$ ' + (sessaoEdicao ? sessaoEdicao.valor : Number(form.valor||0)).toLocaleString('pt-BR', {minimumFractionDigits:2})}
+                        </p>
                       </div>
                     </div>
-                    <div style={{ background:'#eff6ff', padding:'8px 16px' }}>
-                      <p style={{ fontSize:'11px', color:'#6b7280' }}>
-                        {parseFloat(form.valor||'0') > 0 ? 'Sessao 1 do ciclo - cobrar o plano' : 'Sessao inclusa - sem cobranca adicional'}
+                    <div style={{ background: sessaoEdicao?.num === 1 ? '#eff6ff' : '#f0fdf4', padding:'8px 16px' }}>
+                      <p style={{ fontSize:'11px', color: sessaoEdicao?.num === 1 ? '#1d4ed8' : '#16a34a', fontWeight:'600' }}>
+                        {sessaoEdicao?.num === 1 ? 'Cobrar o valor do plano nesta sessao' : 'Sessao gratuita - inclusa no plano'}
                       </p>
                     </div>
                   </div>

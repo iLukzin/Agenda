@@ -310,7 +310,10 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
 
       {/* Nav */}
       <nav style={{ flex:1, padding:'8px 8px', display:'flex', flexDirection:'column', gap:'2px', overflowY:'auto' }}>
-        {navItems.map(item => {
+        {navItems.filter(item => {
+          if (item.href === '/dashboard/mensagens' && !empresaAtiva?.whatsapp_habilitado) return false
+          return true
+        }).map(item => {
           const ativo = pathname === item.href
           const telaKey = item.href === '/dashboard' ? 'dashboard' : item.href.replace('/dashboard/','')
           const nivelAtual = usuario?.nivel_acesso || 'profissional'

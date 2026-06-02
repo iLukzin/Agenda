@@ -332,12 +332,14 @@ export default function AgendaPage() {
   // Verificar conexao WhatsApp
   useEffect(() => {
     if (!empresaAtiva?.id) return
+    // Verificar direto no contexto se WPP esta habilitado
+    if (!empresaAtiva?.whatsapp_habilitado) return
     const sb2 = createClient()
     Promise.all([
       sb2.from('config_sistema').select('chave,valor').in('chave', ['evolution_api_url','evolution_api_key']),
-      sb2.from('empresas').select('whatsapp_instancia,whatsapp_habilitado').eq('id', empresaAtiva.id).single(),
+      sb2.from('empresas').select('whatsapp_instancia').eq('id', empresaAtiva.id).single(),
     ]).then(([cfg, emp]) => {
-      if (!emp.data?.whatsapp_habilitado) return
+      if (!empresaAtiva?.whatsapp_habilitado) return
       const cfgMap: Record<string,string> = {}
       if (cfg.data) cfg.data.forEach((c: any) => { cfgMap[c.chave] = c.valor || '' })
       const url = cfgMap['evolution_api_url']

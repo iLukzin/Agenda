@@ -1,156 +1,199 @@
+#!/usr/bin/env node
 // Script de envio de parabens de aniversario
-// Roda todo dia as 10h via cron no VPS
-// Cron: 0 10 * * * /home/evolution/.nvm/versions/node/v20.10.0/bin/node /opt/scripts/aniversario.js
+// Cron no VPS: 0 13 * * * (13h UTC = 10h BRT)
+// Instalar: cp scripts/aniversario.js /opt/scripts/aniversario.js
+// Testar:   node /opt/scripts/aniversario.js --test
 
 const https = require('https')
 const http = require('http')
 
+// Carregar .env se existir
+const path = require('path')
+const fs = require('fs')
+const envFile = '/opt/scripts/.env'
+if (fs.existsSync(envFile)) {
+  fs.readFileSync(envFile, 'utf8').split('\n').forEach(line => {
+    const [k, ...v] = line.split('=')
+    if (k && v.length) process.env[k.trim()] = v.join('=').trim()
+  })
+}
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const TEST_MODE = process.argv.includes('--test')
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('ERRO: Defina NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY')
+  console.error('[ERRO] Variaveis nao configuradas. Crie /opt/scripts/.env com:')
+  console.error('NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co')
+  console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx')
   process.exit(1)
 }
 
-function supabaseGet(path) {
-  return new Promise((resolve, reject) => {
-    const url = new URL(SUPABASE_URL + '/rest/v1/' + path)
-    const lib = url.protocol === 'https:' ? https : http
-    const req = lib.request(url, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': 'application/json',
-      }
-    }, res => {
-      let data = ''
-      res.on('data', d => data += d)
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) } catch { resolve([]) }
-      })
-    })
-    req.on('error', reject)
-    req.end()
-  })
-}
-
-function fetchUrl(url, options = {}) {
+function req(url, opts = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url)
     const lib = parsed.protocol === 'https:' ? https : http
-    const req = lib.request(parsed, options, res => {
+    const options = {
+      hostname: parsed.hostname,
+      port: parsed.port,
+      path: parsed.pathname + parsed.search,
+      method: opts.method || 'GET',
+      headers: opts.headers || {},
+    }
+    const r = lib.request(options, res => {
       let data = ''
       res.on('data', d => data += d)
-      res.on('end', () => resolve({ ok: res.statusCode < 300, status: res.statusCode, text: () => Promise.resolve(data) }))
+      res.on('end', () => resolve({ ok: res.statusCode < 300, status: res.statusCode, body: data }))
     })
-    req.on('error', reject)
-    if (options.body) req.write(options.body)
-    req.end()
+    r.on('error', reject)
+    if (opts.body) r.write(opts.body)
+    r.end()
   })
 }
 
+async function sbGet(table, query) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?${query}`
+  const r = await req(url, { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } })
+  try { return JSON.parse(r.body) } catch { return [] }
+}
+
+async function sbPost(table, data) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}`
+  const r = await req(url, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify(data),
+  })
+  return r.ok
+}
+
 async function main() {
-  const hoje = new Date()
-  const diaBR  = String(hoje.getDate()).padStart(2, '0')
-  const mesBR  = String(hoje.getMonth() + 1).padStart(2, '0')
-  console.log(`[${new Date().toISOString()}] Verificando aniversariantes do dia ${diaBR}/${mesBR}`)
+  // Horario de Brasilia
+  const agora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const dia  = String(agora.getDate()).padStart(2, '0')
+  const mes  = String(agora.getMonth() + 1).padStart(2, '0')
+  const hoje = `${dia}/${mes}`
 
-  // Buscar empresas com wpp_auto_aniversario ativo e whatsapp_habilitado
-  const empresas = await supabaseGet('empresas?select=id,nome,whatsapp_instancia,wpp_auto_aniversario,whatsapp_habilitado&wpp_auto_aniversario=eq.true&whatsapp_habilitado=eq.true')
-  if (!Array.isArray(empresas) || empresas.length === 0) {
-    console.log('Nenhuma empresa com automacao de aniversario ativa.')
-    return
-  }
+  console.log(`[${new Date().toISOString()}] Aniversarios do dia ${hoje}${TEST_MODE ? ' [MODO TESTE]' : ''}`)
 
-  // Buscar config global da Evolution API
-  const cfg = await supabaseGet('config_sistema?select=chave,valor&chave=in.(evolution_api_url,evolution_api_key)')
+  // Config da Evolution API
+  const cfg = await sbGet('config_sistema', 'select=chave,valor&chave=in.(evolution_api_url,evolution_api_key)')
   const cfgMap = {}
   if (Array.isArray(cfg)) cfg.forEach(c => { cfgMap[c.chave] = c.valor || '' })
   const apiUrl = cfgMap['evolution_api_url']
   const apiKey = cfgMap['evolution_api_key']
-  if (!apiUrl || !apiKey) { console.log('Evolution API nao configurada.'); return }
+
+  if (!apiUrl || !apiKey) {
+    console.log('[AVISO] Evolution API nao configurada no sistema.')
+    return
+  }
+
+  // Empresas com automacao ativa
+  const empresas = await sbGet('empresas', 'select=id,nome,whatsapp_instancia,wpp_auto_aniversario,whatsapp_habilitado&wpp_auto_aniversario=eq.true&whatsapp_habilitado=eq.true')
+  if (!Array.isArray(empresas) || empresas.length === 0) {
+    console.log('Nenhuma empresa com automacao de aniversario ativa.')
+    return
+  }
+  console.log(`${empresas.length} empresa(s) com automacao ativa.`)
 
   for (const empresa of empresas) {
     const instancia = empresa.whatsapp_instancia || ('emp-' + empresa.id.slice(0, 8))
-    console.log(`\nEmpresa: ${empresa.nome} | Instancia: ${instancia}`)
+    console.log(`\n--- ${empresa.nome} (${instancia}) ---`)
 
-    // Buscar clientes aniversariantes hoje (campo data_nascimento formato YYYY-MM-DD)
-    const clientes = await supabaseGet(
-      `clientes?select=id,nome,whatsapp,telefone,data_nascimento&empresa_id=eq.${empresa.id}&status=eq.ativo&data_nascimento=not.is.null`
-    )
-    if (!Array.isArray(clientes) || clientes.length === 0) {
-      console.log('  Nenhum cliente ativo com data de nascimento.')
-      continue
-    }
-
-    // Filtrar os que fazem aniversario hoje
-    const aniversariantes = clientes.filter(c => {
-      if (!c.data_nascimento) return false
-      const [, mm, dd] = c.data_nascimento.split('-')
-      return dd === diaBR && mm === mesBR
-    })
-
-    console.log(`  ${aniversariantes.length} aniversariante(s) encontrado(s)`)
-    if (aniversariantes.length === 0) continue
-
-    // Buscar template de aniversario da empresa
-    const templates = await supabaseGet(
-      `mensagens_template?select=mensagem&empresa_id=eq.${empresa.id}&tipo=eq.aniversario&ativo=eq.true&limit=1`
-    )
-    const templateMsg = (Array.isArray(templates) && templates[0]?.mensagem)
-      || `Ola {{cliente}}! Parabens pelo seu aniversario!\n\nA equipe da *{{empresa}}* deseja a voce um dia incrivel e cheio de alegria!\n\nMuitas felicidades!`
-
-    // Verificar se WPP esta conectado
+    // Verificar conexao WPP
     try {
-      const stRes = await fetchUrl(`${apiUrl.replace(/\/$/, '')}/instance/connectionState/${instancia}`, {
-        headers: { 'apikey': apiKey }
-      })
-      const stData = JSON.parse(await stRes.text())
+      const stRes = await req(`${apiUrl.replace(/\/$/, '')}/instance/connectionState/${instancia}`, { headers: { apikey: apiKey } })
+      const stData = JSON.parse(stRes.body)
       const state = stData?.instance?.state || stData?.state || ''
       if (state !== 'open' && state !== 'connected') {
-        console.log(`  WhatsApp desconectado (${state}). Pulando empresa.`)
+        console.log(`  WhatsApp desconectado (estado: ${state || 'desconhecido'}). Pulando.`)
         continue
       }
+      console.log(`  WhatsApp conectado OK`)
     } catch (e) {
       console.log(`  Erro ao verificar conexao: ${e.message}`)
       continue
     }
 
-    // Enviar para cada aniversariante
-    for (const cliente of aniversariantes) {
-      const numero = cliente.whatsapp || cliente.telefone
-      if (!numero) { console.log(`  [SKIP] ${cliente.nome} - sem numero`); continue }
+    // Buscar todos clientes ativos com data_nascimento
+    const clientes = await sbGet('clientes', `select=id,nome,whatsapp,telefone,data_nascimento&empresa_id=eq.${empresa.id}&status=eq.ativo&data_nascimento=not.is.null`)
+    if (!Array.isArray(clientes) || clientes.length === 0) {
+      console.log('  Nenhum cliente com data de nascimento cadastrada.')
+      continue
+    }
+
+    // Filtrar aniversariantes de hoje
+    const aniversariantes = clientes.filter(c => {
+      if (!c.data_nascimento) return false
+      // data_nascimento pode ser YYYY-MM-DD ou DD/MM/YYYY
+      let d, m
+      if (c.data_nascimento.includes('-')) {
+        const parts = c.data_nascimento.split('-')
+        d = parts[2]?.slice(0,2)
+        m = parts[1]
+      } else if (c.data_nascimento.includes('/')) {
+        const parts = c.data_nascimento.split('/')
+        d = parts[0]
+        m = parts[1]
+      }
+      return d === dia && m === mes
+    })
+
+    if (TEST_MODE && aniversariantes.length === 0) {
+      console.log(`  [TESTE] Nenhum aniversariante hoje. Usando primeiro cliente para teste.`)
+      if (clientes.length > 0) aniversariantes.push(clientes[0])
+    }
+
+    console.log(`  ${clientes.length} clientes com data | ${aniversariantes.length} aniversariante(s) hoje`)
+
+    if (aniversariantes.length === 0) continue
+
+    // Template de aniversario
+    const templates = await sbGet('mensagens_template', `select=mensagem&empresa_id=eq.${empresa.id}&tipo=eq.aniversario&ativo=eq.true&limit=1`)
+    const nl = '\n'
+    const templateMsg = (Array.isArray(templates) && templates[0]?.mensagem) ||
+      ('Ola {{cliente}}! Parabens pelo seu aniversario!' + nl + nl +
+       'A equipe da *{{empresa}}* deseja a voce um dia incrivel!' + nl + nl +
+       'Muitas felicidades!')
+
+    // Enviar
+    let ok = 0, err = 0
+    for (const c of aniversariantes) {
+      const numero = c.whatsapp || c.telefone
+      if (!numero) { console.log(`  [SKIP] ${c.nome} - sem numero`); err++; continue }
       const digits = numero.replace(/\D/g, '')
       const numFmt = digits.startsWith('55') ? digits : '55' + digits
-      const msg = templateMsg
-        .replace(/\{\{cliente\}\}/g, cliente.nome)
-        .replace(/\{\{empresa\}\}/g, empresa.nome)
+      const msg = templateMsg.replace(/\{\{cliente\}\}/g, c.nome).replace(/\{\{empresa\}\}/g, empresa.nome)
+
+      if (TEST_MODE) {
+        console.log(`  [TESTE] Simulando envio para ${c.nome} (${numFmt})`)
+        console.log(`  Mensagem: ${msg.slice(0, 80)}...`)
+        ok++; continue
+      }
+
       try {
-        const res = await fetchUrl(`${apiUrl.replace(/\/$/, '')}/message/sendText/${instancia}`, {
+        const res = await req(`${apiUrl.replace(/\/$/, '')}/message/sendText/${instancia}`, {
           method: 'POST',
-          headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
+          headers: { apikey: apiKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({ number: numFmt, options: { delay: 1000 }, text: msg }),
         })
         if (res.ok) {
-          console.log(`  [OK] Parabens enviado para ${cliente.nome} (${numFmt})`)
-          // Registrar envio
-          await fetchUrl(`${SUPABASE_URL}/rest/v1/mensagens_enviadas`, {
-            method: 'POST',
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ empresa_id: empresa.id, cliente_id: cliente.id, tipo: 'aniversario', numero: numFmt, mensagem: msg, status: 'enviado' }),
-          })
+          console.log(`  [OK] ${c.nome} (${numFmt})`)
+          await sbPost('mensagens_enviadas', { empresa_id: empresa.id, cliente_id: c.id, tipo: 'aniversario', numero: numFmt, mensagem: msg, status: 'enviado' })
+          ok++
         } else {
-          const err = await res.text()
-          console.log(`  [ERRO] ${cliente.nome}: ${err.slice(0, 80)}`)
+          console.log(`  [ERRO] ${c.nome}: ${res.body.slice(0, 80)}`)
+          err++
         }
       } catch (e) {
-        console.log(`  [ERRO] ${cliente.nome}: ${e.message}`)
+        console.log(`  [ERRO] ${c.nome}: ${e.message}`)
+        err++
       }
       await new Promise(r => setTimeout(r, 800))
     }
+    console.log(`  Resultado: ${ok} enviados, ${err} erros`)
   }
-  console.log('\nConcluido.')
+  console.log('\n[CONCLUIDO]')
 }
 
-main().catch(e => { console.error('ERRO FATAL:', e.message); process.exit(1) })
+main().catch(e => { console.error('[FATAL]', e.message); process.exit(1) })

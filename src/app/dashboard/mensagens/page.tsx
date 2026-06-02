@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { aplicarVariaveis } from '@/lib/whatsapp'
@@ -10,6 +11,14 @@ const inp = { width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', pa
 
 export default function MensagensPage() {
   const { empresaAtiva } = useEmpresa()
+  const router = useRouter()
+
+  // Redirecionar se empresa nao tem WPP habilitado
+  useEffect(() => {
+    if (empresaAtiva && !empresaAtiva.whatsapp_habilitado) {
+      router.replace('/dashboard/agenda')
+    }
+  }, [empresaAtiva, router])
   const [campanhas, setCampanhas] = useState<Campanha[]>([])
   const [clientes, setClientes] = useState<any[]>([])
   const [carregando, setCarregando] = useState(false)

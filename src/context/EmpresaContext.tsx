@@ -76,7 +76,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         })
         // Tenta carregar empresas mesmo assim
         const { data: emps } = await sb
-          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda').order('nome')
+          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado').order('nome')
         const lista: EmpresaResumo[] = emps || []
         setEmpresas(lista)
         setEmpresaAtiva(lista[0] || null)

@@ -445,17 +445,19 @@ export default function AgendaPage() {
       ]).then(([cliRes, agsRes]) => {
         if (cliRes.data?.plano_id) buscarPlanoCliente(ag.clienteId, cliRes.data.plano_id, true)
         const agsPlano = agsRes.data || []
-        // Se ja tem sessao_numero salvo, usar ele
-        if (ag.sessaoNumero && ag.sessaoTotal) {
-          setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: ag.sessaoNumero, sessaoTotal: ag.sessaoTotal }) : prev)
-          return
-        }
-        // Senao calcular pela posicao de criacao
-        const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
-        if (posicao >= 0) {
-          const totalPlano = ag.sessaoTotal || agsPlano.length || 1
-          const sessaoNoCiclo = (posicao % totalPlano) + 1
-          setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: sessaoNoCiclo, sessaoTotal: totalPlano }) : prev)
+        // Calcular sessao: prioridade = sessao_numero salvo no banco
+        const agNoBanco = agsPlano.find((a: any) => a.id === ag.id)
+        if (agNoBanco?.sessao_numero && agNoBanco?.sessao_total) {
+          // Usar o que esta salvo no banco (mais preciso)
+          setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: agNoBanco.sessao_numero, sessaoTotal: agNoBanco.sessao_total }) : prev)
+        } else {
+          // Calcular pela posicao na lista ordenada por created_at
+          const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
+          if (posicao >= 0) {
+            const totalPlano = cliRes.data?.plano_total || agsPlano.length || 1
+            const sessaoNoCiclo = (posicao % totalPlano) + 1
+            setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: sessaoNoCiclo, sessaoTotal: totalPlano }) : prev)
+          }
         }
       })
     }
@@ -498,24 +500,23 @@ export default function AgendaPage() {
     if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
       const sb3 = createClient()
       const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
-      // Contar agendamentos de plano ANTES deste (o recem criado ja esta no banco)
-      // Ordenar por created_at e pegar o ultimo inserido = o recem criado
+      // Buscar todos agendamentos de plano do cliente (incluindo o recem criado)
       const { data: agsExist } = await sb3.from('agendamentos')
-        .select('id,created_at,sessao_numero')
+        .select('id,created_at')
         .eq('empresa_id', empresaAtiva.id)
         .eq('cliente_id', form.clienteId)
         .is('servico_id', null)
         .neq('status', 'cancelado')
-        .order('created_at', { ascending:true })
+        .order('created_at', { ascending: true })
       const lista = agsExist || []
-      // O recem criado e o ultimo da lista
+      // O recem criado e o ultimo (maior created_at)
       const lastAg = lista[lista.length - 1]
-      // Posicao na lista (0-based) = index do ultimo
-      const posicao = lista.length - 1
-      const sessaoNoCiclo = (posicao % total) + 1
+      // Posicao 0-based na lista = quantos existiam antes
+      const posicao0 = lista.length - 1  // ex: 0 para o primeiro, 1 para o segundo
+      const sessaoNoCiclo = (posicao0 % total) + 1  // 1, 2, 3, 4, 1, 2...
       const cobrar = sessaoNoCiclo === 1
       const valorCorreto = cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
-      // Salvar sessao_numero, sessao_total e valor correto no agendamento recem criado
+      // Salvar sessao_numero, sessao_total e valor no agendamento recem criado
       if (lastAg?.id) {
         await sb3.from('agendamentos').update({
           sessao_numero: sessaoNoCiclo,
@@ -523,7 +524,7 @@ export default function AgendaPage() {
           valor: valorCorreto,
         }).eq('id', lastAg.id)
       }
-      // Atualizar sessoes_utilizadas
+      // Atualizar contador de sessoes
       if (sessaoPlano?.id) {
         await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: lista.length }).eq('id', sessaoPlano.id)
       } else {
@@ -1155,18 +1156,19 @@ export default function AgendaPage() {
                       <div style={{ flex:1 }}>
                         <p style={{ color:'white', fontWeight:'700', fontSize:'14px' }}>{planoCliente.nome}</p>
                         <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>
-                          {selecionado?.sessaoNumero ? ('Sessao ' + selecionado.sessaoNumero + ' de ' + (selecionado.sessaoTotal || planoCliente.sessoes || planoCliente.sessoes_mes || '?')) : 'Plano mensal'}
-                          {sessaoPlano ? (' - ' + (sessaoPlano.sessoes_utilizadas || 0) + ' sessoes realizadas') : ''}
+                          {selecionado?.sessaoNumero
+                            ? ('Sessao ' + selecionado.sessaoNumero + ' de ' + (selecionado.sessaoTotal || planoCliente.sessoes || planoCliente.sessoes_mes || '?'))
+                            : 'Plano mensal'}
                         </p>
                       </div>
                       <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'10px', padding:'8px 14px', textAlign:'center' }}>
                         <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase' }}>Valor</p>
-                        <p style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>R$ {Number(form.valor||0).toFixed(2).replace('.',',')}</p>
+                        <p style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>R$ {Number(form.valor||0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</p>
                       </div>
                     </div>
                     <div style={{ background:'#eff6ff', padding:'8px 16px' }}>
                       <p style={{ fontSize:'11px', color:'#6b7280' }}>
-                        {parseFloat(form.valor||'0') > 0 ? 'Sessao de cobranca (1ª do ciclo)' : 'Sessao inclusa no plano (gratuita)'}
+                        {parseFloat(form.valor||'0') > 0 ? 'Sessao 1 do ciclo - cobrar o plano' : 'Sessao inclusa - sem cobranca adicional'}
                       </p>
                     </div>
                   </div>

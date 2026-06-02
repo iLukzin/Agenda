@@ -135,7 +135,7 @@ export default function ClientesPage() {
     const sb = createClient()
     const { data } = await sb
       .from('agendamentos')
-      .select('id,data_inicio,status,valor,forma_pagamento,servico_id,prof_id,motivo_cancelamento')
+      .select('id,data_inicio,status,valor,forma_pagamento,servico_id,prof_id,motivo_cancelamento,observacoes')
       .eq('empresa_id', empresaAtiva?.id || '')
       .eq('cliente_id', c.id)
       .order('data_inicio', { ascending: false })
@@ -161,6 +161,7 @@ export default function ClientesPage() {
       servico: servMap[a.servico_id] || '--',
       profissional: profMap[a.prof_id] || '--',
       motivo: a.motivo_cancelamento || '',
+      observacoes: a.observacoes || '',
     })))
     setHistCarregando(false)
   }
@@ -467,6 +468,11 @@ export default function ClientesPage() {
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{h.servico}</p>
                       <p style={{ fontSize:'12px', color:'#6b7280' }}>{h.profissional}</p>
+                      {h.observacoes && (
+                        <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'4px', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {h.observacoes}
+                        </p>
+                      )}
                     </div>
                     <div style={{ textAlign:'right', flexShrink:0 }}>
                       <p style={{ fontSize:'14px', fontWeight:'700', color:h.status==='fechado'?'#059669':'#9ca3af' }}>

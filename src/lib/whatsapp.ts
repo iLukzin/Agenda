@@ -31,7 +31,7 @@ export async function enviarMensagem(config: ConfigWpp, numero: string, mensagem
       body: JSON.stringify({
         number: num,
         options: { delay: 1000, presence: 'composing' },
-        textMessage: { text: mensagem },
+        text: mensagem,
       }),
     })
     if (!res.ok) {

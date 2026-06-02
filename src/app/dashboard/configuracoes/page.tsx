@@ -283,7 +283,7 @@ export default function ConfiguracoesPage() {
     const resT = await fetch(base + '/message/sendText/' + evoConfig.instancia, {
       method: 'POST',
       headers: { 'apikey': evoConfig.token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: numFmt, options:{ delay:1000 }, textMessage:{ text:'Teste AgendaFortitude - conexao funcionando!' } }),
+      body: JSON.stringify({ number: numFmt, options:{ delay:1000 }, text: 'Teste AgendaFortitude - conexao funcionando!' }),
     })
     const ok = resT.ok
     const erro = ok ? '' : await resT.text().catch(() => 'erro desconhecido')

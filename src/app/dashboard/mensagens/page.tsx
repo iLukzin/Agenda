@@ -75,7 +75,7 @@ export default function MensagensPage() {
         const res = await fetch(apiConfig.url.replace(/\/$/, '') + '/message/sendText/' + apiConfig.instancia, {
           method: 'POST',
           headers: { 'apikey': apiConfig.key, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: numFmt, options:{ delay:500 }, textMessage:{ text: msg } }),
+          body: JSON.stringify({ number: numFmt, options:{ delay:500 }, text: msg }),
         })
         if (res.ok) { enviados++; await sb.from('mensagens_enviadas').insert({ empresa_id: empresaAtiva.id, cliente_id: c.id, tipo: 'massa', numero: numFmt, mensagem: msg, status: 'enviado' }) }
         else { erros++ }

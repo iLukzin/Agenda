@@ -497,7 +497,7 @@ export default function AgendaPage() {
       const res = await fetch(apiUrl.replace(/\/$/, '') + '/message/sendText/' + instancia, {
         method: 'POST',
         headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: numFmt, options:{ delay:1000, presence:'composing' }, textMessage:{ text: msg } }),
+        body: JSON.stringify({ number: numFmt, options:{ delay:1000, presence:'composing' }, text: msg }),
       })
       if (res.ok) {
         await registrarEnvio(empresaAtiva.id, { cliente_id: selecionado.clienteId, agendamento_id: selecionado.id, tipo: 'confirmacao', numero: numFmt, mensagem: msg, status: 'enviado' })

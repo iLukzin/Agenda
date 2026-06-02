@@ -81,10 +81,10 @@ export default function ConfiguracoesPage() {
       if (cfgGlobal) cfgGlobal.forEach((c: any) => { cfgMap[c.chave] = c.valor || '' })
       setEvoConfig({ url: cfgMap['evolution_api_url'] || '', token: cfgMap['evolution_api_key'] || '', instancia: emp.data.whatsapp_instancia || instanciaEmpresa })
       setConfigGlobalCarregada(true)
-      // Verificar status direto na Evolution API
-      const urlEvo = emp.data.whatsapp_api_url
-      const tokenEvo = emp.data.whatsapp_api_token
-      const instEvo  = emp.data.whatsapp_instancia
+      // Verificar status usando config global (config_sistema)
+      const urlEvo = cfgMap['evolution_api_url']
+      const tokenEvo = cfgMap['evolution_api_key']
+      const instEvo = emp.data.whatsapp_instancia || ('emp-' + (empresaAtiva?.id || '').slice(0,8))
       if (urlEvo && tokenEvo && instEvo) {
         fetch(urlEvo.replace(/\/$/, '') + '/instance/connectionState/' + instEvo, { headers: { 'apikey': tokenEvo } })
           .then(r => r.ok ? r.json() : null)

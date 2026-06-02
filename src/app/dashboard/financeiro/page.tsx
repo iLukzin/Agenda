@@ -217,7 +217,7 @@ export default function FinanceiroPage() {
     const label = filtroTipo==='hoje'?'Hoje':filtroTipo==='mes'?'Este mês':filtroTipo==='ano'?'Este ano':`${periodoIni} a ${periodoFim}`
     const linhas = filtrados.map(l=>`
       <tr>
-        <td>${l.tipo==='receita'?'? Receita':'? Despesa'}</td>
+        <td>${l.tipo==='receita'?'↑ Receita':'↓ Despesa'}</td>
         <td>${l.descricao}</td>
         <td>${l.categoria}</td>
         <td>${new Date(l.data_vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</td>
@@ -299,9 +299,9 @@ export default function FinanceiroPage() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:'14px', marginBottom:'20px' }}>
         {[
           { label:'Receitas pagas',  v:totalReceitas,  cor:'#10b981', bg:'#ecfdf5', ic:'?', sub:'lançamentos + agend.' },
-          { label:'Despesas pagas',  v:totalDespesas,  cor:'#ef4444', bg:'#fef2f2', ic:'?', sub:'do período'          },
+          { label:'Despesas pagas',  v:totalDespesas,  cor:'#ef4444', bg:'#fef2f2', ic:'↓', sub:'do período'          },
           { label:'Lucro líquido',   v:lucro,          cor:lucro>=0?'#6366f1':'#ef4444', bg:'#eef2ff', ic:'*', sub:'receitas ? despesas' },
-          { label:'A receber/pagar', v:totalPendentes, cor:'#f59e0b', bg:'#fffbeb', ic:'?', sub:'pendentes'           },
+          { label:'A receber/pagar', v:totalPendentes, cor:'#f59e0b', bg:'#fffbeb', ic:'◷', sub:'pendentes'           },
         ].map(c=>(
           <div key={c.label} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'16px 18px' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
@@ -336,7 +336,7 @@ export default function FinanceiroPage() {
               {filtrados.map(l=>(
                 <div key={l.id} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                   <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:l.tipo==='receita'?'#ecfdf5':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0, color:l.tipo==='receita'?'#10b981':'#ef4444', fontWeight:'700' }}>
-                    {l.tipo==='receita'?'?':'?'}
+                    {l.tipo==='receita'?'↑':'↓'}
                   </div>
                   <div style={{ flex:1, minWidth:'140px' }}>
                     <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e', marginBottom:'2px' }}>{l.descricao}</p>
@@ -425,7 +425,7 @@ export default function FinanceiroPage() {
               {(['receita','despesa'] as const).map(t=>(
                 <div key={t} onClick={()=>setForm(p=>({...p,tipo:t,categoria:t==='receita'?'Consultas':'Aluguel'}))}
                   style={{ padding:'12px', borderRadius:'10px', textAlign:'center', cursor:'pointer', border:`2px solid ${form.tipo===t?(t==='receita'?'#10b981':'#ef4444'):'#e5e7eb'}`, background:form.tipo===t?(t==='receita'?'#ecfdf5':'#fef2f2'):'white' }}>
-                  <p style={{ fontSize:'20px', marginBottom:'3px' }}>{t==='receita'?'?':'?'}</p>
+                  <p style={{ fontSize:'20px', marginBottom:'3px' }}>{t==='receita'?'↑':'↓'}</p>
                   <p style={{ fontSize:'14px', fontWeight:'600', color:form.tipo===t?(t==='receita'?'#10b981':'#ef4444'):'#6b7280' }}>{t==='receita'?'Receita':'Despesa'}</p>
                 </div>
               ))}

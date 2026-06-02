@@ -17,9 +17,10 @@ export const TELAS = [
   { key:'profissionais',  label:'Profissionais' },
   { key:'servicos',       label:'Servicos'      },
   { key:'financeiro',     label:'Financeiro'    },
-  { key:'mensagens',      label:'Mensagens WPP' },
-  { key:'usuarios',       label:'Usuarios'      },
-  { key:'configuracoes',  label:'Configuracoes' },
+  { key:'mensagens',      label:'Mensagens WPP'        },
+  { key:'usuarios',       label:'Usuarios'             },
+  { key:'configuracoes',  label:'Configuracoes'         },
+  { key:'rel_profissional', label:'Rel. Profissionais'  },
 ]
 
 // Nivel usuario: so ve e agenda para o profissional vinculado a ele
@@ -33,6 +34,7 @@ export const PERM_PADRAO_USUARIO: Record<string, Permissao> = {
   financeiro:    { tela:'financeiro',    visualizar:false, criar:false, alterar:false, excluir:false },
   usuarios:      { tela:'usuarios',      visualizar:false, criar:false, alterar:false, excluir:false },
   configuracoes: { tela:'configuracoes', visualizar:false, criar:false, alterar:false, excluir:false },
+  rel_profissional: { tela:'rel_profissional', visualizar:false, criar:false, alterar:false, excluir:false },
 }
 
 // Nivel profissional: ve agenda de todos, pode criar/alterar, nao exclui
@@ -46,6 +48,7 @@ export const PERM_PADRAO_PROFISSIONAL: Record<string, Permissao> = {
   financeiro:    { tela:'financeiro',    visualizar:false, criar:false, alterar:false, excluir:false },
   usuarios:      { tela:'usuarios',      visualizar:false, criar:false, alterar:false, excluir:false },
   configuracoes: { tela:'configuracoes', visualizar:false, criar:false, alterar:false, excluir:false },
+  rel_profissional: { tela:'rel_profissional', visualizar:false, criar:false, alterar:false, excluir:false },
 }
 
 // Nivel admin: acesso total exceto exclusao de usuarios

@@ -435,10 +435,24 @@ export default function AgendaPage() {
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
     if (ehPlano && ag.clienteId) {
-      // Edicao: carregar info do plano apenas para exibicao, sem recalcular valor
+      // Edicao: carregar info do plano para exibicao sem recalcular valor
       const sb2 = createClient()
-      sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single()
-        .then(({ data }) => { if (data?.plano_id) buscarPlanoCliente(ag.clienteId, data.plano_id, true) })
+      Promise.all([
+        sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single(),
+        sb2.from('agendamentos').select('id,data_inicio').eq('cliente_id', ag.clienteId).is('servico_id', null).neq('status','cancelado').order('data_inicio', { ascending:true }),
+      ]).then(([cliRes, agsRes]) => {
+        if (cliRes.data?.plano_id) buscarPlanoCliente(ag.clienteId, cliRes.data.plano_id, true)
+        // Calcular posicao deste agendamento no ciclo
+        const agsPlano = agsRes.data || []
+        const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
+        if (posicao >= 0) {
+          // Calcular numero da sessao baseado na posicao real (1-based)
+          const numSessao = posicao + 1
+          const totalPlano = ag.sessaoTotal || agsPlano.length || 1
+          const sessaoNoCiclo = ((posicao) % totalPlano) + 1
+          setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: sessaoNoCiclo, sessaoTotal: totalPlano }) : prev)
+        }
+      })
     }
   }
 
@@ -478,20 +492,31 @@ export default function AgendaPage() {
     // Registrar sessao do plano
     if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
       const sb3 = createClient()
-      const utilizadas = sessaoPlano ? (sessaoPlano.sessoes_utilizadas || 0) : 0
       const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
-      const novaSessao = utilizadas + 1
-      const sessaoNoCiclo = ((utilizadas) % total) + 1
+      // Contar agendamentos de plano do cliente NAO cancelados (inclui o recem criado)
+      const { count } = await sb3.from('agendamentos')
+        .select('id', { count:'exact', head:true })
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('cliente_id', form.clienteId)
+        .is('servico_id', null)
+        .neq('status', 'cancelado')
+      const totalAgs = count || 1
+      // Posicao no ciclo atual (1-based)
+      const sessaoNoCiclo = ((totalAgs - 1) % total) + 1
+      const cobrar = sessaoNoCiclo === 1
+      // Atualizar sessoes_utilizadas
       if (sessaoPlano?.id) {
-        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: novaSessao }).eq('id', sessaoPlano.id)
+        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: totalAgs }).eq('id', sessaoPlano.id)
       } else {
         await sb3.from('cliente_plano_sessoes').insert({ empresa_id:empresaAtiva.id, cliente_id:form.clienteId, plano_id:planoCliente.id, sessoes_utilizadas:1 })
       }
-      // Atualizar agendamento com numero da sessao
-      if (selecionado?.id || true) {
-        const sbUpd = createClient()
-        const { data: lastAg } = await sbUpd.from('agendamentos').select('id').eq('cliente_id', form.clienteId).eq('empresa_id', empresaAtiva.id).order('created_at', { ascending:false }).limit(1).single()
-        if (lastAg?.id) await sbUpd.from('agendamentos').update({ sessao_numero: sessaoNoCiclo, sessao_total: total }).eq('id', lastAg.id)
+      // Salvar numero da sessao no agendamento recem criado
+      const { data: lastAg } = await sb3.from('agendamentos').select('id').eq('cliente_id', form.clienteId).eq('empresa_id', empresaAtiva.id).is('servico_id', null).neq('status','cancelado').order('created_at', { ascending:false }).limit(1).single()
+      if (lastAg?.id) await sb3.from('agendamentos').update({ sessao_numero: sessaoNoCiclo, sessao_total: total }).eq('id', lastAg.id)
+      // Corrigir valor se necessario (cobrar so na sessao 1 do ciclo)
+      const valorCorreto = cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
+      if (Math.abs(valorCorreto - valorFinal) > 0.01 && lastAg?.id) {
+        await sb3.from('agendamentos').update({ valor: valorCorreto }).eq('id', lastAg.id)
       }
     }
     setSemanaBase(inicioSemana(isoParaDate(form.dataISO))); setDiaAtivo(isoParaDate(form.dataISO))
@@ -642,11 +667,13 @@ export default function AgendaPage() {
 
   // Logica de sessoes do plano
   const calcularSessaoPlano = () => {
-    if (!planoCliente) return { cobrar: true, sessaoAtual: 1 }
-    const utilizadas = sessaoPlano ? (sessaoPlano.sessoes_utilizadas || 0) : 0
-    const total = planoCliente.sessoes_mes || planoCliente.sessoes || planoCliente.sessoes_mes || 1
+    if (!planoCliente) return { cobrar: true, sessaoAtual: 1, total: 1, utilizadas: 0 }
+    const total = planoCliente.sessoes_mes || planoCliente.sessoes || 1
+    // Contar agendamentos de plano do cliente (nao cancelados) para saber a posicao real
+    const agsPlano = agendamentos.filter(a => !a.servico && a.clienteId === form.clienteId && a.status !== 'cancelado')
+    const utilizadas = agsPlano.length
     const posicaoNoCiclo = utilizadas % total
-    const cobrar = posicaoNoCiclo === 0 // cobra na 1a sessao do ciclo (0, total, 2*total...)
+    const cobrar = posicaoNoCiclo === 0 // cobra na 1a sessao do ciclo
     const sessaoAtual = posicaoNoCiclo + 1
     return { cobrar, sessaoAtual, total, utilizadas }
   }
@@ -662,12 +689,8 @@ export default function AgendaPage() {
       setPlanoCliente(r1.data)
       setSessaoPlano(r2.data)
       if (!apenasExibir) {
-        // Novo agendamento: calcular valor baseado nas sessoes
-        const util = r2.data ? (r2.data.sessoes_utilizadas || 0) : 0
-        const total = r1.data.sessoes || r1.data.sessoes_mes || 1
-        const cobrar = (util % total) === 0
-        const valor = cobrar ? String(r1.data.valor_mensal || r1.data.valor || 0) : '0'
-        setForm(f => ({...f, usar_plano: true, valor}))
+        // Novo agendamento: nao alterar valor aqui, sera calculado no salvar()
+        setForm(f => ({...f, usar_plano: true}))
       }
       // Na edicao (apenasExibir=true): nao altera valor, apenas mostra info do plano
     } else {

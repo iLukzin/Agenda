@@ -16,6 +16,7 @@ const navItems = [
   { href:'/dashboard/profissionais', icon:'DOC',  label:'Profissionais' },
   { href:'/dashboard/servicos',      icon:'SRV',  label:'Servicos'      },
   { href:'/dashboard/financeiro',    icon:'FIN',  label:'Financeiro'    },
+  { href:'/dashboard/mensagens',       icon:'WPP',  label:'Mensagens WPP' },
   { href:'/dashboard/usuarios',      icon:'PEO',  label:'Usuarios'      },
   { href:'/dashboard/configuracoes', icon:'CFG',  label:'Configuracoes' },
 ]

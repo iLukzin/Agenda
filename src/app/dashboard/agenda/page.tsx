@@ -461,15 +461,28 @@ export default function AgendaPage() {
   async function enviarConfirmacao() {
     if (!selecionado || !empresaAtiva?.id) return
     setEnviandoWpp(true); setStatusWpp('idle')
-    // Buscar numero do cliente
     const sb2 = createClient()
-    const { data: cli } = await sb2.from('clientes').select('nome,whatsapp,telefone').eq('id', selecionado.clienteId).single()
+    // Buscar numero e config em paralelo
+    const [cliRes, cfgRes, tmplRes] = await Promise.all([
+      sb2.from('clientes').select('nome,whatsapp,telefone').eq('id', selecionado.clienteId).single(),
+      sb2.from('config_sistema').select('chave,valor').in('chave', ['evolution_api_url','evolution_api_key']),
+      sb2.from('mensagens_template').select('mensagem').eq('empresa_id', empresaAtiva.id).eq('tipo', 'confirmacao').eq('ativo', true).maybeSingle(),
+    ])
+    const cli = cliRes.data
     if (!cli) { setStatusWpp('erro'); setEnviandoWpp(false); return }
     const numero = cli.whatsapp || cli.telefone
-    if (!numero) { alert('Cliente nao tem WhatsApp cadastrado.'); setEnviandoWpp(false); return }
-    // Buscar config wpp
-    const config = await carregarConfigWpp(empresaAtiva.id)
-    if (!config) { alert('Configure o WhatsApp em Configuracoes > WhatsApp antes de enviar.'); setEnviandoWpp(false); return }
+    if (!numero) { alert('Cliente nao tem numero de WhatsApp cadastrado.'); setEnviandoWpp(false); return }
+    // Buscar config Evolution API
+    const cfgMap: Record<string,string> = {}
+    if (cfgRes.data) cfgRes.data.forEach((c: any) => { cfgMap[c.chave] = c.valor || '' })
+    const apiUrl = cfgMap['evolution_api_url']
+    const apiKey = cfgMap['evolution_api_key']
+    if (!apiUrl || !apiKey) { alert('Configure a Evolution API em Configuracoes > WhatsApp.'); setEnviandoWpp(false); return }
+    // Buscar instancia da empresa
+    const { data: empData } = await sb2.from('empresas').select('whatsapp_instancia').eq('id', empresaAtiva.id).single()
+    const instancia = empData?.whatsapp_instancia || ('emp-' + empresaAtiva.id.slice(0,8))
+    // Montar mensagem
+    const templateMsg = tmplRes.data?.mensagem || 'Ola {{cliente}}! Confirmando seu horario em {{data}} as {{hora}} para {{servico}}. Pode confirmar?'
     // Buscar template
     const { data: tmpl } = await sb2.from('mensagens_template').select('mensagem').eq('empresa_id', empresaAtiva.id).eq('tipo', 'confirmacao').eq('ativo', true).maybeSingle()
     const templateMsg = tmpl?.mensagem || 'Ola {{cliente}}! Confirmando seu horario em {{data}} as {{hora}} para {{servico}}. Pode confirmar?'
@@ -479,14 +492,26 @@ export default function AgendaPage() {
     const hh = Math.floor(selecionado.horaInicio), mm2 = Math.round((selecionado.horaInicio - hh) * 60)
     const horaFmt = String(hh).padStart(2,'0') + ':' + String(mm2).padStart(2,'0')
     const msg = aplicarVariaveis(templateMsg, { cliente: selecionado.cliente, empresa: empresaAtiva.nome||'', data: dataFmt, hora: horaFmt, servico: selecionado.servico||'' })
-    const { ok, erro } = await enviarMensagem(config, numero, msg)
-    if (ok) {
-      await registrarEnvio(empresaAtiva.id, { cliente_id: selecionado.clienteId, agendamento_id: selecionado.id, tipo: 'confirmacao', numero: formatarNumero(numero), mensagem: msg, status: 'enviado' })
-      setStatusWpp('ok')
-      setTimeout(() => setStatusWpp('idle'), 4000)
-    } else {
-      alert('Erro ao enviar: ' + erro)
-      setStatusWpp('erro')
+    // Formatar numero
+    const digits = numero.replace(/\D/g,'')
+    const numFmt = digits.startsWith('55') ? digits : '55' + digits
+    // Enviar via Evolution API diretamente
+    try {
+      const res = await fetch(apiUrl.replace(/\/$/, '') + '/message/sendText/' + instancia, {
+        method: 'POST',
+        headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: numFmt, options:{ delay:1000, presence:'composing' }, textMessage:{ text: msg } }),
+      })
+      if (res.ok) {
+        await registrarEnvio(empresaAtiva.id, { cliente_id: selecionado.clienteId, agendamento_id: selecionado.id, tipo: 'confirmacao', numero: numFmt, mensagem: msg, status: 'enviado' })
+        setStatusWpp('ok'); setTimeout(() => setStatusWpp('idle'), 4000)
+      } else {
+        const errTxt = await res.text()
+        alert('Erro ao enviar: ' + errTxt.slice(0,100))
+        setStatusWpp('erro')
+      }
+    } catch (ex: any) {
+      alert('Erro: ' + ex.message); setStatusWpp('erro')
     }
     setEnviandoWpp(false)
   }

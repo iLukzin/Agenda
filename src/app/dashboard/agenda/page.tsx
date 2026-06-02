@@ -437,35 +437,22 @@ export default function AgendaPage() {
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
     if (ehPlano && ag.clienteId) {
-      // Edicao: carregar info do plano para exibicao sem recalcular valor
-      const sb2 = createClient()
-      Promise.all([
-        sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single(),
-        // Buscar TODOS agendamentos de plano do cliente (nao cancelados) ordenados por created_at
-        sb2.from('agendamentos').select('id,created_at,sessao_numero,sessao_total,valor').eq('cliente_id', ag.clienteId).is('servico_id', null).neq('status','cancelado').order('created_at', { ascending:true }),
-      ]).then(([cliRes, agsRes]) => {
+      // Buscar dados do agendamento diretamente do banco para exibicao correta
+      const sbEdit = createClient()
+      ;(async () => {
+        const [cliRes, agRes] = await Promise.all([
+          sbEdit.from('clientes').select('plano_id').eq('id', ag.clienteId).single(),
+          sbEdit.from('agendamentos').select('sessao_numero,sessao_total,valor').eq('id', ag.id).single(),
+        ])
         const planoId = cliRes.data?.plano_id
-        if (planoId) {
-          // buscarPlanoCliente carrega planoCliente e sessaoPlano para exibicao
-          buscarPlanoCliente(ag.clienteId, planoId, true).then((plano: any) => {
-            const agsPlano = agsRes.data || []
-            const agNoBanco = agsPlano.find((a: any) => a.id === ag.id)
-            const totalSessoes = agNoBanco?.sessao_total || plano?.sessoes_mes || agsPlano.length || 1
-            let numSessao: number
-            if (agNoBanco?.sessao_numero) {
-              numSessao = agNoBanco.sessao_numero
-            } else {
-              // Posicao 0-based na lista = indice do agendamento
-              const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
-              numSessao = (posicao >= 0 ? posicao : 0) % totalSessoes + 1
-            }
-            setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: numSessao, sessaoTotal: totalSessoes }) : prev)
-            const valorSalvo = Number(agNoBanco?.valor ?? ag.valor ?? 0)
-            setSessaoEdicao({ num: numSessao, total: totalSessoes, valor: valorSalvo })
-            setForm((f: any) => ({ ...f, valor: String(valorSalvo) }))
-          })
-        }
-      })
+        if (planoId) buscarPlanoCliente(ag.clienteId, planoId, true)
+        // Usar dados salvos no banco - fonte de verdade
+        const numSessao = agRes.data?.sessao_numero || 1
+        const totalSessoes = agRes.data?.sessao_total || 4
+        const valorReal = Number(agRes.data?.valor ?? ag.valor ?? 0)
+        setSessaoEdicao({ num: numSessao, total: totalSessoes, valor: valorReal })
+        setForm((f: any) => ({ ...f, valor: String(valorReal) }))
+      })()
     }
   }
 

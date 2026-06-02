@@ -470,7 +470,7 @@ export default function AgendaPage() {
   }
 
   function fecharModal() {
-    setSessaoEdicao(null) setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }
+    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }
 
   async function salvar() {
     // Validacao completa dos campos obrigatorios

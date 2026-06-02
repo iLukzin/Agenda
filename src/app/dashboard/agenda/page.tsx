@@ -264,6 +264,9 @@ export default function AgendaPage() {
   const [buscaCliente, setBuscaCliente] = useState('')
   const [clienteSel, setClienteSel] = useState<any>(null)
   const [dropCliente, setDropCliente] = useState(false)
+  const [modalNovoCliente, setModalNovoCliente] = useState(false)
+  const [formNovoCliente, setFormNovoCliente] = useState({ nome:'', telefone:'', whatsapp:'', email:'' })
+  const [salvandoCliente, setSalvandoCliente] = useState(false)
   const [intervaloMin, setIntervaloMin] = useState(30)
   const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
   const [planoCliente, setPlanoCliente] = useState<any>(null)
@@ -483,6 +486,31 @@ export default function AgendaPage() {
     if (error) { alert('Erro: ' + error.message); setCancelando(false); return }
     setCancelando(false); setModalCancelar(false)
     await carregar(); fecharModal()
+  }
+
+  async function salvarNovoClienteInline() {
+    if (!formNovoCliente.nome.trim() || !empresaAtiva?.id) return
+    setSalvandoCliente(true)
+    const sb2 = createClient()
+    const { data, error } = await sb2.from('clientes').insert({
+      empresa_id: empresaAtiva.id,
+      nome: formNovoCliente.nome.trim(),
+      telefone: formNovoCliente.telefone.trim() || null,
+      whatsapp: formNovoCliente.whatsapp.trim() || null,
+      email: formNovoCliente.email.trim() || null,
+      status: 'ativo',
+    }).select().single()
+    setSalvandoCliente(false)
+    if (error) { alert('Erro ao cadastrar: ' + error.message); return }
+    // Adicionar na lista local e selecionar
+    setClientes((prev: any[]) => [...prev, data].sort((a,b) => a.nome.localeCompare(b.nome)))
+    setClienteSel(data)
+    setForm(f => ({ ...f, clienteId: data.id, cliente: data.nome }))
+    setBuscaCliente('')
+    setDropCliente(false)
+    setModalNovoCliente(false)
+    setFormNovoCliente({ nome:'', telefone:'', whatsapp:'', email:'' })
+    setErroForm([])
   }
 
   async function enviarConfirmacao() {
@@ -869,6 +897,39 @@ export default function AgendaPage() {
 
       </>) /* fim grade */}
 
+      {/* Modal novo cliente inline */}
+      {modalNovoCliente && (
+        <div onClick={()=>setModalNovoCliente(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'400px', borderRadius:'16px', padding:'22px 20px', boxShadow:'0 24px 64px rgba(0,0,0,0.25)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'18px' }}>
+              <h3 style={{ fontSize:'16px', fontWeight:'700', color:'#0f172a' }}>Novo cliente</h3>
+              <button onClick={()=>setModalNovoCliente(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'28px', height:'28px', cursor:'pointer', fontSize:'14px' }}>x</button>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+              {([
+                { label:'Nome *', key:'nome', placeholder:'Nome completo' },
+                { label:'Telefone', key:'telefone', placeholder:'(34) 99999-9999' },
+                { label:'WhatsApp', key:'whatsapp', placeholder:'(34) 99999-9999' },
+                { label:'E-mail', key:'email', placeholder:'email@exemplo.com' },
+              ] as {label:string;key:string;placeholder:string}[]).map(({ label, key, placeholder }) => (
+                <div key={key}>
+                  <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'4px' }}>{label}</label>
+                  <input value={(formNovoCliente as any)[key]} onChange={e=>setFormNovoCliente((f:any)=>({...f,[key]:e.target.value}))} placeholder={placeholder}
+                    style={{ width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', outline:'none', boxSizing:'border-box' as const }}/>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:'10px', marginTop:'18px' }}>
+              <button onClick={()=>setModalNovoCliente(false)} style={{ flex:1, background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'10px', fontSize:'13px', cursor:'pointer' }}>Cancelar</button>
+              <button onClick={salvarNovoClienteInline} disabled={!formNovoCliente.nome.trim()||salvandoCliente}
+                style={{ flex:2, background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'10px', fontSize:'13px', fontWeight:'600', cursor:salvandoCliente?'not-allowed':'pointer' }}>
+                {salvandoCliente ? 'Salvando...' : 'Cadastrar e selecionar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal cancelamento */}
       {modalCancelar && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
@@ -963,7 +1024,10 @@ export default function AgendaPage() {
               )}
               {/* Busca cliente */}
               <div style={{ position:'relative' }}>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Cliente *</label>
+                <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
+                  <span style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Cliente *</span>
+                  <button type="button" onClick={()=>setModalNovoCliente(true)} style={{ background:'none', border:'none', color:'#6366f1', fontSize:'12px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'3px', padding:0 }}>+ Novo cliente</button>
+                </
                 {clienteSel ? (
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', background:'#eef2ff', borderRadius:'8px', border:'1.5px solid #6366f1' }}>
                     <div style={{ flex:1 }}>
@@ -978,6 +1042,11 @@ export default function AgendaPage() {
                     {dropCliente && (
                       <><div onClick={()=>setDropCliente(false)} style={{ position:'fixed', inset:0, zIndex:99 }}/>
                       <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'white', borderRadius:'10px', border:'1px solid #e5e7eb', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', zIndex:100, maxHeight:'200px', overflowY:'auto' }}>
+                        {clientes.filter((c: any) => c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 && buscaCliente.length > 0 && (
+                          <div onClick={()=>{setModalNovoCliente(true);setFormNovoCliente(f=>({...f,nome:buscaCliente}));setDropCliente(false)}} style={{ padding:'12px 14px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', color:'#6366f1', fontWeight:'600', fontSize:'13px' }}>
+                            <span style={{ fontSize:'18px', lineHeight:1 }}>+</span> Cadastrar "{buscaCliente}"
+                          </div>
+                        )}
                         {clientes.filter((c: any) => c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).map((c: any) => (
                           <div key={c.id} onClick={()=>{setClienteSel(c);setForm(f=>({...f,clienteId:c.id,cliente:c.nome,plano_id:'',usar_plano:false,valor:''}));setBuscaCliente('');setDropCliente(false);setErroForm([]);
               if (c.plano_id) { buscarPlanoCliente(c.id, c.plano_id) } else { setPlanoCliente(null); setSessaoPlano(null) }}} style={{ padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid #f9fafb' }}

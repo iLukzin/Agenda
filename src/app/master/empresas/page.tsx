@@ -28,7 +28,7 @@ export default function EmpresasPage() {
   const carregar = useCallback(async () => {
     setCarregando(true)
     const sb = createClient()
-    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio').order('nome')
+    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado').order('nome')
     setEmpresas((data || []).map((e: any) => ({ id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'' })))
     setCarregando(false)
   }, [])
@@ -51,7 +51,7 @@ export default function EmpresasPage() {
   function abrirNova() { setModoEdicao(false); setSelecionada(null); setErro(''); setForm(formVazio()); setModalAberto(true) }
   function abrirEdicao(e: Empresa) {
     setModoEdicao(true); setSelecionada(e); setErro('')
-    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:(e as any).whatsapp_habilitado||false })
+    setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:e.whatsapp_habilitado||false })
     setModalAberto(true)
   }
   function fecharModal() { setModalAberto(false); setSelecionada(null); setErro('') }
@@ -127,6 +127,7 @@ export default function EmpresasPage() {
                   <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap', marginBottom:'3px' }}>
                     <p style={{ fontSize:'15px', fontWeight:'600', color:'#1a1a2e' }}>{e.nome}</p>
                     {e.bloqueada && <span style={{ fontSize:'10px', fontWeight:'700', color:'#dc2626', background:'#fef2f2', borderRadius:'4px', padding:'1px 6px' }}>BLOQ</span>}
+                    {e.whatsapp_habilitado && <span style={{ fontSize:'10px', fontWeight:'700', color:'#16a34a', background:'#f0fdf4', borderRadius:'4px', padding:'1px 6px' }}>WPP</span>}
                     <span style={{ fontSize:'11px', fontWeight:'500', padding:'2px 8px', borderRadius:'99px', background:planoBg[e.plano]||'#f3f4f6', color:planoCor[e.plano]||'#6b7280', textTransform:'capitalize' }}>{e.plano}</span>
                   </div>
                   <p style={{ fontSize:'12px', color:'#9ca3af' }}>{e.email || e.cnpj || '--'}</p>
@@ -196,7 +197,7 @@ export default function EmpresasPage() {
                     <p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>Habilitar WhatsApp</p>
                     <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'1px' }}>Permite a empresa conectar e usar WhatsApp no sistema</p>
                   </div>
-                  <div onClick={()=>setForm((p: any)=>({...p,whatsapp_habilitado:!p.whatsapp_habilitado}))} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.whatsapp_habilitado?'#22c55e':'#e5e7eb', position:'relative', flexShrink:0 }}>
+                  <div onClick={()=>setForm(p=>({...p,whatsapp_habilitado:!p.whatsapp_habilitado}))} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.whatsapp_habilitado?'#22c55e':'#e5e7eb', position:'relative', flexShrink:0 }}>
                     <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', transition:'left .2s', left:form.whatsapp_habilitado?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)' }}/>
                   </div>
                 </div>

@@ -321,9 +321,13 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
           const ativo = pathname === item.href
           const telaKey = item.href === '/dashboard' ? 'dashboard' : item.href.replace('/dashboard/','')
           const nivelAtual = usuario?.nivel_acesso || 'profissional'
-          const padrao = Object.keys(permMap).length === 0 ? (isMaster ? null : permPadraoLayout(nivelAtual)) : null
-          const permItem = permMap[telaKey] || (padrao ? padrao[telaKey] : null)
-          const temAcesso = isMaster || (permItem ? permItem.visualizar !== false : true)
+          const temPermMapDados = Object.keys(permMap).length > 0
+          const padrao = !temPermMapDados ? (isMaster ? null : permPadraoLayout(nivelAtual)) : null
+          // Se permMap tem dados: usar permMap; se tela não está no mapa, usar padrão do nível
+          const permItem = temPermMapDados
+            ? (permMap[telaKey] || permPadraoLayout(nivelAtual)?.[telaKey] || null)
+            : (padrao ? padrao[telaKey] : null)
+          const temAcesso = isMaster || (permItem ? permItem.visualizar !== false : false)
           if (!temAcesso) return null
           return (
             <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(99,102,241,0.15)':'transparent', transition:'all .15s', whiteSpace:'nowrap', position:'relative' }}>

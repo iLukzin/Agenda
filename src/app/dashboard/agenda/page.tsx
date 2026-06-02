@@ -440,30 +440,29 @@ export default function AgendaPage() {
       const sb2 = createClient()
       Promise.all([
         sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single(),
+        // Buscar TODOS agendamentos de plano do cliente (nao cancelados) ordenados por created_at
         sb2.from('agendamentos').select('id,created_at,sessao_numero,sessao_total,valor').eq('cliente_id', ag.clienteId).is('servico_id', null).neq('status','cancelado').order('created_at', { ascending:true }),
-        sb2.from('planos').select('sessoes,sessoes_mes,valor_mensal,valor').eq('empresa_id', empresaAtiva?.id||'').limit(50),
-      ]).then(([cliRes, agsRes, planosRes]) => {
+      ]).then(([cliRes, agsRes]) => {
         const planoId = cliRes.data?.plano_id
-        if (planoId) buscarPlanoCliente(ag.clienteId, planoId, true)
-        const agsPlano = agsRes.data || []
-        const agNoBanco = agsPlano.find((a: any) => a.id === ag.id)
-        // Buscar total de sessoes do plano
-        const planoInfo = (planosRes.data || []).find((p: any) => p.id === planoId)
-        const totalSessoes = agNoBanco?.sessao_total || planoInfo?.sessoes || planoInfo?.sessoes_mes || agsPlano.length || 1
-        let numSessao: number
-        if (agNoBanco?.sessao_numero) {
-          // Ja tem salvo no banco - usar direto
-          numSessao = agNoBanco.sessao_numero
-        } else {
-          // Calcular pela posicao na lista ordenada por created_at
-          const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
-          numSessao = posicao >= 0 ? (posicao % totalSessoes) + 1 : 1
+        if (planoId) {
+          // buscarPlanoCliente carrega planoCliente e sessaoPlano para exibicao
+          buscarPlanoCliente(ag.clienteId, planoId, true).then((plano: any) => {
+            const agsPlano = agsRes.data || []
+            const agNoBanco = agsPlano.find((a: any) => a.id === ag.id)
+            const totalSessoes = agNoBanco?.sessao_total || plano?.sessoes_mes || agsPlano.length || 1
+            let numSessao: number
+            if (agNoBanco?.sessao_numero) {
+              numSessao = agNoBanco.sessao_numero
+            } else {
+              // Posicao 0-based na lista = indice do agendamento
+              const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
+              numSessao = (posicao >= 0 ? posicao : 0) % totalSessoes + 1
+            }
+            setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: numSessao, sessaoTotal: totalSessoes }) : prev)
+            const valorSalvo = agNoBanco?.valor ?? ag.valor
+            setForm((f: any) => ({ ...f, valor: String(valorSalvo) }))
+          })
         }
-        setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: numSessao, sessaoTotal: totalSessoes }) : prev)
-        // Corrigir valor no form: sessao 1 tem valor do plano, demais = 0
-        // Mas manter o valor original se ja estiver salvo corretamente
-        const valorSalvo = agNoBanco?.valor ?? ag.valor
-        setForm((f: any) => ({ ...f, valor: String(valorSalvo) }))
       })
     }
   }
@@ -701,10 +700,9 @@ export default function AgendaPage() {
       setPlanoCliente(r1.data)
       setSessaoPlano(r2.data)
       if (!apenasExibir) {
-        // Novo agendamento: nao alterar valor aqui, sera calculado no salvar()
         setForm(f => ({...f, usar_plano: true}))
       }
-      // Na edicao (apenasExibir=true): nao altera valor, apenas mostra info do plano
+      return r1.data
     } else {
       setPlanoCliente(null)
       setSessaoPlano(null)

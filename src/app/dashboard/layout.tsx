@@ -228,13 +228,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 function permPadraoLayout(nivel: string): Record<string, any> {
   if (nivel === 'usuario') return {
-    dashboard: { visualizar:false }, agenda: { visualizar:true },
+    dashboard: { visualizar:false }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
     clientes: { visualizar:false }, profissionais: { visualizar:false },
     servicos: { visualizar:false }, financeiro: { visualizar:false },
     mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false },
   }
   if (nivel === 'profissional') return {
-    dashboard: { visualizar:true }, agenda: { visualizar:true },
+    dashboard: { visualizar:true }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
     clientes: { visualizar:true }, profissionais: { visualizar:true },
     servicos: { visualizar:true }, financeiro: { visualizar:false },
     mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false },

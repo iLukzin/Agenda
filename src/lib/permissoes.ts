@@ -12,6 +12,7 @@ export type Permissao = {
 export const TELAS = [
   { key:'dashboard',      label:'Dashboard'     },
   { key:'agenda',         label:'Agenda'        },
+  { key:'agenda_wpp',     label:'Agenda - WPP'  },
   { key:'clientes',       label:'Clientes'      },
   { key:'profissionais',  label:'Profissionais' },
   { key:'servicos',       label:'Servicos'      },

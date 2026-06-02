@@ -484,49 +484,43 @@ export default function AgendaPage() {
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao) * 60000).toISOString()
     // Valor: na edicao manter o valor original; na criacao calcular pela sessao
     let valorFinal = parseFloat(form.valor) || 0
-    if (!modoEdicao && form.usar_plano && planoCliente) {
-      // Novo agendamento: calcular se e sessao de cobranca
-      const ipSalvar = calcularSessaoPlano()
-      valorFinal = ipSalvar.cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
+    let sessaoParaSalvar = 0
+    let totalParaSalvar = 0
+    if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
+      // Contar agendamentos de plano ANTES de criar (para saber qual sera a sessao do novo)
+      const sbCount = createClient()
+      const { count: countAntes } = await sbCount.from('agendamentos')
+        .select('id', { count:'exact', head:true })
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('cliente_id', form.clienteId)
+        .is('servico_id', null)
+        .neq('status', 'cancelado')
+      const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
+      const posicao = countAntes || 0  // 0 para o 1o, 1 para o 2o...
+      const sessao = (posicao % total) + 1
+      const cobrar = sessao === 1
+      valorFinal = cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
+      sessaoParaSalvar = sessao
+      totalParaSalvar = total
     }
     // Na edicao com plano: manter o valor original do agendamento (form.valor)
-    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, observacoes:form.observacoes||null }
+    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }
     else { const res = await criarAgendamento(empresaAtiva.id, payload); error = res.error }
     if (error) { alert('Erro: ' + error.message); setSalvando(false); return }
-    // Registrar sessao do plano
+    // Atualizar contador de sessoes do plano
     if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
       const sb3 = createClient()
-      const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
-      // Buscar todos agendamentos de plano do cliente (incluindo o recem criado)
-      const { data: agsExist } = await sb3.from('agendamentos')
-        .select('id,created_at')
+      const { count: totalAgs } = await sb3.from('agendamentos')
+        .select('id', { count:'exact', head:true })
         .eq('empresa_id', empresaAtiva.id)
         .eq('cliente_id', form.clienteId)
         .is('servico_id', null)
         .neq('status', 'cancelado')
-        .order('created_at', { ascending: true })
-      const lista = agsExist || []
-      // O recem criado e o ultimo (maior created_at)
-      const lastAg = lista[lista.length - 1]
-      // Posicao 0-based na lista = quantos existiam antes
-      const posicao0 = lista.length - 1  // ex: 0 para o primeiro, 1 para o segundo
-      const sessaoNoCiclo = (posicao0 % total) + 1  // 1, 2, 3, 4, 1, 2...
-      const cobrar = sessaoNoCiclo === 1
-      const valorCorreto = cobrar ? (parseFloat(planoCliente.valor_mensal||planoCliente.valor||'0') || 0) : 0
-      // Salvar sessao_numero, sessao_total e valor no agendamento recem criado
-      if (lastAg?.id) {
-        await sb3.from('agendamentos').update({
-          sessao_numero: sessaoNoCiclo,
-          sessao_total: total,
-          valor: valorCorreto,
-        }).eq('id', lastAg.id)
-      }
-      // Atualizar contador de sessoes
       if (sessaoPlano?.id) {
-        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: lista.length }).eq('id', sessaoPlano.id)
+        await sb3.from('cliente_plano_sessoes').update({ sessoes_utilizadas: totalAgs || 1 }).eq('id', sessaoPlano.id)
       } else {
         await sb3.from('cliente_plano_sessoes').insert({ empresa_id:empresaAtiva.id, cliente_id:form.clienteId, plano_id:planoCliente.id, sessoes_utilizadas:1 })
       }

@@ -1137,29 +1137,6 @@ export default function AgendaPage() {
                       </div>
                       <p style={{ fontSize:'12px', fontWeight:'600', color:form.usar_plano?'#4f46e5':'#6b7280', marginBottom:'2px' }}>{planoCliente.nome}</p>
                       <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes_mes_mes || 1} sessoes</p>
-                {modoEdicao && form.usar_plano && planoCliente && (
-                  <div style={{ borderRadius:'12px', overflow:'hidden', border:'1.5px solid #bfdbfe' }}>
-                    <div style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
-                      <div style={{ flex:1 }}>
-                        <p style={{ color:'white', fontWeight:'700', fontSize:'14px' }}>{planoCliente.nome}</p>
-                        <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>
-                          {sessaoEdicao ? ('Sessao ' + sessaoEdicao.num + ' de ' + sessaoEdicao.total + (sessaoEdicao.num === 1 ? ' - Cobranca do plano' : ' - Sessao inclusa')) : 'Plano mensal'}
-                        </p>
-                      </div>
-                      <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'10px', padding:'8px 14px', textAlign:'center' }}>
-                        <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase' as const }}>Valor</p>
-                        <p style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>
-                          {'R$ ' + (sessaoEdicao ? sessaoEdicao.valor : Number(form.valor||0)).toLocaleString('pt-BR', {minimumFractionDigits:2})}
-                        </p>
-                      </div>
-                    </div>
-                    <div style={{ background: sessaoEdicao?.num === 1 ? '#eff6ff' : '#f0fdf4', padding:'8px 16px' }}>
-                      <p style={{ fontSize:'11px', color: sessaoEdicao?.num === 1 ? '#1d4ed8' : '#16a34a', fontWeight:'600' }}>
-                        {sessaoEdicao?.num === 1 ? 'Cobrar o valor do plano nesta sessao' : 'Sessao gratuita - inclusa no plano'}
-                      </p>
-                    </div>
-                  </div>
-                )}
                 {!modoEdicao && form.usar_plano && infoPlano && (
                         <div style={{ marginTop:'8px', padding:'8px', background:'white', borderRadius:'8px', border:'1px solid #c7d2fe' }}>
                           <p style={{ fontSize:'11px', color:'#6b7280', marginBottom:'2px' }}>Sessao {infoPlano.sessaoAtual} de {infoPlano.total}</p>
@@ -1297,6 +1274,29 @@ export default function AgendaPage() {
                   </div>
                 </div>
               )}
+                {modoEdicao && form.usar_plano && planoCliente && (
+                  <div style={{ borderRadius:'12px', overflow:'hidden', border:'1.5px solid #bfdbfe' }}>
+                    <div style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
+                      <div style={{ flex:1 }}>
+                        <p style={{ color:'white', fontWeight:'700', fontSize:'14px' }}>{planoCliente.nome}</p>
+                        <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>
+                          {sessaoEdicao ? ('Sessao ' + sessaoEdicao.num + ' de ' + sessaoEdicao.total + (sessaoEdicao.num === 1 ? ' - Cobranca do plano' : ' - Sessao inclusa')) : 'Plano mensal'}
+                        </p>
+                      </div>
+                      <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'10px', padding:'8px 14px', textAlign:'center' }}>
+                        <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'10px', textTransform:'uppercase' as const }}>Valor</p>
+                        <p style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>
+                          {'R$ ' + (sessaoEdicao ? sessaoEdicao.valor : Number(form.valor||0)).toLocaleString('pt-BR', {minimumFractionDigits:2})}
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ background: sessaoEdicao?.num === 1 ? '#eff6ff' : '#f0fdf4', padding:'8px 16px' }}>
+                      <p style={{ fontSize:'11px', color: sessaoEdicao?.num === 1 ? '#1d4ed8' : '#16a34a', fontWeight:'600' }}>
+                        {sessaoEdicao?.num === 1 ? 'Cobrar o valor do plano nesta sessao' : 'Sessao gratuita - inclusa no plano'}
+                      </p>
+                    </div>
+                  </div>
+                )}
               <InputField label="Observacoes">
                 <textarea rows={2} value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))} style={{ ...inputStyle, resize:'none' }} placeholder="Anotacoes..."/>
               </InputField>

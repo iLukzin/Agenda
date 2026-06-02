@@ -278,7 +278,7 @@ export default function AgendaPage() {
     const sb = createClient()
     // Nivel usuario e profissional com vinculo: filtrar so suas agendas
     const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
-    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,plano_id').eq('empresa_id', empresaAtiva.id)
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento').eq('empresa_id', empresaAtiva.id)
     if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
@@ -321,7 +321,7 @@ export default function AgendaPage() {
       forma_pagamento: a.forma_pagamento || '',
       valor: a.valor || 0,
       motivoCancelamento: a.motivo_cancelamento || undefined,
-      planoId: a.plano_id || undefined,
+      planoId: !a.servico_id ? 'plano' : undefined,
     })))
     setCarregando(false)
   }, [empresaAtiva?.id, usuario?.nivel_acesso, usuario?.profissional_id])
@@ -432,7 +432,12 @@ export default function AgendaPage() {
     setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(ag.valor), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
-    if (ehPlano && ag.clienteId) buscarPlanoCliente(ag.clienteId, ag.planoId!)
+    if (ehPlano && ag.clienteId) {
+      // Buscar plano_id real do cliente
+      const sb2 = createClient()
+      sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single()
+        .then(({ data }) => { if (data?.plano_id) buscarPlanoCliente(ag.clienteId, data.plano_id) })
+    }
   }
 
   function fecharModal() { setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }

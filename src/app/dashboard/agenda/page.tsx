@@ -440,25 +440,30 @@ export default function AgendaPage() {
       const sb2 = createClient()
       Promise.all([
         sb2.from('clientes').select('plano_id').eq('id', ag.clienteId).single(),
-        // Ordenar por created_at para pegar a ordem real de criacao
-        sb2.from('agendamentos').select('id,created_at,sessao_numero,sessao_total').eq('cliente_id', ag.clienteId).is('servico_id', null).neq('status','cancelado').order('created_at', { ascending:true }),
-      ]).then(([cliRes, agsRes]) => {
-        if (cliRes.data?.plano_id) buscarPlanoCliente(ag.clienteId, cliRes.data.plano_id, true)
+        sb2.from('agendamentos').select('id,created_at,sessao_numero,sessao_total,valor').eq('cliente_id', ag.clienteId).is('servico_id', null).neq('status','cancelado').order('created_at', { ascending:true }),
+        sb2.from('planos').select('sessoes,sessoes_mes,valor_mensal,valor').eq('empresa_id', empresaAtiva?.id||'').limit(50),
+      ]).then(([cliRes, agsRes, planosRes]) => {
+        const planoId = cliRes.data?.plano_id
+        if (planoId) buscarPlanoCliente(ag.clienteId, planoId, true)
         const agsPlano = agsRes.data || []
-        // Calcular sessao: prioridade = sessao_numero salvo no banco
         const agNoBanco = agsPlano.find((a: any) => a.id === ag.id)
-        if (agNoBanco?.sessao_numero && agNoBanco?.sessao_total) {
-          // Usar o que esta salvo no banco (mais preciso)
-          setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: agNoBanco.sessao_numero, sessaoTotal: agNoBanco.sessao_total }) : prev)
+        // Buscar total de sessoes do plano
+        const planoInfo = (planosRes.data || []).find((p: any) => p.id === planoId)
+        const totalSessoes = agNoBanco?.sessao_total || planoInfo?.sessoes || planoInfo?.sessoes_mes || agsPlano.length || 1
+        let numSessao: number
+        if (agNoBanco?.sessao_numero) {
+          // Ja tem salvo no banco - usar direto
+          numSessao = agNoBanco.sessao_numero
         } else {
           // Calcular pela posicao na lista ordenada por created_at
           const posicao = agsPlano.findIndex((a: any) => a.id === ag.id)
-          if (posicao >= 0) {
-            const totalPlano = cliRes.data?.plano_total || agsPlano.length || 1
-            const sessaoNoCiclo = (posicao % totalPlano) + 1
-            setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: sessaoNoCiclo, sessaoTotal: totalPlano }) : prev)
-          }
+          numSessao = posicao >= 0 ? (posicao % totalSessoes) + 1 : 1
         }
+        setSelecionado((prev: any) => prev ? ({ ...prev, sessaoNumero: numSessao, sessaoTotal: totalSessoes }) : prev)
+        // Corrigir valor no form: sessao 1 tem valor do plano, demais = 0
+        // Mas manter o valor original se ja estiver salvo corretamente
+        const valorSalvo = agNoBanco?.valor ?? ag.valor
+        setForm((f: any) => ({ ...f, valor: String(valorSalvo) }))
       })
     }
   }
@@ -495,7 +500,7 @@ export default function AgendaPage() {
         .eq('cliente_id', form.clienteId)
         .is('servico_id', null)
         .neq('status', 'cancelado')
-      const total = planoCliente.sessoes || planoCliente.sessoes_mes || 1
+      const total = planoCliente.sessoes_mes || 1
       const posicao = countAntes || 0  // 0 para o 1o, 1 para o 2o...
       const sessao = (posicao % total) + 1
       const cobrar = sessao === 1
@@ -674,7 +679,7 @@ export default function AgendaPage() {
   // Logica de sessoes do plano
   const calcularSessaoPlano = () => {
     if (!planoCliente) return { cobrar: true, sessaoAtual: 1, total: 1, utilizadas: 0 }
-    const total = planoCliente.sessoes_mes || planoCliente.sessoes || 1
+    const total = planoCliente.sessoes_mes || 1
     // Contar agendamentos de plano existentes do cliente (nao cancelados)
     // O novo ainda nao foi criado, entao este e o proximo
     const agsPlano = agendamentos.filter(a => !a.servico && a.clienteId === form.clienteId && a.status !== 'cancelado')
@@ -1143,7 +1148,7 @@ export default function AgendaPage() {
                         <p style={{ fontSize:'12px', fontWeight:'700', color:form.usar_plano?'#4f46e5':'#374151' }}>Plano mensal</p>
                       </div>
                       <p style={{ fontSize:'12px', fontWeight:'600', color:form.usar_plano?'#4f46e5':'#6b7280', marginBottom:'2px' }}>{planoCliente.nome}</p>
-                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes_mes || planoCliente.sessoes || planoCliente.sessoes_mes || 1} sessoes</p>
+                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{planoCliente.sessoes_mes_mes || 1} sessoes</p>
                       {modoEdicao && form.usar_plano && planoCliente && (
                   <div style={{ borderRadius:'12px', overflow:'hidden', border:'1.5px solid #bfdbfe' }}>
                     <div style={{ background:'linear-gradient(135deg,#2563eb,#1d4ed8)', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
@@ -1151,8 +1156,9 @@ export default function AgendaPage() {
                         <p style={{ color:'white', fontWeight:'700', fontSize:'14px' }}>{planoCliente.nome}</p>
                         <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>
                           {selecionado?.sessaoNumero
-                            ? ('Sessao ' + selecionado.sessaoNumero + ' de ' + (selecionado.sessaoTotal || planoCliente.sessoes || planoCliente.sessoes_mes || '?'))
+                            ? ('Sessao ' + selecionado.sessaoNumero + ' de ' + (selecionado.sessaoTotal || planoCliente.sessoes_mes || '?'))
                             : 'Plano mensal'}
+                          {selecionado?.sessaoNumero === 1 ? ' - Sessao de cobranca' : selecionado?.sessaoNumero ? ' - Sessao gratuita' : ''}
                         </p>
                       </div>
                       <div style={{ background:'rgba(255,255,255,0.2)', borderRadius:'10px', padding:'8px 14px', textAlign:'center' }}>

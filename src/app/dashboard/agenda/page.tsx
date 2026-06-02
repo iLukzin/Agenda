@@ -483,9 +483,6 @@ export default function AgendaPage() {
     const instancia = empData?.whatsapp_instancia || ('emp-' + empresaAtiva.id.slice(0,8))
     // Montar mensagem
     const templateMsg = tmplRes.data?.mensagem || 'Ola {{cliente}}! Confirmando seu horario em {{data}} as {{hora}} para {{servico}}. Pode confirmar?'
-    // Buscar template
-    const { data: tmpl } = await sb2.from('mensagens_template').select('mensagem').eq('empresa_id', empresaAtiva.id).eq('tipo', 'confirmacao').eq('ativo', true).maybeSingle()
-    const templateMsg = tmpl?.mensagem || 'Ola {{cliente}}! Confirmando seu horario em {{data}} as {{hora}} para {{servico}}. Pode confirmar?'
     // Formatar data e hora
     const [y,m,d] = selecionado.dataISO.split('-')
     const dataFmt = d + '/' + m + '/' + y

@@ -38,6 +38,9 @@ export default function MensagensPage() {
   })
   const [busca, setBusca] = useState('')
   const [preview, setPreview] = useState('')
+  const [campDetalhes, setCampDetalhes] = useState(null as Campanha|null)
+  const [logEnvio, setLogEnvio] = useState([] as any[])
+  const [carregandoLog, setCarregandoLog] = useState(false)
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
@@ -79,6 +82,17 @@ export default function MensagensPage() {
         : [...f.clientes_selecionados, id]
     }))
   }
+
+  async function abrirDetalhes(c: Campanha) {
+    setCampDetalhes(c)
+    setCarregandoLog(true)
+    const sb = createClient()
+    const { data } = await sb.from('campanha_log').select('*').eq('campanha_id', c.id).order('enviado_em')
+    setLogEnvio(data || [])
+    setCarregandoLog(false)
+  }
+
+  function fecharDetalhes() { setCampDetalhes(null); setLogEnvio([]) }
 
   function fecharModal() {
     setModalAberto(false)
@@ -124,8 +138,14 @@ export default function MensagensPage() {
           headers: { 'apikey': apiConfig.key, 'Content-Type': 'application/json' },
           body: JSON.stringify({ number: numFmt, options:{ delay:500 }, text: msg }),
         })
-        if (res.ok) { enviados++; await sb.from('mensagens_enviadas').insert({ empresa_id: empresaAtiva?.id, cliente_id: c.id, mensagem: msg, status: 'enviado', campanha_id: campanha.id }).then(()=>{}) }
-        else { erros++ }
+        if (res.ok) {
+          enviados++
+          await sb.from('campanha_log').insert({ campanha_id: campanha.id, empresa_id: empresaAtiva?.id, cliente_id: c.id, nome: c.nome, numero: numFmt, mensagem: msg, status: 'enviado' })
+        } else {
+          erros++
+          const errTxt = await res.text().catch(()=>'Erro HTTP '+res.status)
+          await sb.from('campanha_log').insert({ campanha_id: campanha.id, empresa_id: empresaAtiva?.id, cliente_id: c.id, nome: c.nome, numero: numFmt, mensagem: msg, status: 'erro', erro_msg: errTxt.slice(0,200) })
+        }
       } catch { erros++ }
       setProgresso(Math.round((i+1)/dest.length*100))
       await new Promise(r => setTimeout(r, 600))
@@ -186,8 +206,14 @@ export default function MensagensPage() {
           headers: { 'apikey': apiConfig.key, 'Content-Type': 'application/json' },
           body: JSON.stringify({ number: numFmt, options:{ delay:500 }, text: msg }),
         })
-        if (res.ok) { enviados++; await sb.from('mensagens_enviadas').insert({ empresa_id: empresaAtiva.id, cliente_id: c.id, mensagem: msg, status: 'enviado', campanha_id: camp.id }).then(()=>{}) }
-        else { erros++ }
+        if (res.ok) {
+          enviados++
+          await sb.from('campanha_log').insert({ campanha_id: camp.id, empresa_id: empresaAtiva.id, cliente_id: c.id, nome: c.nome, numero: numFmt, mensagem: msg, status: 'enviado' })
+        } else {
+          erros++
+          const errTxt = await res.text().catch(()=>'Erro HTTP '+res.status)
+          await sb.from('campanha_log').insert({ campanha_id: camp.id, empresa_id: empresaAtiva.id, cliente_id: c.id, nome: c.nome, numero: numFmt, mensagem: msg, status: 'erro', erro_msg: errTxt.slice(0,200) })
+        }
       } catch { erros++ }
       setProgresso(Math.round((i+1)/dest.length*100))
       await new Promise(r => setTimeout(r, 600))
@@ -256,6 +282,10 @@ export default function MensagensPage() {
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:'8px', alignItems:'center', flexShrink:0 }}>
+                  <button onClick={()=>abrirDetalhes(c)} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', fontWeight:'600', color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Log
+                  </button>
                   {c.status !== 'concluida' && c.status !== 'enviando' && (
                     <button
                       onClick={()=>enviarCampanha(c)}
@@ -425,6 +455,74 @@ export default function MensagensPage() {
                     style={{ flex:1, background:'linear-gradient(135deg,#25d366,#128c7e)', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'600', cursor:'pointer', opacity:(!form.nome||!form.mensagem)?0.5:1 }}>
                     {form.agendamento ? (form.envio_automatico ? '📅 Agendar (automatico)' : '📋 Salvar campanha') : `📤 Enviar agora para ${destCount} clientes`}
                   </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+      {/* Modal de log da campanha */}
+      {campDetalhes && (
+        <div onClick={fecharDetalhes} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'620px', borderRadius:'20px', maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 64px rgba(0,0,0,0.2)' }}>
+            {/* Header */}
+            <div style={{ padding:'20px 20px 14px', borderBottom:'1px solid #f0f0f8' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div>
+                  <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#0f172a' }}>Log: {campDetalhes.nome}</h2>
+                  <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'3px' }}>
+                    {logEnvio.filter(l=>l.status==='enviado').length} enviados · {logEnvio.filter(l=>l.status==='erro').length} erros · {logEnvio.length} total
+                  </p>
+                </div>
+                <button onClick={fecharDetalhes} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>×</button>
+              </div>
+              {/* Resumo visual */}
+              {logEnvio.length > 0 && (
+                <div style={{ display:'flex', gap:'10px', marginTop:'12px' }}>
+                  {[
+                    { label:'Enviados', val: logEnvio.filter(l=>l.status==='enviado').length, cor:'#059669', bg:'#f0fdf4' },
+                    { label:'Erros', val: logEnvio.filter(l=>l.status==='erro').length, cor:'#dc2626', bg:'#fef2f2' },
+                    { label:'Total', val: logEnvio.length, cor:'#6366f1', bg:'#eef2ff' },
+                  ].map(x => (
+                    <div key={x.label} style={{ background:x.bg, borderRadius:'8px', padding:'8px 14px', flex:1, textAlign:'center' }}>
+                      <p style={{ fontSize:'20px', fontWeight:'800', color:x.cor, lineHeight:1 }}>{x.val}</p>
+                      <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>{x.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Lista de logs */}
+            <div style={{ flex:1, overflowY:'auto', padding:'12px 20px' }}>
+              {carregandoLog ? (
+                <p style={{ textAlign:'center', color:'#9ca3af', padding:'24px' }}>Carregando log...</p>
+              ) : logEnvio.length === 0 ? (
+                <p style={{ textAlign:'center', color:'#9ca3af', padding:'24px' }}>Nenhum registro de envio ainda</p>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                  {logEnvio.map((l: any) => (
+                    <div key={l.id} style={{ display:'flex', alignItems:'flex-start', gap:'10px', padding:'10px 12px', borderRadius:'8px', background: l.status==='enviado'?'#f0fdf4':'#fef2f2', border:`1px solid ${l.status==='enviado'?'#bbf7d0':'#fecaca'}` }}>
+                      <div style={{ width:'20px', height:'20px', borderRadius:'50%', background: l.status==='enviado'?'#059669':'#dc2626', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:'1px' }}>
+                        {l.status === 'enviado'
+                          ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        }
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px' }}>
+                          <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l.nome || 'Cliente'}</p>
+                          <p style={{ fontSize:'11px', color:'#9ca3af', flexShrink:0 }}>{l.enviado_em ? new Date(l.enviado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : ''}</p>
+                        </div>
+                        <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'1px' }}>+{l.numero}</p>
+                        {l.status === 'erro' && l.erro_msg && (
+                          <p style={{ fontSize:'11px', color:'#dc2626', marginTop:'4px', background:'#fff1f2', padding:'4px 8px', borderRadius:'4px' }}>⚠ {l.erro_msg}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

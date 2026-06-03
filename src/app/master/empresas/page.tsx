@@ -1,5 +1,5 @@
-// BUILD: 1780489694336432698
 'use client'
+// BUILD: 1780489694336432698
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'

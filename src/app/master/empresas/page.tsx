@@ -201,7 +201,7 @@ export default function EmpresasPage() {
             {/* Abas - só mostra na edição */}
             {modoEdicao && selecionada && (
               <div style={{ display:'flex', gap:'4px', marginBottom:'4px', borderBottom:'2px solid #f0f0f8', paddingBottom:'0' }}>
-                {([['dados','Dados da Empresa'],['usuarios','Usuários Vinculados']] as const).map(([k,l]) => (
+                {(['dados','usuarios'] as Array<'dados'|'usuarios'>).map((k) => (
                   <button key={k} onClick={()=>{ setAbaModal(k); if(k==='usuarios' && selecionada) carregarUsuariosEmpresa(selecionada.id) }}
                     style={{ background:'none', border:'none', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', borderBottom: abaModal===k ? '2px solid #6366f1' : '2px solid transparent', color: abaModal===k ? '#6366f1' : '#6b7280', marginBottom:'-2px' }}>
                     {k === 'dados' ? 'Dados da Empresa' : 'Usuários Vinculados'}

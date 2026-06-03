@@ -117,21 +117,31 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setEmpresaAtiva(empresaRestaurada || l[0] || null)
 
       } else if (u.empresa_id) {
+        // Buscar TODAS as empresas do usuário:
+        // 1. Empresa principal (empresa_id no cadastro do usuário)
+        // 2. Empresas vinculadas via aba "Usuários" da empresa (tabela usuario_empresas)
+        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado'
+        
         // Buscar empresa principal
-        const empRes = await sb.from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado')
-          .eq('id', u.empresa_id).single()
+        const empRes = await sb.from('empresas').select(SELECT_EMP).eq('id', u.empresa_id).single()
         const emp = empRes.data
-        let todasEmpresas = emp ? [emp] : []
-        // Buscar empresas vinculadas (com fallback seguro se tabela não existir)
+
+        // Buscar todos os vínculos do usuário na tabela usuario_empresas
+        let todasIds = u.empresa_id ? [u.empresa_id] : []
         try {
-          const vinculosRes = await sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id)
-          const extrasIds = (vinculosRes.data || []).map((v: any) => v.empresa_id).filter((id: string) => id !== u.empresa_id)
-          if (extrasIds.length > 0) {
-            const { data: extras } = await sb.from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado').in('id', extrasIds)
-            todasEmpresas = [...todasEmpresas, ...(extras || [])]
-          }
-        } catch { /* tabela usuario_empresas pode nao existir ainda */ }
+          const { data: vinculos } = await sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id)
+          const vinculoIds = (vinculos || []).map((v: any) => v.empresa_id)
+          // Juntar IDs sem duplicar
+          vinculoIds.forEach((id: string) => { if (!todasIds.includes(id)) todasIds.push(id) })
+        } catch { /* tabela pode não existir */ }
+
+        // Buscar dados de todas as empresas de uma vez
+        let todasEmpresas: any[] = emp ? [emp] : []
+        const extrasIds = todasIds.filter((id: string) => id !== u.empresa_id)
+        if (extrasIds.length > 0) {
+          const { data: extras } = await sb.from('empresas').select(SELECT_EMP).in('id', extrasIds)
+          todasEmpresas = [...todasEmpresas, ...(extras || [])]
+        }
 
         if (emp) {
           // Verificar se empresa esta bloqueada

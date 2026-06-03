@@ -176,7 +176,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/auth/login')
+    if (typeof window !== 'undefined') window.location.href = '/auth/login'
   }
 
   const sidebarW = sidebarAberta ? '240px' : '68px'
@@ -321,7 +321,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
           return true
         }).map(item => {
           const ativo = pathname === item.href
-          const telaKey = item.href === '/dashboard' ? 'dashboard' : item.href.replace('/dashboard/','')
+          const telaKey = (item.href === '/dashboard' ? 'dashboard' : item.href.replace('/dashboard/','')).replace(/-/g,'_')
           const nivelAtual = usuario?.nivel_acesso || 'profissional'
           const temPermMapDados = Object.keys(permMap).length > 0
           const padrao = !temPermMapDados ? (isMaster ? null : permPadraoLayout(nivelAtual)) : null

@@ -285,14 +285,14 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
               <p style={{ fontSize:'12px', fontWeight:'600', color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{empresaAtiva.nome}</p>
               <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', textTransform:'capitalize' }}>{empresaAtiva.plano}</p>
             </div>
-            {isMaster && empresas.length > 1 && (
+            {empresas.length > 1 && (
               <span style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}>
                 <NavIcon code="ARR" size={14}/>
               </span>
             )}
           </button>
 
-          {dropEmpresa && isMaster && (
+          {dropEmpresa && empresas.length > 1 && (
             <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'#1e293b', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', zIndex:60, overflow:'hidden', maxHeight:'200px', overflowY:'auto' }}>
               {empresas.map((emp: EmpresaResumo) => (
                 <button key={emp.id} onClick={() => { trocarEmpresa(emp); setDropEmpresa(false) }} style={{ width:'100%', padding:'10px 12px', background:emp.id===empresaAtiva?.id?'rgba(59,130,246,0.15)':'transparent', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>

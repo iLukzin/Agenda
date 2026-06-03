@@ -1,5 +1,8 @@
 {
   "buildCommand": "node scripts/fix-translations.js && next build",
   "framework": "nextjs",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "env": {
+    "BUILD_ID": "1780489713009205971"
+  }
 }

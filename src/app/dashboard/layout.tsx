@@ -141,6 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 
   const [loadingTimeout, setLoadingTimeout] = useState(false)
+  const [saindo, setSaindo] = useState(false)
 
   useEffect(() => {
     if (!usuario?.id || isMaster) return
@@ -174,12 +175,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => { setMenuMobile(false) }, [pathname])
 
   async function handleLogout() {
+    setSaindo(true)
     const supabase = createClient()
     await supabase.auth.signOut()
     if (typeof window !== 'undefined') window.location.href = '/auth/login'
   }
 
   const sidebarW = sidebarAberta ? '240px' : '68px'
+
+  if (saindo) return null
 
   if (carregando && !loadingTimeout) {
     return (

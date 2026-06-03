@@ -204,7 +204,7 @@ export default function EmpresasPage() {
                 {([['dados','Dados da Empresa'],['usuarios','Usuários Vinculados']] as const).map(([k,l]) => (
                   <button key={k} onClick={()=>{ setAbaModal(k); if(k==='usuarios' && selecionada) carregarUsuariosEmpresa(selecionada.id) }}
                     style={{ background:'none', border:'none', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', borderBottom: abaModal===k ? '2px solid #6366f1' : '2px solid transparent', color: abaModal===k ? '#6366f1' : '#6b7280', marginBottom:'-2px' }}>
-                    {l}
+                    {k === 'dados' ? 'Dados da Empresa' : 'Usuários Vinculados'}
                   </button>
                 ))}
               </div>

@@ -117,19 +117,21 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setEmpresaAtiva(empresaRestaurada || l[0] || null)
 
       } else if (u.empresa_id) {
-        // Buscar empresa principal + empresas vinculadas via usuario_empresas
-        const [empRes, vinculosRes] = await Promise.all([
-          sb.from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado').eq('id', u.empresa_id).single(),
-          sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id),
-        ])
+        // Buscar empresa principal
+        const empRes = await sb.from('empresas')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado')
+          .eq('id', u.empresa_id).single()
         const emp = empRes.data
-        // IDs extras de empresas vinculadas (excluindo a principal)
-        const extrasIds = (vinculosRes.data || []).map((v: any) => v.empresa_id).filter((id: string) => id !== u.empresa_id)
         let todasEmpresas = emp ? [emp] : []
-        if (extrasIds.length > 0) {
-          const { data: extras } = await sb.from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado').in('id', extrasIds)
-          todasEmpresas = [...todasEmpresas, ...(extras || [])]
-        }
+        // Buscar empresas vinculadas (com fallback seguro se tabela não existir)
+        try {
+          const vinculosRes = await sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id)
+          const extrasIds = (vinculosRes.data || []).map((v: any) => v.empresa_id).filter((id: string) => id !== u.empresa_id)
+          if (extrasIds.length > 0) {
+            const { data: extras } = await sb.from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado').in('id', extrasIds)
+            todasEmpresas = [...todasEmpresas, ...(extras || [])]
+          }
+        } catch { /* tabela usuario_empresas pode nao existir ainda */ }
 
         if (emp) {
           // Verificar se empresa esta bloqueada

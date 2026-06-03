@@ -82,6 +82,8 @@ export default function ServicosPage() {
   function fecharModal() { setModalAberto(false); setSelecionado(null); setErro('') }
 
   async function salvar() {
+    if (modoEdicao && !perm.alterar) return
+    if (!perm.criar && !modoEdicao) return
     if (!form.nome.trim()) return setErro('Nome é obrigatório.')
     if (!empresaAtiva?.id) return setErro('Empresa não identificada.')
     setSalvando(true); setErro('')
@@ -107,6 +109,7 @@ export default function ServicosPage() {
   }
 
   async function excluir(id: string) {
+    if (!perm.excluir) return
     if (!confirm('Excluir este serviço?')) return
     const sb = createClient()
     const { error } = await sb.from('servicos').delete().eq('id', id)
@@ -160,8 +163,8 @@ export default function ServicosPage() {
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <span style={{ fontSize:'18px', fontWeight:'700', color:'#1a1a2e' }}>R$ {s.valor.toFixed(2).replace('.',',')}</span>
                 <div style={{ display:'flex', gap:'6px' }}>
-                  <button onClick={() => abrirEdicao(s)} style={{ background:'white', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#4f46e5', display:'inline-flex', alignItems:'center', gap:'6px', transition:'all .15s', boxShadow:'0 1px 3px rgba(99,102,241,0.15)' }} onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.boxShadow='0 3px 8px rgba(99,102,241,0.25)';el.style.transform='translateY(-1px)'}} onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.boxShadow='0 1px 3px rgba(99,102,241,0.15)';el.style.transform='translateY(0)'}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>
-                  <button onClick={() => excluir(s.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
+                  {perm.alterar && (<button onClick={() => abrirEdicao(s)} style={{ background:'white', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#4f46e5', display:'inline-flex', alignItems:'center', gap:'6px', transition:'all .15s', boxShadow:'0 1px 3px rgba(99,102,241,0.15)' }} onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.boxShadow='0 3px 8px rgba(99,102,241,0.25)';el.style.transform='translateY(-1px)'}} onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.boxShadow='0 1px 3px rgba(99,102,241,0.15)';el.style.transform='translateY(0)'}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>)}
+                  {perm.excluir && (<button onClick={() => excluir(s.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>)}
                 </div>
               </div>
             </div>
@@ -222,9 +225,9 @@ export default function ServicosPage() {
                 : <div/>}
               <div style={{ display:'flex', gap:'10px' }}>
                 <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
-                <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
+                {(modoEdicao ? perm.alterar : perm.criar) && (<button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
                   {salvando?'Salvando...':modoEdicao?'Salvar alterações':'Salvar serviço'}
-                </button>
+                </button>)}
               </div>
             </div>
           </div>

@@ -12,15 +12,15 @@ const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2f
 function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:'', whatsapp_habilitado:false } }
 
 function mascaraCnpjCpf(v: string) {
-  const d = v.replace(/\D/g, '').slice(0, 14)
+  const d = v.replace(/[^\d]/g, '').slice(0, 14)
   if (d.length <= 11) {
-    // CPF: 000.000.000-00
-    return d.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, (_:string, a:string, b:string, c:string, e:string) =>
-      e ? a+'.'+b+'.'+c+'-'+e : c ? a+'.'+b+'.'+c : b ? a+'.'+b : a)
+    if (d.length <= 3) return d
+    if (d.length <= 6) return d.slice(0,3)+'.'+d.slice(3)
+    if (d.length <= 9) return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6)
+    return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9)
   }
-  // CNPJ: 00.000.000/0001-00
-  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, (_:string, a:string, b:string, c:string, dd:string, e:string) =>
-    e ? a+'.'+b+'.'+c+'/'+dd+'-'+e : dd ? a+'.'+b+'.'+c+'/'+dd : c ? a+'.'+b+'.'+c : b ? a+'.'+b : a)
+  if (d.length <= 12) return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)
+  return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12)
 }
 
 export default function EmpresasPage() {

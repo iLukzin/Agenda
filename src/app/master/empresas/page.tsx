@@ -127,11 +127,13 @@ export default function EmpresasPage() {
   const sf = (k: string) => (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value }))
   const sb2 = (k: string) => (v: any) => setForm((p: any) => ({ ...p, [k]: v }))
 
-  if (!isMaster) return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:'12px' }}>
-      <p style={{ fontSize:'16px', fontWeight:'700', color:'#374151' }}>Acesso restrito ao Master</p>
-    </div>
-  )
+  if (!isMaster) {
+    return (
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:'12px' }}>
+        <p style={{ fontSize:'16px', fontWeight:'700', color:'#374151' }}>Acesso restrito ao Master</p>
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding:'16px', minHeight:'100vh', background:'#f4f5fb' }}>

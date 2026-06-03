@@ -12,7 +12,7 @@ const planoCor: Record<string,string> = { basico:'#6b7280', profissional:'#6366f
 const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
 function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:'', whatsapp_habilitado:false } }
 
-function mascaraCnpjCpf(v: string) { const d = v.replace(/[^\d]/g,'').slice(0,14); if (d.length<=11) { if (d.length<=3) return d; if (d.length<=6) return d.slice(0,3)+'.'+d.slice(3); if (d.length<=9) return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6); return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9) } if (d.length<=12) return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12); return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12) }
+
 
 export default function EmpresasPage() {
   const router = useRouter()
@@ -208,7 +208,7 @@ export default function EmpresasPage() {
               ))}
               <div>
                 <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>CNPJ / CPF</label>
-                <input value={form.cnpj} onChange={e=>setForm(f=>({...f,cnpj:mascaraCnpjCpf(e.target.value)}))} style={inp} placeholder="CPF ou CNPJ" maxLength={18}/>
+                <input value={form.cnpj} onChange={e=>{const r=e.target.value.replace(/[^0-9]/g,'').slice(0,14);const m=r.length<=11?(r.length<=3?r:r.length<=6?r.slice(0,3)+'.'+r.slice(3):r.length<=9?r.slice(0,3)+'.'+r.slice(3,6)+'.'+r.slice(6):r.slice(0,3)+'.'+r.slice(3,6)+'.'+r.slice(6,9)+'-'+r.slice(9)):(r.length<=12?r.slice(0,2)+'.'+r.slice(2,5)+'.'+r.slice(5,8)+'/'+r.slice(8,12):r.slice(0,2)+'.'+r.slice(2,5)+'.'+r.slice(5,8)+'/'+r.slice(8,12)+'-'+r.slice(12));setForm(f=>({...f,cnpj:m}))}} style={inp} placeholder="CPF ou CNPJ" maxLength={18}/>
                 <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'3px' }}>Digite CPF (11 digitos) ou CNPJ (14 digitos)</p>
               </div>
               <div>

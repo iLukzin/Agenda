@@ -117,7 +117,7 @@ export default function EmpresasPage() {
   const sf = (k: string) => (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value }))
   const sb2 = (k: string) => (v: any) => setForm((p: any) => ({ ...p, [k]: v }))
 
-  if (!isMaster) { return <p style={{ textAlign:'center', marginTop:'40px' }}>Acesso restrito</p> }
+  if (!isMaster) { return null }
 
   return (
     <div style={{ padding:'16px', minHeight:'100vh', background:'#f4f5fb' }}>

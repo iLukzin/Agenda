@@ -139,6 +139,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [dropEmpresa, setDropEmpresa]     = useState(false)
   const [permMap, setPermMap] = useState<Record<string, Permissao>>({})
 
+
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
+
   useEffect(() => {
     if (!usuario?.id || isMaster) return
     buscarPermissoes(usuario.id).then(mapa => {
@@ -149,7 +152,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     })
   }, [usuario?.id, isMaster, usuario?.nivel_acesso])
-  const [loadingTimeout, setLoadingTimeout] = useState(false)
 
   useEffect(() => {
     if (!carregando) return

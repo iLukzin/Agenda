@@ -33,8 +33,8 @@ export default function EmpresasPage() {
   const [busca, setBusca]           = useState('')
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao]   = useState(false)
-  const [selecionada, setSelecionada] = useState<Empresa | null>(null)
-  const [abaModal, setAbaModal] = useState<'dados'|'usuarios'>('dados')
+  const [selecionada, setSelecionada] = useState(null as Empresa | null)
+  const [abaModal, setAbaModal] = useState('dados' as string)
   const [todosUsuarios, setTodosUsuarios] = useState<any[]>([])
   const [usuariosVinculados, setUsuariosVinculados] = useState<string[]>([])
   const [salvandoVinculos, setSalvandoVinculos] = useState(false)
@@ -201,8 +201,8 @@ export default function EmpresasPage() {
             {/* Abas - só mostra na edição */}
             {modoEdicao && selecionada && (
               <div style={{ display:'flex', gap:'4px', marginBottom:'4px', borderBottom:'2px solid #f0f0f8', paddingBottom:'0' }}>
-                {(['dados','usuarios'] as Array<'dados'|'usuarios'>).map((k) => (
-                  <button key={k} onClick={()=>{ setAbaModal(k); if(k==='usuarios' && selecionada) carregarUsuariosEmpresa(selecionada.id) }}
+                {(['dados','usuarios'] as ('dados'|'usuarios')[]).map((k) => (
+                  <button key={k} onClick={()=>{ setAbaModal(k as string); if(k==='usuarios' && selecionada) carregarUsuariosEmpresa(selecionada.id) }}
                     style={{ background:'none', border:'none', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', borderBottom: abaModal===k ? '2px solid #6366f1' : '2px solid transparent', color: abaModal===k ? '#6366f1' : '#6b7280', marginBottom:'-2px' }}>
                     {k === 'dados' ? 'Dados da Empresa' : 'Usuários Vinculados'}
                   </button>

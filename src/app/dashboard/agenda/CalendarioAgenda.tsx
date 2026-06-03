@@ -24,7 +24,7 @@ function nomeMes(d: Date) {
 type Props = {
   agendamentos: Ag[]
   profissionais: any[]
-  onAbrirNovo: () => void
+  onAbrirNovo: (() => void) | undefined
   onAbrirEdicao: (ag: Ag) => void
   filtroProfissional: string
   setFiltroProfissional: (v: string) => void
@@ -310,10 +310,12 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
 
       {/* Botao novo */}
       <div style={{ padding:'12px 16px', borderTop:'1px solid '+AZUL_LIGHT, display:'flex', justifyContent:'flex-end', flexShrink:0 }}>
+        {onAbrirNovo && (
         <button onClick={onAbrirNovo}
           style={{ width:'50px', height:'50px', borderRadius:'50%', background:'linear-gradient(135deg,'+AZUL_DARK+','+AZUL+')', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 14px rgba(37,99,235,0.35)' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
+        )}
       </div>
     </div>
   )

@@ -718,7 +718,7 @@ export default function AgendaPage() {
           <CalendarioAgenda
             agendamentos={agendamentos}
             profissionais={profissionais}
-            onAbrirNovo={abrirNovo}
+            onAbrirNovo={perm.criar ? abrirNovo : undefined}
             onAbrirEdicao={abrirEdicao}
             filtroProfissional={filtroProfissional}
             setFiltroProfissional={setFiltroProfissional}
@@ -754,10 +754,12 @@ export default function AgendaPage() {
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
-          <button onClick={abrirNovo} style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'10px', padding:'9px 20px', fontSize:'14px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'7px', boxShadow:'0 3px 10px rgba(99,102,241,0.4)', letterSpacing:'-0.2px' }}>
+{perm.criar && (
+                    <button onClick={abrirNovo} style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'10px', padding:'9px 20px', fontSize:'14px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'7px', boxShadow:'0 3px 10px rgba(99,102,241,0.4)', letterSpacing:'-0.2px' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Novo agendamento
           </button>
+          )}
           <div style={{ position:'relative' }}>
             <button onClick={()=>setFiltroAberto(f=>!f)} style={{ display:'flex', alignItems:'center', gap:'6px', background:'white', border:visualizacao==='periodo'?'1.5px solid #6366f1':'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 14px', cursor:'pointer', fontSize:'13px', fontWeight:'500', color:visualizacao==='periodo'?'#6366f1':'#374151' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>

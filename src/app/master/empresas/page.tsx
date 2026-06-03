@@ -34,6 +34,10 @@ export default function EmpresasPage() {
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao]   = useState(false)
   const [selecionada, setSelecionada] = useState<Empresa | null>(null)
+  const [abaModal, setAbaModal] = useState<'dados'|'usuarios'>('dados')
+  const [todosUsuarios, setTodosUsuarios] = useState<any[]>([])
+  const [usuariosVinculados, setUsuariosVinculados] = useState<string[]>([])
+  const [salvandoVinculos, setSalvandoVinculos] = useState(false)
   const [form, setForm] = useState(formVazio())
   const ativas = empresas.filter(e => e.status === 'ativo').length
 
@@ -66,7 +70,30 @@ export default function EmpresasPage() {
     setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:e.whatsapp_habilitado||false })
     setModalAberto(true)
   }
-  function fecharModal() { setModalAberto(false); setSelecionada(null); setErro('') }
+  function fecharModal() { setModalAberto(false); setSelecionada(null); setErro(''); setAbaModal('dados'); setTodosUsuarios([]); setUsuariosVinculados([]) }
+
+  async function carregarUsuariosEmpresa(empresaId: string) {
+    const sb = createClient()
+    const [resU, resV] = await Promise.all([
+      sb.from('usuarios').select('id,nome,email,nivel_acesso').neq('nivel_acesso','master').order('nome'),
+      sb.from('usuario_empresas').select('usuario_id').eq('empresa_id', empresaId),
+    ])
+    setTodosUsuarios(resU.data || [])
+    setUsuariosVinculados((resV.data || []).map((v: any) => v.usuario_id))
+  }
+
+  async function salvarVinculos(empresaId: string) {
+    setSalvandoVinculos(true)
+    const sb = createClient()
+    await sb.from('usuario_empresas').delete().eq('empresa_id', empresaId)
+    if (usuariosVinculados.length > 0) {
+      await sb.from('usuario_empresas').insert(
+        usuariosVinculados.map((uid: string) => ({ usuario_id: uid, empresa_id: empresaId }))
+      )
+    }
+    setSalvandoVinculos(false)
+    alert('Vinculos salvos!')
+  }
 
   async function salvar() {
     if (!form.nome.trim()) return setErro('Nome é obrigatório.')
@@ -171,6 +198,20 @@ export default function EmpresasPage() {
               <h2 style={{ fontSize:'17px', fontWeight:'700', color:'#0f172a' }}>{modoEdicao ? 'Editar empresa' : 'Nova empresa'}</h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px' }}>×</button>
             </div>
+            {/* Abas - só mostra na edição */}
+            {modoEdicao && selecionada && (
+              <div style={{ display:'flex', gap:'4px', marginBottom:'4px', borderBottom:'2px solid #f0f0f8', paddingBottom:'0' }}>
+                {([['dados','Dados da Empresa'],['usuarios','Usuários Vinculados']] as const).map(([k,l]) => (
+                  <button key={k} onClick={()=>{ setAbaModal(k); if(k==='usuarios' && selecionada) carregarUsuariosEmpresa(selecionada.id) }}
+                    style={{ background:'none', border:'none', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', borderBottom: abaModal===k ? '2px solid #6366f1' : '2px solid transparent', color: abaModal===k ? '#6366f1' : '#6b7280', marginBottom:'-2px' }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Aba Dados */}
+            {(abaModal === 'dados' || !modoEdicao) && (
             <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
               {[{l:'Nome *',k:'nome',ph:'Nome da empresa'},{l:'E-mail',k:'email',ph:'email@empresa.com'},{l:'Telefone',k:'telefone',ph:'(11) 99999-9999'}].map(f=>(
                 <div key={f.k}>
@@ -238,11 +279,41 @@ export default function EmpresasPage() {
               </div>
             </div>
             {erro && <div style={{ background:'#fef2f2', borderRadius:'8px', padding:'10px 13px', marginTop:'12px', fontSize:'13px', color:'#dc2626', border:'1px solid #fecaca' }}>{erro}</div>}
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:'10px', marginTop:'18px' }}>
+            )} {/* fim aba dados */}
+
+            {/* Aba Usuários */}
+            {abaModal === 'usuarios' && modoEdicao && selecionada && (
+              <div style={{ display:'flex', flexDirection:'column', gap:'10px', minHeight:'200px' }}>
+                <p style={{ fontSize:'12px', color:'#6b7280', marginBottom:'4px' }}>Selecione os usuários que podem acessar esta empresa:</p>
+                {todosUsuarios.length === 0 ? (
+                  <p style={{ color:'#9ca3af', fontSize:'13px', textAlign:'center', padding:'20px' }}>Nenhum usuário cadastrado</p>
+                ) : (
+                  todosUsuarios.map((u: any) => (
+                    <label key={u.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 12px', borderRadius:'8px', border:'1px solid #e5e7eb', cursor:'pointer', background: usuariosVinculados.includes(u.id) ? '#eef2ff' : 'white' }}>
+                      <input type="checkbox" checked={usuariosVinculados.includes(u.id)}
+                        onChange={e => setUsuariosVinculados(prev => e.target.checked ? [...prev, u.id] : prev.filter(id => id !== u.id))}
+                        style={{ width:'16px', height:'16px', accentColor:'#6366f1' }}/>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827' }}>{u.nome}</p>
+                        <p style={{ fontSize:'11px', color:'#6b7280' }}>{u.email} · {u.nivel_acesso}</p>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+
+              <div style={{ display:'flex', justifyContent:'flex-end', gap:'10px', marginTop:'18px' }}>
               <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
+              {abaModal === 'usuarios' && selecionada ? (
+                <button onClick={()=>salvarVinculos(selecionada.id)} disabled={salvandoVinculos} style={{ background:salvandoVinculos?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'600', cursor:'pointer' }}>
+                  {salvandoVinculos ? 'Salvando...' : 'Salvar vínculos'}
+                </button>
+              ) : (
               <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'600', cursor:salvando?'not-allowed':'pointer' }}>
                 {salvando ? 'Salvando...' : modoEdicao ? 'Salvar' : 'Criar empresa'}
               </button>
+              )}
             </div>
           </div>
         </div>

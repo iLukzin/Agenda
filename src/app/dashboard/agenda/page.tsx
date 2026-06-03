@@ -257,6 +257,8 @@ export default function AgendaPage() {
   const [wppConectado, setWppConectado] = useState(false)
   const [sessaoEdicao, setSessaoEdicao] = useState<{num:number;total:number;valor:number}|null>(null)
   const permWpp = usePermissao('agenda_wpp')
+  const perm = usePermissao('agenda')
+  const permClientes = usePermissao('clientes')
   const [erroForm, setErroForm] = useState<string[]>([])
   const [finalizando, setFinalizando] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
 
-type Empresa = { id:string; nome:string; cnpj:string; email:string; telefone:string; endereco:string; plano:string; status:string; vencimento:string; bloqueada:boolean; motivo_bloqueio:string }
+type Empresa = any
 
 const inp = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const, minHeight:'42px' }
 const planoCor: Record<string,string> = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
@@ -56,7 +56,7 @@ export default function EmpresasPage() {
   })
 
   function abrirNova() { setModoEdicao(false); setSelecionada(null); setErro(''); setForm(formVazio()); setModalAberto(true) }
-  function abrirEdicao(e: Empresa) {
+  function abrirEdicao(e: any) {
     setModoEdicao(true); setSelecionada(e); setErro('')
     setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:e.whatsapp_habilitado||false })
     setModalAberto(true)
@@ -98,13 +98,13 @@ export default function EmpresasPage() {
     await carregar(); recarregar(); fecharModal(); setSalvando(false)
   }
 
-  async function toggleStatus(e: Empresa) {
+  async function toggleStatus(e: any) {
     const sb = createClient()
     await sb.from('empresas').update({ status: e.status === 'ativo' ? 'inativo' : 'ativo' }).eq('id', e.id)
     await carregar(); recarregar()
   }
 
-  async function toggleBloqueio(e: Empresa) {
+  async function toggleBloqueio(e: any) {
     const novo = !e.bloqueada
     const motivo = novo ? (prompt('Motivo do bloqueio:') || 'Falta de pagamento') : null
     if (novo && motivo === null) return
@@ -114,8 +114,8 @@ export default function EmpresasPage() {
     if (novo) alert('Empresa bloqueada. Usuarios serao deslogados automaticamente.')
   }
 
-  const sf = (k: string) => (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value }))
-  const sb2 = (k: string) => (v: any) => setForm((p: any) => ({ ...p, [k]: v }))
+  const sf = (k: any) => (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value }))
+  const sb2 = (k: any) => (v: any) => setForm((p: any) => ({ ...p, [k]: v }))
 
   if (!isMaster) { return null }
 

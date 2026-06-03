@@ -17,7 +17,7 @@ function mascaraCnpjCpf(v: string) { const d = v.replace(/[^\d]/g,'').slice(0,14
 export default function EmpresasPage() {
   const router = useRouter()
   const { recarregar, isMaster } = useEmpresa()
-  const [empresas, setEmpresas]     = useState<Empresa[]>([])
+  const [empresas, setEmpresas]     = useState([] as Empresa[])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando]     = useState(false)
   const [erro, setErro]             = useState('')
@@ -26,8 +26,8 @@ export default function EmpresasPage() {
   const [modoEdicao, setModoEdicao]   = useState(false)
   const [selecionada, setSelecionada] = useState(null as Empresa | null)
   const [abaModal, setAbaModal] = useState('dados' as string)
-  const [todosUsuarios, setTodosUsuarios] = useState<any[]>([])
-  const [usuariosVinculados, setUsuariosVinculados] = useState<string[]>([])
+  const [todosUsuarios, setTodosUsuarios] = useState([] as any[])
+  const [usuariosVinculados, setUsuariosVinculados] = useState([] as string[])
   const [salvandoVinculos, setSalvandoVinculos] = useState(false)
   const [form, setForm] = useState(formVazio())
   const ativas = empresas.filter(e => e.status === 'ativo').length

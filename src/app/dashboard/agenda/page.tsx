@@ -1086,7 +1086,7 @@ export default function AgendaPage() {
               <div style={{ position:'relative' }}>
                 <label style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
                   <span style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Cliente *</span>
-                  <button type="button" onClick={()=>setModalNovoCliente(true)} style={{ background:'none', border:'none', color:'#6366f1', fontSize:'12px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'3px', padding:0 }}>+ Novo cliente</button>
+                  <button type="button" onClick={()=>setModalNovoCliente(true)} style={{ background:'none', border:'none', color:'#6366f1', fontSize:'12px', fontWeight:'600', cursor:'pointer', display: permClientes.criar ? 'flex' : 'none', alignItems:'center', gap:'3px', padding:0 }}>+ Novo cliente</button>
                 </label>
                 {clienteSel ? (
                   <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', background:'#eef2ff', borderRadius:'8px', border:'1.5px solid #6366f1' }}>

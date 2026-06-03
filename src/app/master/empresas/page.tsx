@@ -12,17 +12,7 @@ const planoCor: Record<string,string> = { basico:'#6b7280', profissional:'#6366f
 const planoBg:  Record<string,string> = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
 function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada:false, motivo_bloqueio:'', whatsapp_habilitado:false } }
 
-function mascaraCnpjCpf(v: string) {
-  const d = v.replace(/[^\d]/g, '').slice(0, 14)
-  if (d.length <= 11) {
-    if (d.length <= 3) return d
-    if (d.length <= 6) return d.slice(0,3)+'.'+d.slice(3)
-    if (d.length <= 9) return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6)
-    return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9)
-  }
-  if (d.length <= 12) return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)
-  return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12)
-}
+function mascaraCnpjCpf(v: string) { const d = v.replace(/[^\d]/g,'').slice(0,14); if (d.length<=11) { if (d.length<=3) return d; if (d.length<=6) return d.slice(0,3)+'.'+d.slice(3); if (d.length<=9) return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6); return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9) } if (d.length<=12) return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12); return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12) }
 
 export default function EmpresasPage() {
   const router = useRouter()

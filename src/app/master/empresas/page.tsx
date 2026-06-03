@@ -117,9 +117,7 @@ export default function EmpresasPage() {
   const sf = (k: any) => (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value }))
   const sb2 = (k: any) => (v: any) => setForm((p: any) => ({ ...p, [k]: v }))
 
-  if (!isMaster) { return null }
-
-  return (
+  return (!isMaster ? null : (
     <div style={{ padding:'16px', minHeight:'100vh', background:'#f4f5fb' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'20px', flexWrap:'wrap' }}>
@@ -307,4 +305,5 @@ export default function EmpresasPage() {
       )}
     </div>
   )
+)
 }

@@ -114,8 +114,8 @@ export default function EmpresasPage() {
     if (novo) alert('Empresa bloqueada. Usuarios serao deslogados automaticamente.')
   }
 
-  const sf = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
-  const sb2 = k => v => setForm(p => ({ ...p, [k]: v }))
+  function sf(k) { return function(e) { setForm(function(p) { return { ...p, [k]: e.target.value } }) } }
+  function sb2(k) { return function(v) { setForm(function(p) { return { ...p, [k]: v } }) } }
 
   return (!isMaster ? null : (
     <div style={{ padding:'16px', minHeight:'100vh', background:'#f4f5fb' }}>

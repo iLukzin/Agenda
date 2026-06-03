@@ -461,7 +461,6 @@ export default function MensagensPage() {
           </div>
         </div>
       )}
-    </div>
 
       {/* Modal de log da campanha */}
       {campDetalhes && (

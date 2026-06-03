@@ -36,14 +36,14 @@ export default function EmpresasPage() {
     setCarregando(true)
     const sb = createClient()
     const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado').order('nome')
-    setEmpresas((data || []).map((e: any) => ({ id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false , whatsapp_habilitado:e.whatsapp_habilitado||false })))
+    setEmpresas((data || []).map(e => ({ id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false , whatsapp_habilitado:e.whatsapp_habilitado||false })))
     setCarregando(false)
   }, [])
 
   useEffect(() => { carregar() }, [carregar])
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && modalAberto) fecharModal() }
+    function onKey(e) { if (e.key === 'Escape' && modalAberto) fecharModal() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [modalAberto])
@@ -63,23 +63,23 @@ export default function EmpresasPage() {
   }
   function fecharModal() { setModalAberto(false); setSelecionada(null); setErro(''); setAbaModal('dados'); setTodosUsuarios([]); setUsuariosVinculados([]) }
 
-  async function carregarUsuariosEmpresa(empresaId: string) {
+  async function carregarUsuariosEmpresa(empresaId) {
     const sb = createClient()
     const [resU, resV] = await Promise.all([
       sb.from('usuarios').select('id,nome,email,nivel_acesso').neq('nivel_acesso','master').order('nome'),
       sb.from('usuario_empresas').select('usuario_id').eq('empresa_id', empresaId),
     ])
     setTodosUsuarios(resU.data || [])
-    setUsuariosVinculados((resV.data || []).map((v: any) => v.usuario_id))
+    setUsuariosVinculados((resV.data || []).map(v => v.usuario_id))
   }
 
-  async function salvarVinculos(empresaId: string) {
+  async function salvarVinculos(empresaId) {
     setSalvandoVinculos(true)
     const sb = createClient()
     await sb.from('usuario_empresas').delete().eq('empresa_id', empresaId)
     if (usuariosVinculados.length > 0) {
       await sb.from('usuario_empresas').insert(
-        usuariosVinculados.map((uid: string) => ({ usuario_id: uid, empresa_id: empresaId }))
+        usuariosVinculados.map(uid => ({ usuario_id: uid, empresa_id: empresaId }))
       )
     }
     setSalvandoVinculos(false)
@@ -114,8 +114,8 @@ export default function EmpresasPage() {
     if (novo) alert('Empresa bloqueada. Usuarios serao deslogados automaticamente.')
   }
 
-  const sf = (k: any) => (e: any) => setForm((p: any) => ({ ...p, [k]: e.target.value }))
-  const sb2 = (k: any) => (v: any) => setForm((p: any) => ({ ...p, [k]: v }))
+  const sf = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const sb2 = k => v => setForm(p => ({ ...p, [k]: v }))
 
   return (!isMaster ? null : (
     <div style={{ padding:'16px', minHeight:'100vh', background:'#f4f5fb' }}>

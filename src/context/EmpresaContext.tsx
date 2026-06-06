@@ -136,8 +136,10 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         console.log('[EmpresaCtx] usuario_id:', u.id, 'vinculos:', resVinc.data, 'erro:', resVinc.error)
         ;(resVinc.data || []).forEach((v: any) => { if (v.empresa_id) idsSet.add(v.empresa_id) })
 
-        const todasIds = Array.from(idsSet)
-        console.log('[EmpresaCtx] todasIds:', todasIds)
+        // Filtrar apenas UUIDs válidos (formato correto, sem placeholders)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        const todasIds = Array.from(idsSet).filter(id => uuidRegex.test(id) && id !== '00000000-0000-0000-0000-000000000000')
+        console.log('[EmpresaCtx] todasIds validos:', todasIds)
 
         if (todasIds.length === 0) {
           setEmpresas([])

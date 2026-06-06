@@ -123,21 +123,21 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       } else {
         const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor'
 
-        // Coletar todos os IDs de empresa deste usuário:
-        // 1. empresa_id direto no cadastro do usuário
-        // 2. vínculos na tabela usuario_empresas
+        // Buscar empresa principal do cadastro do usuário
         const idsSet = new Set<string>()
         if (u.empresa_id) idsSet.add(u.empresa_id)
 
-        const { data: vinculos, error: errVinc } = await sb
+        // Buscar vínculos via usuario_empresas (usuário vinculado na aba da empresa)
+        const resVinc = await sb
           .from('usuario_empresas')
           .select('empresa_id')
           .eq('usuario_id', u.id)
 
-        if (errVinc) console.error('Erro buscando vinculos:', errVinc)
-        ;(vinculos || []).forEach((v: any) => { if (v.empresa_id) idsSet.add(v.empresa_id) })
+        console.log('[EmpresaCtx] usuario_id:', u.id, 'vinculos:', resVinc.data, 'erro:', resVinc.error)
+        ;(resVinc.data || []).forEach((v: any) => { if (v.empresa_id) idsSet.add(v.empresa_id) })
 
         const todasIds = Array.from(idsSet)
+        console.log('[EmpresaCtx] todasIds:', todasIds)
 
         if (todasIds.length === 0) {
           setEmpresas([])

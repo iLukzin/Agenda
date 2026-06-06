@@ -231,7 +231,11 @@ function useVisibilityRefresh(fn: () => void) {
 }
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
-  const tipoAgenda = (empresaAtiva as any)?.tipo_agenda || 'grade'
+  const [tipoAgenda, setTipoAgenda] = useState('grade')
+  useEffect(() => {
+    const t = String((empresaAtiva as any)?.tipo_agenda || 'grade')
+    setTipoAgenda(t)
+  }, [empresaAtiva])
   const bloquearValor = (usuario as any)?.bloquear_edicao_valor !== false // padrão: bloqueado
   const hoje = useMemo(() => hojeNoBrasil(), [])
 

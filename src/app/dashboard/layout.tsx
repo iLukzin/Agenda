@@ -376,9 +376,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
             <p style={{ fontSize:'12px', color:'white', fontWeight:'500', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{usuario.nome}</p>
             <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{usuario.email}</p>
           </div>
-          <button onClick={handleLogout} style={{ background:'rgba(255,255,255,0.06)', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', width:'30px', height:'30px', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center' }} title="Sair">
-            <NavIcon code="OUT" size={15}/>
-          </button>
+
         </div>
       )}
 

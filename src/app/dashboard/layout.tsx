@@ -382,28 +382,26 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
         </div>
       )}
 
-      {!sidebarAberta && (
-        {/* Suporte */}
-        <a href="https://wa.me/5534988018483" target="_blank" rel="noopener noreferrer"
-          style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 10px', margin:'4px 8px', borderRadius:'10px', textDecoration:'none', background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.15)', cursor:'pointer', transition:'background 0.15s' }}
-          title="Suporte">
-          <div style={{ width:'32px', height:'32px', borderRadius:'9px', background:'linear-gradient(135deg,#25d366,#128c7e)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.25 1.18 2 2 0 012.25 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.18a16 16 0 006.91 6.91l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      {/* Suporte */}
+      <a href="https://wa.me/5534988018483" target="_blank" rel="noopener noreferrer"
+        style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 10px', margin:'4px 8px', borderRadius:'10px', textDecoration:'none', background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.15)', cursor:'pointer' }}
+        title="Suporte">
+        <div style={{ width:'32px', height:'32px', borderRadius:'9px', background:'linear-gradient(135deg,#25d366,#128c7e)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.25 1.18 2 2 0 012.25 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.18a16 16 0 006.91 6.91l.56-.56a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        </div>
+        {sidebarAberta && (
+          <div style={{ flex:1, overflow:'hidden' }}>
+            <p style={{ fontSize:'12px', fontWeight:'700', color:'#25d366', margin:0 }}>Suporte</p>
+            <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:0 }}>(34) 98801-8483</p>
           </div>
-          {sidebarAberta && (
-            <div style={{ flex:1, overflow:'hidden' }}>
-              <p style={{ fontSize:'12px', fontWeight:'700', color:'#25d366', margin:0 }}>Suporte</p>
-              <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>(34) 98801-8483</p>
-            </div>
-          )}
-        </a>
+        )}
+      </a>
 
-        <div style={{ padding:'10px 8px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ padding:'10px 8px', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
           <button onClick={handleLogout} style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', height:'36px', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <NavIcon code="OUT" size={15}/>
           </button>
         </div>
-      )}
     </>
   )
 }

@@ -128,11 +128,9 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         let todasIds: string[] = u.empresa_id ? [u.empresa_id] : []
 
         // Passo 2: empresas vinculadas via usuario_empresas (aba Usuários da empresa)
-        try {
-          const { data: vinculos } = await sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id)
-          const vinculoIds = (vinculos || []).map((v: any) => v.empresa_id) as string[]
-          vinculoIds.forEach((id) => { if (!todasIds.includes(id)) todasIds.push(id) })
-        } catch { /* tabela pode não existir */ }
+        const { data: vinculos } = await sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id)
+        const vinculoIds = ((vinculos || []).map((v: any) => v.empresa_id)) as string[]
+        vinculoIds.forEach((id: string) => { if (id && !todasIds.includes(id)) todasIds.push(id) })
 
         if (todasIds.length === 0) {
           // Sem empresa nenhuma - nada a mostrar
@@ -158,14 +156,19 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
           setEmpresas(todasEmpresas)
 
-          // Restaurar empresa salva no localStorage ou usar a principal
+          // Empresa ativa: se só 1, usa ela diretamente; se múltiplas, tenta localStorage
           let ativa = empPrincipal || todasEmpresas[0]
-          try {
-            if (typeof window !== 'undefined') {
-              const salva = localStorage.getItem('empresa_ativa_id')
-              if (salva) ativa = todasEmpresas.find((e: any) => e.id === salva) || ativa
-            }
-          } catch {}
+          if (todasEmpresas.length > 1) {
+            try {
+              if (typeof window !== 'undefined') {
+                const salva = localStorage.getItem('empresa_ativa_id')
+                if (salva) {
+                  const found = todasEmpresas.find((e: any) => e.id === salva)
+                  if (found) ativa = found
+                }
+              }
+            } catch {}
+          }
           setEmpresaAtiva(ativa || null)
         }
       }

@@ -29,7 +29,7 @@ const navMaster = [
 ]
 
 function NavIcon({ code, size = 18 }: { code: string; size?: number }) {
-  const icons: Record<string, React.ReactNode> = {
+  const icons = {
     DASH: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -123,7 +123,7 @@ function NavIcon({ code, size = 18 }: { code: string; size?: number }) {
       </svg>
     ),
   }
-  const extra: Record<string, React.ReactNode> = {
+  const extra = {
     REL: (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>),
   }
   return icons[code] || extra[code] || null
@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [menuMobile, setMenuMobile]       = useState(false)
   const [isMobile, setIsMobile]           = useState(false)
   const [dropEmpresa, setDropEmpresa]     = useState(false)
-  const [permMap, setPermMap] = useState<Record<string, Permissao>>({})
+  const [permMap, setPermMap] = useState({} as Record<string, Permissao>)
 
 
   const [loadingTimeout, setLoadingTimeout] = useState(false)
@@ -236,7 +236,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   )
 }
 
-function permPadraoLayout(nivel: string): Record<string, any> {
+function permPadraoLayout(nivel: string) {
   if (nivel === 'usuario') return {
     dashboard: { visualizar:false }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
     clientes: { visualizar:false }, profissionais: { visualizar:false },

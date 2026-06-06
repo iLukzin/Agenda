@@ -713,7 +713,7 @@ export default function AgendaPage() {
   }
 
   return (
-    <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div key={(empresaAtiva?.id||'') + tipoAgenda} style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
       {/* Vista Calendario */}
       {tipoAgenda === 'calendario' && (
         <div style={{ flex:1, overflow:'hidden' }}>

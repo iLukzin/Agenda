@@ -45,15 +45,8 @@ function labelPeriodoSemana(seg: Date) {
   if (mI === mF) return numeroDia(seg) + ' - ' + numeroDia(sab) + ' de ' + mI + ' ' + sab.getFullYear()
   return numeroDia(seg) + ' ' + mI + ' - ' + numeroDia(sab) + ' ' + mF + ' ' + sab.getFullYear()
 }
-function linhaHoraAtual() {
-  const s = new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})
-  const parts = s.split(':').map(Number)
-  const h = parts[0], m = parts[1]
-  if (h - HORA_INICIO < 0 || h - HORA_INICIO > 13) return null
-  return (h - HORA_INICIO) * ALTURA_HORA + (m / 60) * ALTURA_HORA
-}
 
-type VisualizacaoTipo = 'semana' | 'dia' | 'periodo'
+
 type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
@@ -363,13 +356,11 @@ export default function AgendaPage() {
       if (e.key === 'Escape') {
         if (modalCancelar) { setModalCancelar(false); return }
         if (modalAberto) { fecharModal(); return }
-        if (calAberto) { setCalAberto(false); return }
-        if (filtroAberto) { setFiltroAberto(false); return }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [modalAberto, modalCancelar, calAberto, filtroAberto])
+  }, [modalAberto, modalCancelar])
   useVisibilityRefresh(carregar)
 
   // Realtime: canal separado que nao re-subscribe a cada render
@@ -407,17 +398,14 @@ export default function AgendaPage() {
     }
   }, [empresaAtiva?.id]) // SEM carregar no dep - evita loop
 
-  const diasSemana = useMemo(() => Array.from({length:7}, (_,i) => addDias(semanaBase, i)), [semanaBase])
 
-  function semanaAnterior() { setSemanaBase(d => addDias(d, -7)) }
-  function semanaSeguinte() { setSemanaBase(d => addDias(d, 7)) }
-  function diaAnterior() { setDiaAtivo(d => { const n = addDias(d,-1); setSemanaBase(inicioSemana(n)); return n }) }
-  function diaSeguinte() { setDiaAtivo(d => { const n = addDias(d,1); setSemanaBase(inicioSemana(n)); return n }) }
-  function irParaHoje() { const h = hojeNoBrasil(); setSemanaBase(inicioSemana(h)); setDiaAtivo(h); setCalAberto(false) }
-  function irParaData(d: Date) { setSemanaBase(inicioSemana(d)); setDiaAtivo(d); setCalAberto(false) }
+  function diaAnterior() { setDiaAtivo(d => addDias(d,-1)) }
+  function diaSeguinte() { setDiaAtivo(d => addDias(d,1)) }
+  function irParaHoje() { const h = hojeNoBrasil(); setDiaAtivo(h) }
+  function irParaData(d: Date) { setDiaAtivo(d) }
 
   function abrirNovo() {
-    const dataRef = visualizacao === 'dia' ? diaAtivo : hoje
+    const dataRef = diaAtivo
     setModoEdicao(false); setSelecionado(null); setClienteSel(null); setBuscaCliente('')
     setPlanoCliente(null); setSessaoPlano(null)
     setIntervaloMin(30)
@@ -517,7 +505,7 @@ export default function AgendaPage() {
         await sb3.from('cliente_plano_sessoes').insert({ empresa_id:empresaAtiva.id, cliente_id:form.clienteId, plano_id:planoCliente.id, sessoes_utilizadas:1 })
       }
     }
-    setSemanaBase(inicioSemana(isoParaDate(form.dataISO))); setDiaAtivo(isoParaDate(form.dataISO))
+    setDiaAtivo(isoParaDate(form.dataISO))
     await carregar(); fecharModal(); setSalvando(false)
   }
 
@@ -646,8 +634,6 @@ export default function AgendaPage() {
   const slotSel = slotsDisponiveis.find(s => s.label === form.horaInicio)
   const btnBloqueado = (naoAtende && !!profSelecionado) || (!!slotSel && !slotSel.disponivel) || !form.profissional || !form.clienteId
 
-  const diasParaMostrar = visualizacao === 'dia' ? [diaAtivo] : diasSemana
-  const posLinha = linhaHoraAtual()
 
   const agsFiltrados = useMemo(() => {
     if (filtroProfissional === 'todos') return agendamentos

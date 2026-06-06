@@ -236,8 +236,8 @@ export default function AgendaPage() {
     if (!empresaAtiva?.id) return
     const sb = createClient()
     sb.from('empresas').select('tipo_agenda').eq('id', empresaAtiva.id).single().then(({ data }) => {
-      if (data?.tipo_agenda) setTipoAgenda(data.tipo_agenda)
-      else setTipoAgenda('grade')
+      const tipo = data?.tipo_agenda
+      setTipoAgenda(tipo === 'calendario' ? 'calendario' : 'grade')
     })
   }, [empresaAtiva?.id])
   const bloquearValor = (usuario as any)?.bloquear_edicao_valor !== false // padrão: bloqueado

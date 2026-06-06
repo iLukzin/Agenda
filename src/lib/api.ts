@@ -285,11 +285,35 @@ export async function excluirLancamento(id: string) {
 
 export async function listarUsuarios(empresaId: string) {
   const sb = createClient()
-  const { data, error } = await sb
+  // Buscar usuários da empresa (empresa_id = empresaId)
+  const { data: diretos, error } = await sb
     .from('usuarios')
-    .select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status')
+    .select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor')
     .eq('empresa_id', empresaId)
     .order('nome')
+  if (error) tratarErro('listarUsuarios', error)
+  
+  // Buscar usuários vinculados via usuario_empresas (mas que têm empresa_id diferente)
+  const { data: vinculos } = await sb
+    .from('usuario_empresas')
+    .select('usuario_id')
+    .eq('empresa_id', empresaId)
+  
+  const vinculoIds = (vinculos || []).map((v: any) => v.usuario_id)
+  const diretosIds = (diretos || []).map((u: any) => u.id)
+  const extrasIds = vinculoIds.filter((id: string) => !diretosIds.includes(id))
+  
+  let todos = diretos || []
+  if (extrasIds.length > 0) {
+    const { data: extras } = await sb
+      .from('usuarios')
+      .select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor')
+      .in('id', extrasIds)
+      .order('nome')
+    todos = [...todos, ...(extras || [])]
+  }
+  
+  const data = todos
   if (error) tratarErro('listarUsuarios', error)
   return { data, error }
 }

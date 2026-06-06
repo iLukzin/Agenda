@@ -232,7 +232,7 @@ function useVisibilityRefresh(fn: () => void) {
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
   const tipoAgenda = (empresaAtiva as any)?.tipo_agenda || 'grade'
-  const bloquearValor = (empresaAtiva as any)?.bloquear_edicao_valor === true
+  const bloquearValor = (usuario as any)?.bloquear_edicao_valor !== false // padrão: bloqueado
   const hoje = useMemo(() => hojeNoBrasil(), [])
 
   const [agendamentos, setAgendamentos] = useState<AgendamentoLocal[]>([])

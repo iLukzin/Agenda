@@ -42,7 +42,7 @@ export default function UsuariosPage() {
   const [selecionado, setSelecionado]   = useState<Usuario|null>(null)
   const [modalConfirm, setModalConfirm] = useState<{tipo:'excluir'|'inativar';id:string}|null>(null)
   const [erro, setErro]           = useState('')
-  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'' })
+  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'', bloquear_edicao_valor:true })
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
@@ -69,7 +69,7 @@ export default function UsuariosPage() {
 
   function abrirEdicao(u: Usuario) {
     setModoEdicao(true); setSelecionado(u); setErro('')
-    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'' })
+    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'', bloquear_edicao_valor:u.bloquear_edicao_valor !== false })
     setModalAberto(true)
   }
 
@@ -86,7 +86,7 @@ export default function UsuariosPage() {
         // Atualiza dados na tabela usuarios
         const { error } = await atualizarUsuario(selecionado.id, {
           nome: form.nome, telefone: form.telefone,
-          cargo: form.cargo, nivel_acesso: form.nivel_acesso, status: form.status,
+          cargo: form.cargo, nivel_acesso: form.nivel_acesso, status: form.status, bloquear_edicao_valor: form.bloquear_edicao_valor !== false,
         })
         if (error) throw new Error(error.message)
       } else {
@@ -102,6 +102,7 @@ export default function UsuariosPage() {
             cargo:        form.cargo || null,
             nivel_acesso: form.nivel_acesso,
             empresa_id:   empresaAtiva.id,
+            bloquear_edicao_valor: form.bloquear_edicao_valor !== false,
           }),
         })
         const result = await res.json()
@@ -285,6 +286,18 @@ export default function UsuariosPage() {
                   </select>
                 </div>
               )}
+            </div>
+
+            {/* Toggle bloquear edição de valor */}
+            <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f9fafb', borderRadius:'10px', padding:'12px 14px', border:'1px solid #e5e7eb' }}>
+              <div>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', marginBottom:'2px' }}>Bloquear edição de valor no agendamento</p>
+                <p style={{ fontSize:'11px', color:'#6b7280' }}>Quando ativado, o usuário não pode alterar o valor definido pelo serviço</p>
+              </div>
+              <div onClick={()=>setForm(f=>({...f, bloquear_edicao_valor:!f.bloquear_edicao_valor}))}
+                style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.bloquear_edicao_valor?'#6366f1':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
+                <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.bloquear_edicao_valor?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+              </div>
             </div>
 
             {erro && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 14px', marginTop:'14px', fontSize:'13px', color:'#dc2626' }}>{erro}</div>}

@@ -22,6 +22,7 @@ export type UsuarioLogado = {
   nivel_acesso: 'master' | 'admin' | 'profissional' | 'usuario'
   empresa_id?: string
   profissional_id?: string
+  bloquear_edicao_valor?: boolean
 }
 
 type EmpresaContextType = {
@@ -62,7 +63,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       // Busca o usuário na tabela
       const { data: u } = await sb
         .from('usuarios')
-        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status')
+        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status, bloquear_edicao_valor')
         .eq('auth_id', user.id)
         .single()
 
@@ -85,12 +86,13 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       }
 
       const usuarioLogado: UsuarioLogado = {
-        id:              u.id,
-        nome:            u.nome,
-        email:           u.email,
-        nivel_acesso:    u.nivel_acesso,
-        empresa_id:      u.empresa_id,
-        profissional_id: u.profissional_id,
+        id:                    u.id,
+        nome:                  u.nome,
+        email:                 u.email,
+        nivel_acesso:          u.nivel_acesso,
+        empresa_id:            u.empresa_id,
+        profissional_id:       u.profissional_id,
+        bloquear_edicao_valor: u.bloquear_edicao_valor !== false,
       }
       setUsuario(usuarioLogado)
 

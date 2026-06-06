@@ -61,9 +61,24 @@ export default function EmpresasPage() {
   async function salvarVinculos(empresaId: any) {
     setSalvandoVinculos(true)
     const sb = createClient()
+
+    // Buscar usuários que têm empresa_id = empresaId (proprietários diretos)
+    // Estes SEMPRE devem ter vínculo, independente da seleção
+    const { data: proprietarios } = await sb
+      .from('usuarios')
+      .select('id')
+      .eq('empresa_id', empresaId)
+    const proprietariosIds = (proprietarios || []).map((p: any) => p.id) as string[]
+
+    // Unir selecionados + proprietários (sem duplicar)
+    const todosIds = Array.from(new Set([...usuariosVinculados, ...proprietariosIds]))
+
+    // Deletar vínculos existentes e reinserir
     await sb.from('usuario_empresas').delete().eq('empresa_id', empresaId)
-    if (usuariosVinculados.length > 0) {
-      await sb.from('usuario_empresas').insert(usuariosVinculados.map(function(uid: any) { return { usuario_id: uid, empresa_id: empresaId } }))
+    if (todosIds.length > 0) {
+      await sb.from('usuario_empresas').insert(
+        todosIds.map(function(uid: any) { return { usuario_id: uid, empresa_id: empresaId } })
+      )
     }
     setSalvandoVinculos(false)
     alert('Vinculos salvos!')

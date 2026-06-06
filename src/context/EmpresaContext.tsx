@@ -121,31 +121,43 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setEmpresaAtiva(empresaRestaurada || l[0] || null)
 
       } else {
-        // Usuário com ou sem empresa_id - buscar TODAS as empresas vinculadas
         const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor'
 
-        // Passo 1: empresa principal (empresa_id no cadastro do usuário)
-        let todasIds: string[] = u.empresa_id ? [u.empresa_id] : []
+        // Coletar todos os IDs de empresa deste usuário:
+        // 1. empresa_id direto no cadastro do usuário
+        // 2. vínculos na tabela usuario_empresas
+        const idsSet = new Set<string>()
+        if (u.empresa_id) idsSet.add(u.empresa_id)
 
-        // Passo 2: empresas vinculadas via usuario_empresas (aba Usuários da empresa)
-        const { data: vinculos } = await sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id)
-        const vinculoIds = ((vinculos || []).map((v: any) => v.empresa_id)) as string[]
-        vinculoIds.forEach((id: string) => { if (id && !todasIds.includes(id)) todasIds.push(id) })
+        const { data: vinculos, error: errVinc } = await sb
+          .from('usuario_empresas')
+          .select('empresa_id')
+          .eq('usuario_id', u.id)
+
+        if (errVinc) console.error('Erro buscando vinculos:', errVinc)
+        ;(vinculos || []).forEach((v: any) => { if (v.empresa_id) idsSet.add(v.empresa_id) })
+
+        const todasIds = Array.from(idsSet)
 
         if (todasIds.length === 0) {
-          // Sem empresa nenhuma - nada a mostrar
           setEmpresas([])
           setEmpresaAtiva(null)
         } else {
-          // Buscar dados de todas as empresas
-          const { data: empsData } = await sb.from('empresas').select(SELECT_EMP).in('id', todasIds)
+          const { data: empsData, error: errEmps } = await sb
+            .from('empresas')
+            .select(SELECT_EMP)
+            .in('id', todasIds)
+
+          if (errEmps) console.error('Erro buscando empresas:', errEmps)
           const todasEmpresas: any[] = empsData || []
 
-          // Empresa principal (para verificar bloqueio)
-          const empPrincipal = u.empresa_id ? todasEmpresas.find(e => e.id === u.empresa_id) : todasEmpresas[0]
+          // Empresa principal para verificar bloqueio
+          const empPrincipal = u.empresa_id
+            ? todasEmpresas.find(e => e.id === u.empresa_id)
+            : todasEmpresas[0]
 
-          // Verificar se empresa principal está bloqueada
-          if (empPrincipal && empPrincipal.bloqueada && u.nivel_acesso !== 'master') {
+          // Bloquear acesso se empresa principal bloqueada
+          if (empPrincipal?.bloqueada && u.nivel_acesso !== 'master') {
             const motivo = empPrincipal.motivo_bloqueio || 'Falta de pagamento'
             await sb.auth.signOut()
             if (typeof window !== 'undefined') {
@@ -156,14 +168,14 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
           setEmpresas(todasEmpresas)
 
-          // Empresa ativa: se só 1, usa ela diretamente; se múltiplas, tenta localStorage
-          let ativa = empPrincipal || todasEmpresas[0]
+          // Empresa ativa: 1 empresa = usa direto; múltiplas = respeita localStorage
+          let ativa: any = empPrincipal || todasEmpresas[0]
           if (todasEmpresas.length > 1) {
             try {
               if (typeof window !== 'undefined') {
-                const salva = localStorage.getItem('empresa_ativa_id')
-                if (salva) {
-                  const found = todasEmpresas.find((e: any) => e.id === salva)
+                const salvaId = localStorage.getItem('empresa_ativa_id')
+                if (salvaId) {
+                  const found = todasEmpresas.find((e: any) => e.id === salvaId)
                   if (found) ativa = found
                 }
               }

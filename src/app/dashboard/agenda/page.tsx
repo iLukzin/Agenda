@@ -231,8 +231,6 @@ function useVisibilityRefresh(fn: () => void) {
 }
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
-  // Ler tipo_agenda diretamente do objeto empresaAtiva (já vem no contexto com o valor correto)
-  const tipoAgenda = empresaAtiva?.tipo_agenda === 'calendario' ? 'calendario' : 'grade'
   const bloquearValor = (usuario as any)?.bloquear_edicao_valor !== false // padrão: bloqueado
   const hoje = useMemo(() => hojeNoBrasil(), [])
 
@@ -242,13 +240,9 @@ export default function AgendaPage() {
   const [servicos, setServicos] = useState<any[]>([])
   const [horariosProfissional, setHorariosProfissional] = useState<HorarioDB[]>([])
   const [carregando, setCarregando] = useState(false)
-  const [visualizacao, setVisualizacao] = useState<VisualizacaoTipo>('dia')
-  const [semanaBase, setSemanaBase] = useState<Date>(() => inicioSemana(hojeNoBrasil()))
   const [diaAtivo, setDiaAtivo] = useState<Date>(() => hojeNoBrasil())
-  const [calAberto, setCalAberto] = useState(false)
   const [periodoInicio, setPeriodoInicio] = useState(toISO(hojeNoBrasil()))
   const [periodoFim, setPeriodoFim] = useState(toISO(addDias(hojeNoBrasil(), 30)))
-  const [filtroAberto, setFiltroAberto] = useState(false)
   const [filtroProfissional, setFiltroProfissional] = useState('todos')
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
@@ -713,247 +707,19 @@ export default function AgendaPage() {
   }
 
   return (
-    <div key={(empresaAtiva?.id||'') + tipoAgenda} style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
-      {/* Vista Calendario */}
-      {tipoAgenda === 'calendario' && (
-        <div style={{ flex:1, overflow:'hidden' }}>
-          <CalendarioAgenda
-            agendamentos={agendamentos}
-            profissionais={profissionais}
-            onAbrirNovo={perm.criar ? abrirNovo : undefined}
-            onAbrirEdicao={abrirEdicao}
-            filtroProfissional={filtroProfissional}
-            setFiltroProfissional={setFiltroProfissional}
-          />
-        </div>
-      )}
-      {tipoAgenda === 'grade' && (<>
-      {/* Cabecalho */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px', flexShrink:0, flexWrap:'wrap', gap:'10px' }}>
-        <div style={{ position:'relative' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-            <div>
-              <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.5px', lineHeight:1 }}>Agenda</h1>
-            </div>
-            <button onClick={()=>setCalAberto(c=>!c)}
-              style={{ display:'flex', alignItems:'center', gap:'8px', background:'white', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'7px 14px', cursor:'pointer', boxShadow:'0 1px 4px rgba(99,102,241,0.1)', transition:'all .15s' }}
-              onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.borderColor='#6366f1';el.style.boxShadow='0 2px 8px rgba(99,102,241,0.2)'}}
-              onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.borderColor='#e0e7ff';el.style.boxShadow='0 1px 4px rgba(99,102,241,0.1)'}}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              <span style={{ fontSize:'13px', fontWeight:'600', color:'#4f46e5', textTransform:'capitalize', letterSpacing:'-0.2px', whiteSpace:'nowrap' }}>
-                {visualizacao === 'periodo' ? getLabelPeriodo() : visualizacao === 'semana' ? labelPeriodoSemana(semanaBase) : labelDia(diaAtivo)}
-              </span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-          </div>
-          {calAberto && (
-            <><div onClick={()=>setCalAberto(false)} style={{ position:'fixed', inset:0, zIndex:199 }}/>
-            <MiniCalendario dataSel={diaAtivo} onChange={d=>{irParaData(d);setVisualizacao('dia')}} onFechar={()=>setCalAberto(false)}/></>
-          )}
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
-{perm.criar && (
-                    <button onClick={abrirNovo} style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'10px', padding:'9px 20px', fontSize:'14px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'7px', boxShadow:'0 3px 10px rgba(99,102,241,0.4)', letterSpacing:'-0.2px' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Novo agendamento
-          </button>
-          )}
-          <div style={{ position:'relative' }}>
-            <button onClick={()=>setFiltroAberto(f=>!f)} style={{ display:'flex', alignItems:'center', gap:'6px', background:'white', border:visualizacao==='periodo'?'1.5px solid #6366f1':'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 14px', cursor:'pointer', fontSize:'13px', fontWeight:'500', color:visualizacao==='periodo'?'#6366f1':'#374151' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Filtrar periodo
-            </button>
-            {filtroAberto && (
-              <><div onClick={()=>setFiltroAberto(false)} style={{ position:'fixed', inset:0, zIndex:149 }}/>
-              <div onClick={e=>e.stopPropagation()} style={{ position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:150, background:'white', borderRadius:'14px', border:'1px solid #e5e7eb', boxShadow:'0 8px 30px rgba(0,0,0,0.12)', padding:'18px', width:'280px' }}>
-                <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e', marginBottom:'14px' }}>Filtrar por periodo</p>
-                <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom:'14px' }}>
-                  <div><label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#374151', marginBottom:'4px' }}>Data inicial</label><input type="date" value={periodoInicio} onChange={e=>setPeriodoInicio(e.target.value)} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 10px', fontSize:'13px', outline:'none', boxSizing:'border-box' }}/></div>
-                  <div><label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#374151', marginBottom:'4px' }}>Data final</label><input type="date" value={periodoFim} onChange={e=>setPeriodoFim(e.target.value)} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 10px', fontSize:'13px', outline:'none', boxSizing:'border-box' }}/></div>
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px', marginBottom:'12px' }}>
-                  {[{label:'Hoje',ini:0,fim:0},{label:'7 dias',ini:0,fim:7},{label:'15 dias',ini:0,fim:15},{label:'30 dias',ini:0,fim:30}].map(at=>(
-                    <button key={at.label} onClick={()=>{const h=hojeNoBrasil();setPeriodoInicio(toISO(addDias(h,at.ini)));setPeriodoFim(toISO(addDias(h,at.fim)))}} style={{ background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'6px 8px', fontSize:'11px', fontWeight:'500', color:'#374151', cursor:'pointer' }}>{at.label}</button>
-                  ))}
-                </div>
-                <div style={{ display:'flex', gap:'8px' }}>
-                  <button onClick={()=>{setVisualizacao('periodo');setFiltroAberto(false)}} style={{ flex:1, background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Ver agendamentos</button>
-                  <button onClick={()=>{setFiltroAberto(false);if(visualizacao==='periodo')setVisualizacao('semana')}} style={{ background:'#f3f4f6', color:'#6b7280', border:'none', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', cursor:'pointer' }}>x</button>
-                </div>
-              </div></>
-            )}
-          </div>
-          {visualizacao !== 'periodo' && (
-            <div style={{ display:'flex', gap:'6px', alignItems:'center' }}>
-              <button onClick={visualizacao==='semana'?semanaAnterior:diaAnterior}
-                style={{ width:'36px', height:'36px', background:'white', border:'1.5px solid #e5e7eb', borderRadius:'10px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151', transition:'all .15s', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}
-                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#f5f3ff';el.style.borderColor='#6366f1';el.style.color='#6366f1'}}
-                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.borderColor='#e5e7eb';el.style.color='#374151'}}
-                title={visualizacao==='semana'?'Semana anterior':'Dia anterior'}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              </button>
-              <button onClick={irParaHoje}
-                style={{ height:'36px', padding:'0 14px', background:'#eef2ff', border:'1.5px solid #c7d2fe', borderRadius:'10px', cursor:'pointer', fontSize:'13px', fontWeight:'700', color:'#6366f1', transition:'all .15s', letterSpacing:'-0.2px' }}
-                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#6366f1';el.style.color='white'}}
-                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.color='#6366f1'}}>
-                Hoje
-              </button>
-              <button onClick={visualizacao==='semana'?semanaSeguinte:diaSeguinte}
-                style={{ width:'36px', height:'36px', background:'white', border:'1.5px solid #e5e7eb', borderRadius:'10px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151', transition:'all .15s', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}
-                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#f5f3ff';el.style.borderColor='#6366f1';el.style.color='#6366f1'}}
-                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.borderColor='#e5e7eb';el.style.color='#374151'}}
-                title={visualizacao==='semana'?'Proxima semana':'Proximo dia'}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            </div>
-          )}
-          <div style={{ display:'flex', background:'#f3f4f6', borderRadius:'8px', padding:'3px' }}>
-            {(['semana','dia'] as const).map(v=>(
-              <button key={v} onClick={()=>setVisualizacao(v)} style={{ padding:'5px 12px', borderRadius:'6px', border:'none', cursor:'pointer', fontSize:'12px', fontWeight:'500', background:visualizacao===v?'white':'transparent', color:visualizacao===v?'#1a1a2e':'#9ca3af', boxShadow:visualizacao===v?'0 1px 3px rgba(0,0,0,0.1)':'none' }}>{v==='semana'?'Semana':'Dia'}</button>
-            ))}
-            {visualizacao === 'periodo' && <button style={{ padding:'5px 12px', borderRadius:'6px', border:'none', cursor:'default', fontSize:'12px', fontWeight:'600', background:'white', color:'#6366f1', boxShadow:'0 1px 3px rgba(0,0,0,0.1)' }}>Lista</button>}
-          </div>
-
-        </div>
+    <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      {/* Vista Calendario Mensal */}
+      <div style={{ flex:1, overflow:'hidden' }}>
+        <CalendarioAgenda
+          agendamentos={agendamentos}
+          profissionais={profissionais}
+          onAbrirNovo={perm.criar ? abrirNovo : undefined}
+          onAbrirEdicao={abrirEdicao}
+          filtroProfissional={filtroProfissional}
+          setFiltroProfissional={setFiltroProfissional}
+        />
       </div>
-
-      {/* Filtro profissional */}
-      {visualizacao !== 'periodo' && profissionais.length > 1 && (
-        <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px', flexShrink:0, overflowX:'auto', paddingBottom:'2px' }}>
-          <span style={{ fontSize:'12px', color:'#9ca3af', flexShrink:0, fontWeight:'500' }}>Prof:</span>
-          <button onClick={()=>setFiltroProfissional('todos')} style={{ flexShrink:0, padding:'5px 14px', borderRadius:'99px', border:filtroProfissional==='todos'?'1.5px solid #6366f1':'1px solid #e5e7eb', background:filtroProfissional==='todos'?'#6366f1':'white', color:filtroProfissional==='todos'?'white':'#374151', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>Todos</button>
-          {profissionais.map((p: any) => (
-            <button key={p.id} onClick={()=>setFiltroProfissional(filtroProfissional===p.nome?'todos':p.nome)} style={{ flexShrink:0, padding:'5px 14px', borderRadius:'99px', border:filtroProfissional===p.nome?'1.5px solid '+(p.cor||'#6366f1'):'1px solid #e5e7eb', background:filtroProfissional===p.nome?(p.cor||'#6366f1'):'white', color:filtroProfissional===p.nome?'white':'#374151', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>
-              {p.nome}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Dias da semana */}
-      {visualizacao === 'semana' && (
-        <div style={{ display:'flex', gap:'4px', marginBottom:'10px', flexShrink:0, overflowX:'auto', paddingBottom:'2px' }}>
-          {diasSemana.map(data => {
-            const ehHoje = isMesmoISO(data, hoje)
-            return <button key={toISO(data)} onClick={()=>{setDiaAtivo(data);setVisualizacao('dia')}} style={{ flexShrink:0, padding:'6px 12px', borderRadius:'8px', border:ehHoje?'1.5px solid #6366f1':'1px solid #e5e7eb', background:ehHoje?'#6366f1':'white', color:ehHoje?'white':'#374151', fontSize:'12px', fontWeight:'500', cursor:'pointer' }}>{nomeDiaCurto(data)} {numeroDia(data)}</button>
-          })}
-        </div>
-      )}
-
-      {/* Vista periodo */}
-      {visualizacao === 'periodo' && (
-        <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px', flexShrink:0, flexWrap:'wrap' }}>
-            <span style={{ fontSize:'13px', color:'#6b7280' }}>{agendamentosPeriodo.length} agendamento{agendamentosPeriodo.length !== 1 ? 's' : ''}</span>
-            <button onClick={()=>setVisualizacao('semana')} style={{ marginLeft:'auto', background:'#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 12px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>Voltar</button>
-          </div>
-          <ListaPeriodo agendamentos={agendamentosPeriodo} onEditar={abrirEdicao}/>
-        </div>
-      )}
-
-      {/* Grade de horarios */}
-      {visualizacao !== 'periodo' && (
-        <div style={{ flex:1, overflow:'hidden', background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', display:'flex', flexDirection:'column' }}>
-          <div style={{ display:'flex', borderBottom:'2px solid #f0f0f8', flexShrink:0, overflowX:'auto' }}>
-            <div style={{ width:'60px', flexShrink:0 }}/>
-            {diasParaMostrar.map(data => {
-              const ehHoje = isMesmoISO(data, hoje)
-              const dataKey = toISO(data)
-              const profsNoDia = filtroProfissional !== 'todos' ? profissionais.filter((p: any) => p.nome === filtroProfissional) : profissionais.length > 0 ? profissionais : [{id:'__', nome:'', cor:'#6366f1'}]
-              const nProfs = profsNoDia.length
-              return (
-                <div key={dataKey} style={{ flex:1, minWidth:(nProfs*110)+'px', borderLeft:'1px solid #f0f0f8', background:ehHoje?'#f8f9ff':'transparent' }}>
-                  <div style={{ padding:'8px 0 6px', textAlign:'center', borderBottom:'1px solid #f0f0f8' }}>
-                    <span style={{ fontSize:'11px', color:ehHoje?'#6366f1':'#9ca3af', fontWeight:'700', textTransform:'uppercase' }}>{nomeDiaCurto(data)}</span>
-                    <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'26px', height:'26px', borderRadius:'50%', marginLeft:'6px', background:ehHoje?'#6366f1':'transparent', color:ehHoje?'white':'#1a1a2e', fontSize:'13px', fontWeight:'700' }}>{numeroDia(data)}</div>
-                  </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat('+nProfs+',1fr)', borderBottom:'1px solid #f0f0f8' }}>
-                    {profsNoDia.map((p: any) => (
-                      <div key={p.id} style={{ padding:'5px 4px', textAlign:'center', borderLeft:'1px solid #f3f4f6', background:(p.cor||'#6366f1')+'08' }}>
-                        <span style={{ fontSize:'10px', fontWeight:'600', color:'#374151', overflow:'hidden', whiteSpace:'nowrap', display:'block', textOverflow:'ellipsis' }}>{p.nome}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <div style={{ flex:1, overflowY:'auto', overflowX:'auto' }}>
-            <div style={{ display:'flex' }}>
-              <div style={{ width:'60px', flexShrink:0 }}>
-                {HORAS.map(hora => (
-                  <div key={hora} style={{ height:ALTURA_HORA+'px', display:'flex', alignItems:'flex-start', paddingTop:'4px', justifyContent:'flex-end', paddingRight:'8px', boxSizing:'border-box' }}>
-                    <span style={{ fontSize:'10px', color:'#9ca3af', fontFamily:'monospace', whiteSpace:'nowrap' }}>{hora}</span>
-                  </div>
-                ))}
-              </div>
-              {diasParaMostrar.map(data => {
-                const dataKey = toISO(data), ehHoje = isMesmoISO(data, hoje)
-                const profsNoDia = filtroProfissional !== 'todos' ? profissionais.filter((p: any) => p.nome === filtroProfissional) : profissionais.length > 0 ? profissionais : [{id:'__', nome:'', cor:'#6366f1'}]
-                const nProfs = profsNoDia.length
-                return (
-                  <div key={dataKey} style={{ flex:1, minWidth:(nProfs*110)+'px', borderLeft:'1px solid #f0f0f8', display:'grid', gridTemplateColumns:'repeat('+nProfs+',1fr)', position:'relative', background:ehHoje?'#fafbff':'transparent' }}>
-                    <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:1 }}>
-                      {HORAS.map((_,hIdx) => <div key={hIdx} style={{ position:'absolute', top:(hIdx*ALTURA_HORA)+'px', left:0, right:0, borderTop:'1px solid #f3f4f6' }}/>)}
-                      {ehHoje && posLinha !== null && (
-                        <div style={{ position:'absolute', top:posLinha+'px', left:0, right:0, zIndex:3, display:'flex', alignItems:'center' }}>
-                          <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', marginLeft:'-4px', flexShrink:0 }}/>
-                          <div style={{ flex:1, height:'1.5px', background:'#ef4444' }}/>
-                        </div>
-                      )}
-                    </div>
-                    {profsNoDia.map((prof: any, profIdx: number) => {
-                      const agsProf = (() => {
-                            const todos = agsFiltrados.filter(a => a.dataISO === dataKey && a.profissional === prof.nome).sort((a,b) => a.horaInicio - b.horaInicio)
-                            return todos.filter(ag => {
-                              if (ag.status !== 'cancelado') return true
-                              return !todos.some(o => o.id !== ag.id && o.status !== 'cancelado' && Math.abs(o.horaInicio - ag.horaInicio) < 0.02)
-                            })
-                          })()
-                      return (
-                        <div key={prof.id} style={{ position:'relative', height:(HORAS.length*ALTURA_HORA)+'px', borderLeft:profIdx>0?'1px solid #f0f0f8':'none', zIndex:2 }}>
-                          {agsProf.map(ag => {
-                            const isFinalizado = ag.status === 'fechado'
-                            const isCancelado = ag.status === 'cancelado'
-                            const isAberto = ag.status === 'aberto'
-                            const bgBase = isFinalizado?'#ecfdf5':isCancelado?'#fff1f2':isAberto?'#eff6ff':ag.cor+'18'
-                            const bgHover = isFinalizado?'#d1fae5':isCancelado?'#fecaca':isAberto?'#dbeafe':ag.cor+'35'
-                            const borda = isFinalizado?'#10b981':isCancelado?'#f43f5e':isAberto?'#3b82f6':ag.cor
-                            const textCor = isFinalizado?'#065f46':isCancelado?'#be123c':isAberto?'#1d4ed8':ag.cor
-                            const dur = ag.duracao > 0 ? ag.duracao : 60
-                            const altura = Math.max((dur/60)*ALTURA_HORA - 6, 44)
-                            const topPx = (ag.horaInicio - HORA_INICIO) * ALTURA_HORA
-                            const horaH = Math.floor(ag.horaInicio), horaM = Math.round((ag.horaInicio - horaH) * 60)
-                            const hora = String(horaH).padStart(2,'0') + ':' + String(horaM).padStart(2,'0')
-                            return (
-                              <div key={ag.id} onClick={()=>abrirEdicao(ag)} style={{ position:'absolute', top:topPx+'px', left:'2px', right:'2px', height:altura+'px', background:bgBase, border:'1px solid '+borda+'40', borderLeft:'3px solid '+borda, borderRadius:'7px', padding:'4px 6px', cursor:'pointer', overflow:'hidden', transition:'background .12s', zIndex:4, boxSizing:'border-box' }}
-                                onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=bgHover}}
-                                onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=bgBase}}>
-                                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'2px' }}>
-                                  <span style={{ fontSize:'10px', fontWeight:'800', color:textCor, fontFamily:'monospace', letterSpacing:'-0.3px' }}>{hora}</span>
-                                  {isFinalizado && <span style={{ fontSize:'8px', fontWeight:'700', color:'#065f46', background:'#bbf7d0', borderRadius:'99px', padding:'1px 4px', flexShrink:0 }}>OK</span>}
-                                  {isCancelado  && <span style={{ fontSize:'8px', fontWeight:'700', color:'#be123c', background:'#fecdd3', borderRadius:'99px', padding:'1px 4px', flexShrink:0 }}>X</span>}
-                                </div>
-                                <div style={{ fontSize:'10px', fontWeight:'600', color:textCor, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', lineHeight:'13px' }}>{ag.cliente}</div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      </>) /* fim grade */}
+      
 
       {/* Modal novo cliente inline */}
       {modalNovoCliente && (

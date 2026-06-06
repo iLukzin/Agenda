@@ -18,3 +18,6 @@ CREATE INDEX IF NOT EXISTS campanha_log_campanha_idx ON campanha_log(campanha_id
 -- Colunas extras na campanha (caso ainda não existam)
 ALTER TABLE campanhas_mensagem ADD COLUMN IF NOT EXISTS envio_automatico BOOLEAN DEFAULT FALSE;
 ALTER TABLE campanhas_mensagem ADD COLUMN IF NOT EXISTS clientes_ids UUID[];
+
+-- Flag para bloquear edição de preço no agendamento
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS bloquear_edicao_valor BOOLEAN DEFAULT FALSE;

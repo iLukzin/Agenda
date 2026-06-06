@@ -98,7 +98,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Master: carrega todas as empresas
         const { data: lista } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor')
           .order('nome')
 
         const l: EmpresaResumo[] = lista || []
@@ -120,7 +120,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Buscar TODAS as empresas do usuário:
         // 1. Empresa principal (empresa_id no cadastro do usuário)
         // 2. Empresas vinculadas via aba "Usuários" da empresa (tabela usuario_empresas)
-        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado'
+        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor'
         
         // Buscar empresa principal
         const empRes = await sb.from('empresas').select(SELECT_EMP).eq('id', u.empresa_id).single()

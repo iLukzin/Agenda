@@ -409,6 +409,19 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
           </div>
+
+          {/* Flag bloquear edição de valor */}
+          <div style={{ background:'#f9fafb', borderRadius:'12px', padding:'16px', border:'1px solid #e5e7eb', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'16px' }}>
+            <div>
+              <p style={{ fontSize:'14px', fontWeight:'600', color:'#111827', marginBottom:'4px' }}>Bloquear edição de valor no agendamento</p>
+              <p style={{ fontSize:'12px', color:'#6b7280' }}>Quando ativado, o valor do agendamento será preenchido automaticamente pelo serviço e não poderá ser alterado pelo usuário.</p>
+            </div>
+            <div onClick={()=>setEmpresa((p: any)=>({...p, bloquear_edicao_valor:!p.bloquear_edicao_valor}))}
+              style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:empresa.bloquear_edicao_valor?'#6366f1':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
+              <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:empresa.bloquear_edicao_valor?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+            </div>
+          </div>
+
         </div>
       )}
 

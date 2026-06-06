@@ -232,6 +232,7 @@ function useVisibilityRefresh(fn: () => void) {
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
   const tipoAgenda = (empresaAtiva as any)?.tipo_agenda || 'grade'
+  const bloquearValor = (empresaAtiva as any)?.bloquear_edicao_valor === true
   const hoje = useMemo(() => hojeNoBrasil(), [])
 
   const [agendamentos, setAgendamentos] = useState<AgendamentoLocal[]>([])
@@ -1238,8 +1239,8 @@ export default function AgendaPage() {
               )}
               {!form.usar_plano && (
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-                  <InputField label="Valor (R$)">
-                    <input type="number" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} style={inputStyle} placeholder="0,00"/>
+                  <InputField label={bloquearValor ? "Valor (R$) 🔒" : "Valor (R$)"}>
+                    <input type="number" value={form.valor} onChange={e=>{ if(!bloquearValor) setForm(f=>({...f,valor:e.target.value})) }} readOnly={bloquearValor} style={{ opacity:bloquearValor?0.6:1, cursor:bloquearValor?'not-allowed':'text' }} style={inputStyle} placeholder="0,00"/>
                   </InputField>
                   <InputField label="Forma de pagamento">
                     <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>

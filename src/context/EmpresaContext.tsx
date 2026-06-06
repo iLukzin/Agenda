@@ -118,53 +118,53 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Usa empresa salva, ou a primeira da lista
         setEmpresaAtiva(empresaRestaurada || l[0] || null)
 
-      } else if (u.empresa_id) {
-        // Buscar TODAS as empresas do usuário:
-        // 1. Empresa principal (empresa_id no cadastro do usuário)
-        // 2. Empresas vinculadas via aba "Usuários" da empresa (tabela usuario_empresas)
+      } else {
+        // Usuário com ou sem empresa_id - buscar TODAS as empresas vinculadas
         const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor'
-        
-        // Buscar empresa principal
-        const empRes = await sb.from('empresas').select(SELECT_EMP).eq('id', u.empresa_id).single()
-        const emp = empRes.data
 
-        // Buscar todos os vínculos do usuário na tabela usuario_empresas
-        let todasIds = u.empresa_id ? [u.empresa_id] : []
+        // Passo 1: empresa principal (empresa_id no cadastro do usuário)
+        let todasIds: string[] = u.empresa_id ? [u.empresa_id] : []
+
+        // Passo 2: empresas vinculadas via usuario_empresas (aba Usuários da empresa)
         try {
           const { data: vinculos } = await sb.from('usuario_empresas').select('empresa_id').eq('usuario_id', u.id)
-          const vinculoIds = (vinculos || []).map((v: any) => v.empresa_id)
-          // Juntar IDs sem duplicar
-          vinculoIds.forEach((id: string) => { if (!todasIds.includes(id)) todasIds.push(id) })
+          const vinculoIds = (vinculos || []).map((v: any) => v.empresa_id) as string[]
+          vinculoIds.forEach((id) => { if (!todasIds.includes(id)) todasIds.push(id) })
         } catch { /* tabela pode não existir */ }
 
-        // Buscar dados de todas as empresas de uma vez
-        let todasEmpresas: any[] = emp ? [emp] : []
-        const extrasIds = todasIds.filter((id: string) => id !== u.empresa_id)
-        if (extrasIds.length > 0) {
-          const { data: extras } = await sb.from('empresas').select(SELECT_EMP).in('id', extrasIds)
-          todasEmpresas = [...todasEmpresas, ...(extras || [])]
-        }
+        if (todasIds.length === 0) {
+          // Sem empresa nenhuma - nada a mostrar
+          setEmpresas([])
+          setEmpresaAtiva(null)
+        } else {
+          // Buscar dados de todas as empresas
+          const { data: empsData } = await sb.from('empresas').select(SELECT_EMP).in('id', todasIds)
+          const todasEmpresas: any[] = empsData || []
 
-        if (emp) {
-          // Verificar se empresa esta bloqueada
-          if (emp.bloqueada && u.nivel_acesso !== 'master') {
-            const motivo = emp.motivo_bloqueio || 'Falta de pagamento'
+          // Empresa principal (para verificar bloqueio)
+          const empPrincipal = u.empresa_id ? todasEmpresas.find(e => e.id === u.empresa_id) : todasEmpresas[0]
+
+          // Verificar se empresa principal está bloqueada
+          if (empPrincipal && empPrincipal.bloqueada && u.nivel_acesso !== 'master') {
+            const motivo = empPrincipal.motivo_bloqueio || 'Falta de pagamento'
             await sb.auth.signOut()
             if (typeof window !== 'undefined') {
               window.location.href = '/auth/login?bloqueada=1&motivo=' + encodeURIComponent(motivo)
             }
             return
           }
+
           setEmpresas(todasEmpresas)
-          // Restaurar empresa ativa salva ou usar a principal
-          let ativa = emp
+
+          // Restaurar empresa salva no localStorage ou usar a principal
+          let ativa = empPrincipal || todasEmpresas[0]
           try {
             if (typeof window !== 'undefined') {
               const salva = localStorage.getItem('empresa_ativa_id')
-              if (salva) ativa = todasEmpresas.find((e: any) => e.id === salva) || emp
+              if (salva) ativa = todasEmpresas.find((e: any) => e.id === salva) || ativa
             }
           } catch {}
-          setEmpresaAtiva(ativa)
+          setEmpresaAtiva(ativa || null)
         }
       }
 

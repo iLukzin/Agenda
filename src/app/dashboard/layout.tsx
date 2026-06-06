@@ -129,6 +129,23 @@ function NavIcon({ code, size = 18 }: { code: string; size?: number }) {
   return icons[code] || extra[code] || null
 }
 
+function permPadraoLayout(nivel: string) {
+  if (nivel === 'usuario') return {
+    dashboard: { visualizar:false }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
+    clientes: { visualizar:false }, profissionais: { visualizar:false },
+    servicos: { visualizar:false }, financeiro: { visualizar:false },
+    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false }, rel_profissional: { visualizar:false },
+  }
+  if (nivel === 'profissional') return {
+    dashboard: { visualizar:true }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
+    clientes: { visualizar:true }, profissionais: { visualizar:true },
+    servicos: { visualizar:true }, financeiro: { visualizar:false },
+    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false }, rel_profissional: { visualizar:false },
+  }
+  return { dashboard:{visualizar:true}, agenda:{visualizar:true}, agenda_wpp:{visualizar:true}, clientes:{visualizar:true}, profissionais:{visualizar:true}, servicos:{visualizar:true}, financeiro:{visualizar:true}, mensagens:{visualizar:true}, usuarios:{visualizar:true}, configuracoes:{visualizar:true}, rel_profissional:{visualizar:true} }
+}
+
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -234,22 +251,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
     </div>
   )
-}
-
-function permPadraoLayout(nivel: string) {
-  if (nivel === 'usuario') return {
-    dashboard: { visualizar:false }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
-    clientes: { visualizar:false }, profissionais: { visualizar:false },
-    servicos: { visualizar:false }, financeiro: { visualizar:false },
-    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false }, rel_profissional: { visualizar:false },
-  }
-  if (nivel === 'profissional') return {
-    dashboard: { visualizar:true }, agenda: { visualizar:true }, agenda_wpp: { visualizar:false },
-    clientes: { visualizar:true }, profissionais: { visualizar:true },
-    servicos: { visualizar:true }, financeiro: { visualizar:false },
-    mensagens: { visualizar:false }, usuarios: { visualizar:false }, configuracoes: { visualizar:false }, rel_profissional: { visualizar:false },
-  }
-  return { dashboard:{visualizar:true}, agenda:{visualizar:true}, agenda_wpp:{visualizar:true}, clientes:{visualizar:true}, profissionais:{visualizar:true}, servicos:{visualizar:true}, financeiro:{visualizar:true}, mensagens:{visualizar:true}, usuarios:{visualizar:true}, configuracoes:{visualizar:true}, rel_profissional:{visualizar:true} }
 }
 
 function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile, onClose, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa, permMap }: any) {

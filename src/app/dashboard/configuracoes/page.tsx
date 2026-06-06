@@ -123,8 +123,19 @@ export default function ConfiguracoesPage() {
   async function salvarEmpresa() {
     if (!empresa || !empresaAtiva?.id) return
     setSalvando(true)
-    const { error } = await atualizarConfiguracoes(empresaAtiva.id, { nome:empresa.nome, cnpj:empresa.cnpj, telefone:empresa.telefone, email:empresa.email, endereco:empresa.endereco, tipo_agenda:empresa.tipo_agenda||'grade' })
+    const sb = createClient()
+    const payload = {
+      nome: empresa.nome,
+      cnpj: empresa.cnpj,
+      telefone: empresa.telefone,
+      email: empresa.email,
+      endereco: empresa.endereco,
+      tipo_agenda: empresa.tipo_agenda || 'grade',
+      bloquear_edicao_valor: empresa.bloquear_edicao_valor === true,
+    }
+    const { error } = await sb.from('empresas').update(payload).eq('id', empresaAtiva.id)
     if (!error) { setSalvo(true); setTimeout(()=>setSalvo(false),2500); recarregar() }
+    else { console.error('Erro ao salvar empresa:', error) }
     setSalvando(false)
   }
 

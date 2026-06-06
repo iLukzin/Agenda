@@ -390,7 +390,8 @@ export default function ConfiguracoesPage() {
               <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereço</label>
               <input value={empresa.endereco||''} onChange={e=>setEmpresa((p: any)=>({...p,endereco:e.target.value}))} style={inputStyle} placeholder="Rua, número, bairro, cidade"/>
             </div>
-            
+          </div>
+        </div>
       )}
     </div>
   )

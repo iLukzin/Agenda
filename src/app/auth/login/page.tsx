@@ -127,9 +127,19 @@ function LoginForm() {
           </form>
         </div>
 
-        <p style={{ textAlign:'center', color:'rgba(255,255,255,0.2)', fontSize:'12px', marginTop:'24px' }}>
-          AgendaFortitude {new Date().getFullYear()} - Fortitude Sistym
-        </p>
+        <div style={{ textAlign:'center', marginTop:'24px' }}>
+          <a href="https://www.instagram.com/fortitudesistym?igsh=MTU5djlxYzFxNm9oYw%3D%3D" target="_blank" rel="noopener noreferrer"
+            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)', marginBottom:'10px', textDecoration:'none' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="2" width="20" height="20" rx="5" stroke="white" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="2"/>
+              <circle cx="17.5" cy="6.5" r="1" fill="white"/>
+            </svg>
+          </a>
+          <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'12px' }}>
+            AgendaFortitude {new Date().getFullYear()} - Fortitude Sistym
+          </p>
+        </div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

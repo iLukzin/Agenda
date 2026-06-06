@@ -12,7 +12,9 @@ export type EmpresaResumo = {
   status: string
   bloqueada?: boolean
   motivo_bloqueio?: string
-  tipo_agenda?: string
+  tipo_agenda: string  // 'grade' | 'calendario'
+  whatsapp_habilitado?: boolean
+  bloquear_edicao_valor?: boolean
 }
 
 export type UsuarioLogado = {

@@ -231,15 +231,8 @@ function useVisibilityRefresh(fn: () => void) {
 }
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
-  const [tipoAgenda, setTipoAgenda] = useState('grade')
-  useEffect(() => {
-    if (!empresaAtiva?.id) return
-    const sb = createClient()
-    sb.from('empresas').select('tipo_agenda').eq('id', empresaAtiva.id).single().then(({ data }) => {
-      const tipo = data?.tipo_agenda
-      setTipoAgenda(tipo === 'calendario' ? 'calendario' : 'grade')
-    })
-  }, [empresaAtiva?.id])
+  // Ler tipo_agenda diretamente do objeto empresaAtiva (já vem no contexto com o valor correto)
+  const tipoAgenda = empresaAtiva?.tipo_agenda === 'calendario' ? 'calendario' : 'grade'
   const bloquearValor = (usuario as any)?.bloquear_edicao_valor !== false // padrão: bloqueado
   const hoje = useMemo(() => hojeNoBrasil(), [])
 

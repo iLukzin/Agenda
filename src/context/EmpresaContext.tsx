@@ -145,13 +145,27 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
           setEmpresas([])
           setEmpresaAtiva(null)
         } else {
-          // Buscar empresas com .or() - compativel com PostgREST
-          const orFilter = todasIds.map((id: string) => `id.eq.${id}`).join(',')
-          const { data: empsData } = await sb
-            .from('empresas')
-            .select(SELECT_EMP)
-            .or(orFilter)
-          const todasEmpresas: any[] = empsData || []
+          // Verificar sessão antes das queries
+          const { data: { session } } = await sb.auth.getSession()
+          if (!session) {
+            console.error('[EmpresaCtx] Sem sessao ao buscar empresas')
+            setEmpresas([])
+            setEmpresaAtiva(null)
+            return
+          }
+          console.log('[EmpresaCtx] Session OK, access_token:', session.access_token ? 'presente' : 'ausente')
+
+          // Buscar cada empresa com .eq() + maybeSingle()
+          const todasEmpresas: any[] = []
+          for (const empId of todasIds) {
+            const { data: emp, error: errEmp } = await sb
+              .from('empresas')
+              .select(SELECT_EMP)
+              .eq('id', empId)
+              .maybeSingle()
+            console.log('[EmpresaCtx] empresa', empId, ':', emp ? 'OK' : 'null', errEmp ? errEmp.message : '')
+            if (emp) todasEmpresas.push(emp)
+          }
 
           // Empresa principal para verificar bloqueio
           const empPrincipal = u.empresa_id

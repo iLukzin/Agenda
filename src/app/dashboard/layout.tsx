@@ -391,7 +391,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
         {sidebarAberta && (
           <div style={{ flex:1, overflow:'hidden' }}>
             <p style={{ fontSize:'12px', fontWeight:'700', color:'#25d366', margin:0 }}>Suporte</p>
-            <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:0 }}>(34) 98801-8483</p>
+            <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', margin:0 }}>Fale conosco</p>
           </div>
         )}
       </a>

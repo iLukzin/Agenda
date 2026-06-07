@@ -159,31 +159,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const [loadingTimeout, setLoadingTimeout] = useState(false)
   const [saindo, setSaindo] = useState(false)
-  const [empresasExtra, setEmpresasExtra] = useState<EmpresaResumo[]>([])
 
-  useEffect(() => {
-    if (!usuario?.id || isMaster) return
-    const sb = createClient()
-    sb.from('usuario_empresas')
-      .select('empresa_id')
-      .eq('usuario_id', usuario.id)
-      .then(({ data }) => {
-        const ids = (data || []).map((v: any) => v.empresa_id)
-        if (ids.length === 0) return
-        const faltando = ids.filter((id: string) => !empresas.find((e: any) => e.id === id))
-        if (faltando.length === 0) return
-        sb.from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor')
-          .in('id', faltando)
-          .then(({ data: emps }) => {
-            if (emps && emps.length > 0) setEmpresasExtra(emps as EmpresaResumo[])
-          })
-      })
-  }, [usuario?.id, isMaster])
-
-  const todasEmpresas: EmpresaResumo[] = empresasExtra.length > 0
-    ? [...empresas.filter((e: any) => !empresasExtra.find((ex: any) => ex.id === e.id)), ...empresasExtra]
-    : empresas
 
   useEffect(() => {
     if (!usuario?.id || isMaster) return
@@ -315,16 +291,16 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
               <p style={{ fontSize:'12px', fontWeight:'600', color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{empresaAtiva.nome}</p>
               <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.35)', textTransform:'capitalize' }}>{empresaAtiva.plano}</p>
             </div>
-            {todasEmpresas.length > 1 && (
+            {empresas.length > 1 && (
               <span style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}>
                 <NavIcon code="ARR" size={14}/>
               </span>
             )}
           </button>
 
-          {dropEmpresa && todasEmpresas.length > 1 && (
+          {dropEmpresa && empresas.length > 1 && (
             <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'#1e293b', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', zIndex:60, overflow:'hidden', maxHeight:'200px', overflowY:'auto' }}>
-              {todasEmpresas.map((emp: EmpresaResumo) => (
+              {empresas.map((emp: EmpresaResumo) => (
                 <button key={emp.id} onClick={() => { trocarEmpresa(emp); setDropEmpresa(false) }} style={{ width:'100%', padding:'10px 12px', background:emp.id===empresaAtiva?.id?'rgba(59,130,246,0.15)':'transparent', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ width:'24px', height:'24px', borderRadius:'6px', background:'linear-gradient(135deg,#6366f1,#4f46e5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'white', fontWeight:'700', flexShrink:0 }}>
                     {emp.nome.charAt(0)}

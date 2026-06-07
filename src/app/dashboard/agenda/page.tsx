@@ -260,7 +260,7 @@ export default function AgendaPage() {
   const [formNovoCliente, setFormNovoCliente] = useState({ nome:'', telefone:'', whatsapp:'', email:'' })
   const [salvandoCliente, setSalvandoCliente] = useState(false)
   const [intervaloMin, setIntervaloMin] = useState(30)
-  const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
+  const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
   const [planoCliente, setPlanoCliente] = useState<any>(null)
   const [sessaoPlano, setSessaoPlano]   = useState<any>(null)
 
@@ -409,7 +409,7 @@ export default function AgendaPage() {
     setModoEdicao(false); setSelecionado(null); setClienteSel(null); setBuscaCliente('')
     setPlanoCliente(null); setSessaoPlano(null)
     setIntervaloMin(30)
-    setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'09:00', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
+    setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
     setModalAberto(true)
   }
 
@@ -452,7 +452,17 @@ export default function AgendaPage() {
     if (!form.profissional) erros.push('Profissional e obrigatorio')
     if (!form.usar_plano && !form.servico) erros.push('Servico e obrigatorio')
     if (!form.dataISO)      erros.push('Data e obrigatoria')
-    if (!form.horaInicio)   erros.push('Horario e obrigatorio')
+    if (!form.horaInicio) {
+      erros.push('Selecione um horario para o agendamento')
+    } else {
+      const slotEscolhido = slotsDisponiveis.find((s: any) => s.label === form.horaInicio)
+      if (!modoEdicao && slotsDisponiveis.length > 0 && !slotEscolhido) {
+        erros.push('Selecione um horario valido clicando em um dos horarios disponiveis')
+      }
+      if (!modoEdicao && slotEscolhido && !slotEscolhido.disponivel) {
+        erros.push('O horario ' + form.horaInicio + ' nao esta disponivel. Escolha outro horario')
+      }
+    }
     if (erros.length > 0) { setErroForm(erros); return }
     setErroForm([])
     if (!empresaAtiva?.id) return
@@ -921,7 +931,7 @@ export default function AgendaPage() {
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Profissional">
-                  <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,servico:'',horaInicio:'09:00'}))} style={selectStyle}>
+                  <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,servico:'',horaInicio:''}))} style={selectStyle}>
                     <option value="">Selecione...</option>
                     {profissionais.map((p: any) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
                   </select>
@@ -951,7 +961,7 @@ export default function AgendaPage() {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Data">
-                  <input type="date" value={form.dataISO} onChange={e=>setForm(f=>({...f,dataISO:e.target.value,horaInicio:'09:00'}))} style={inputStyle}/>
+                  <input type="date" value={form.dataISO} onChange={e=>setForm(f=>({...f,dataISO:e.target.value,horaInicio:''}))} style={inputStyle}/>
                 </InputField>
                 <InputField label="Duracao (min)">
                   <select value={form.duracao} onChange={e=>setForm(f=>({...f,duracao:e.target.value}))} style={selectStyle}>
@@ -969,7 +979,7 @@ export default function AgendaPage() {
                   ) : slotsDisponiveis.length > 0 ? (
                     <div>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
-                        <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Horario</label>
+                        <label style={{ fontSize:'13px', fontWeight:'600', color: !form.horaInicio ? '#ef4444' : '#374151' }}>{form.horaInicio ? 'Horario' : '* Selecione um horario'}</label>
                         <div style={{ display:'flex', gap:'4px' }}>
                           {[15,30,60].map(min => (
                             <button key={min} onClick={()=>setIntervaloMin(min)} style={{ padding:'3px 8px', borderRadius:'6px', fontSize:'11px', border:intervaloMin===min?'1.5px solid #6366f1':'1px solid #e5e7eb', background:intervaloMin===min?'#eef2ff':'white', color:intervaloMin===min?'#6366f1':'#6b7280', cursor:'pointer' }}>{min}min</button>

@@ -65,7 +65,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       // Busca o usuário na tabela
       const { data: u } = await sb
         .from('usuarios')
-        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status, bloquear_edicao_valor')
+        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status')
         .eq('auth_id', user.id)
         .single()
 
@@ -102,7 +102,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Master: carrega todas as empresas
         const { data: lista } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado')
           .order('nome')
 
         const l: EmpresaResumo[] = lista || []
@@ -121,7 +121,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setEmpresaAtiva(empresaRestaurada || l[0] || null)
 
       } else {
-        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, bloquear_edicao_valor'
+        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado'
 
         // Buscar empresa principal do cadastro do usuário
         const idsSet = new Set<string>()

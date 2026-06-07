@@ -145,14 +145,13 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
           setEmpresas([])
           setEmpresaAtiva(null)
         } else {
-          // Buscar cada empresa individualmente (evita erro 400 do .in())
-          const empsArr: any[] = []
-          for (const empId of todasIds) {
-            const { data: empData } = await sb
-              .from('empresas').select(SELECT_EMP).eq('id', empId).single()
-            if (empData) empsArr.push(empData)
-          }
-          const todasEmpresas: any[] = empsArr
+          // Buscar empresas com .or() - compativel com PostgREST
+          const orFilter = todasIds.map((id: string) => `id.eq.${id}`).join(',')
+          const { data: empsData } = await sb
+            .from('empresas')
+            .select(SELECT_EMP)
+            .or(orFilter)
+          const todasEmpresas: any[] = empsData || []
 
           // Empresa principal para verificar bloqueio
           const empPrincipal = u.empresa_id

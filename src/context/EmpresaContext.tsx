@@ -14,12 +14,6 @@ export type EmpresaResumo = {
   motivo_bloqueio?: string
   tipo_agenda: string  // 'grade' | 'calendario'
   whatsapp_habilitado?: boolean
-  bloquear_edicao_valor?: boolean
-  permitir_desconto?: boolean
-  permitir_cancelar?: boolean
-  permitir_finalizar?: boolean
-  permitir_ver_pagamento?: boolean
-  profissional_id?: string
 }
 
 export type UsuarioLogado = {
@@ -30,6 +24,10 @@ export type UsuarioLogado = {
   empresa_id?: string
   profissional_id?: string
   bloquear_edicao_valor?: boolean
+  permitir_desconto?: boolean
+  permitir_cancelar?: boolean
+  permitir_finalizar?: boolean
+  permitir_ver_pagamento?: boolean
 }
 
 type EmpresaContextType = {
@@ -93,18 +91,17 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       }
 
       const usuarioLogado: UsuarioLogado = {
-        id:                    u.id,
-        nome:                  u.nome,
-        email:                 u.email,
-        nivel_acesso:          u.nivel_acesso,
-        empresa_id:            u.empresa_id,
-        profissional_id:       u.profissional_id,
-        bloquear_edicao_valor: u.bloquear_edicao_valor !== false,
-        permitir_desconto: u.permitir_desconto === true,
-        permitir_cancelar: u.permitir_cancelar !== false,
-        permitir_finalizar: u.permitir_finalizar !== false,
-        permitir_ver_pagamento: u.permitir_ver_pagamento !== false,
-        profissional_id: u.profissional_id || undefined,
+        id:                      u.id,
+        nome:                    u.nome,
+        email:                   u.email,
+        nivel_acesso:            u.nivel_acesso,
+        empresa_id:              u.empresa_id,
+        profissional_id:         u.profissional_id || undefined,
+        bloquear_edicao_valor:   u.bloquear_edicao_valor !== false,
+        permitir_desconto:       u.permitir_desconto === true,
+        permitir_cancelar:       u.permitir_cancelar !== false,
+        permitir_finalizar:      u.permitir_finalizar !== false,
+        permitir_ver_pagamento:  u.permitir_ver_pagamento !== false,
       }
       setUsuario(usuarioLogado)
 

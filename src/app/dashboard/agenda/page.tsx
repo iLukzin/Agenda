@@ -432,7 +432,6 @@ export default function AgendaPage() {
     setValorOriginal(String(vBruto))
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
     // Carregar pagamentos do banco
-    console.log('[DBG-EDIT] ag.pagamentos:', ag.pagamentos, 'tipo:', typeof ag.pagamentos, 'isArray:', Array.isArray(ag.pagamentos))
     try {
       // ag.pagamentos já vem parseado do mapeamento (JSON.parse feito no carregar)
       const pagsArr = Array.isArray(ag.pagamentos) ? ag.pagamentos : []
@@ -536,7 +535,6 @@ export default function AgendaPage() {
     const pagsJSON = pagsValidos.length > 0 ? JSON.stringify(pagsValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : null
     const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:formaResumida, pagamentos:pagsJSON, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
-    console.log('[DBG-SAVE] pagsValidos:', pagsValidos.length, 'pagsJSON:', pagsJSON)
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }
     else { const res = await criarAgendamento(empresaAtiva.id, payload); error = res.error }
@@ -1093,7 +1091,7 @@ export default function AgendaPage() {
                     <div>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
                         <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Forma de pagamento</label>
-                        <button type="button" onClick={()=>setPagamentos(p=>[...p,{forma:'',valor:''}])}
+                        <button type="button" onClick={()=>setPagamentos(p=>[...p,{forma:'dinheiro',valor:''}])}
                           style={{ fontSize:'11px', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer', fontWeight:'600' }}>
                           + Adicionar
                         </button>
@@ -1112,7 +1110,7 @@ export default function AgendaPage() {
                                 {FORMAS_PAG.filter(fp=>fp.value).map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
                               </select>
                               <input type="number" value={pag.valor} placeholder="R$ 0,00"
-                                onChange={e=>{ const maxVal = Math.max(0,(parseFloat(form.valor)||0)-(parseFloat(desconto)||0)); const v = parseFloat(e.target.value)||0; if(v<=maxVal) setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:e.target.value}:p)) }}
+                                onChange={e=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:e.target.value}:p))}
                                 style={{ ...inputStyle, flex:1, padding:'8px 10px' }}/>
                               <button type="button" onClick={()=>setPagamentos(ps=>ps.filter((_,i)=>i!==idx))}
                                 style={{ background:'#fef2f2', border:'none', borderRadius:'6px', color:'#ef4444', cursor:'pointer', fontSize:'16px', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>

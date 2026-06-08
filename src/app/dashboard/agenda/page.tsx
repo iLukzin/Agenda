@@ -1089,7 +1089,7 @@ export default function AgendaPage() {
                                 {FORMAS_PAG.filter(fp=>fp.value).map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
                               </select>
                               <input type="number" value={pag.valor} placeholder="R$ 0,00"
-                                onChange={e=>setPagamentos(ps=>ps.map((p,i)=>i===idx?{...p,valor:e.target.value}:p))}
+                                onChange={e=>{ const maxVal = Math.max(0,(parseFloat(form.valor)||0)-(parseFloat(desconto)||0)); const v = parseFloat(e.target.value)||0; if(v<=maxVal) setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:e.target.value}:p)) }}
                                 style={{ ...inputStyle, flex:1, padding:'8px 10px' }}/>
                               <button type="button" onClick={()=>setPagamentos(ps=>ps.filter((_,i)=>i!==idx))}
                                 style={{ background:'#fef2f2', border:'none', borderRadius:'6px', color:'#ef4444', cursor:'pointer', fontSize:'16px', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -1145,11 +1145,11 @@ export default function AgendaPage() {
                         </div>
                       </div>
                       <div style={{ display:'flex', gap:'8px' }}>
-                        <button type="button" onClick={()=>{ setDesconto(''); setForm(f=>({...f, valor: valorOriginal || f.valor})); setModalDesconto(false) }}
+                        <button type="button" onClick={()=>{ setDesconto(''); setForm(f=>({...f, valor: valorOriginal || f.valor})); setPagamentos([]); setModalDesconto(false) }}
                           style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #e5e7eb', background:'white', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>
                           Remover desconto
                         </button>
-                        <button type="button" onClick={()=>setModalDesconto(false)}
+                        <button type="button" onClick={()=>{ setPagamentos([]); setModalDesconto(false) }}
                           style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#6366f1', color:'white', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
                           Confirmar
                         </button>

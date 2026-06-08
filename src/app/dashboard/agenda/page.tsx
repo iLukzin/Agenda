@@ -891,15 +891,12 @@ export default function AgendaPage() {
                     <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.cliente}</p></div>
                     <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Servico</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.servico}</p></div>
                     <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Valor</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>R$ {Number(selecionado.valor).toFixed(2).replace('.',',')}</p></div>
+                   <button onClick={()=>setVerPagamentos(true)}
+                     style={{ background:'none', border:'none', color:'#059669', fontSize:'12px', fontWeight:'600', cursor:'pointer', padding:'4px 0 0 0', display:'flex', alignItems:'center', gap:'4px', marginTop:'4px' }}>
+                     Ver forma de pagamento
+                   </button>
                   </div>
                 </div>
-                  {(selecionado.pagamentos?.length > 0 || selecionado.forma_pagamento) && (
-                    <button onClick={()=>setVerPagamentos(true)}
-                      style={{ background:'none', border:'none', color:'#2563eb', fontSize:'12px', fontWeight:'600', cursor:'pointer', padding:'0', display:'flex', alignItems:'center', gap:'4px', marginTop:'4px' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                      Ver forma de pagamento
-                    </button>
-                  )}
               )}
               {/* Banner de status - cancelado */}
               {modoEdicao && selecionado?.status === 'cancelado' && (

@@ -27,6 +27,17 @@ const FORMAS_CORES: Record<string,{bg:string,cor:string,icon:string}> = {
 }
 const inp = { border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 12px', fontSize:'13px', outline:'none' as const, background:'white' }
 
+function exportarCSV(nomeArquivo: string, linhas: string[][]) {
+  const bom = '﻿'
+  const csv = bom + linhas.map(linha => linha.map(cell => '"' + String(cell).replace(/"/g,'""') + '"').join(';')).join('
+')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = nomeArquivo + '.csv'; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function RelProfissionalPage() {
   const { empresaAtiva } = useEmpresa()
   const perm = usePermissao('rel_profissional')
@@ -113,9 +124,42 @@ export default function RelProfissionalPage() {
 
   return (
     <div style={{ padding:'16px', maxWidth:'960px', margin:'0 auto' }}>
-      <div style={{ marginBottom:'20px' }}>
-        <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Relatórios</h1>
-        <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos, faturamento e formas de pagamento</p>
+      <div style={{ marginBottom:'20px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'10px' }}>
+        <div>
+          <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Relatórios</h1>
+          <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos, faturamento e formas de pagamento</p>
+        </div>
+        <button onClick={()=>{
+          const periodo = ini + ' a ' + fim
+          if (aba === 'profissional') {
+            const header = ['Profissional','Finalizados','Abertos','Cancelados','Faturamento (R$)','Ticket Medio (R$)']
+            const linhas = dadosProf.map(p => [p.nome, p.fin, p.aber, p.canc, p.fat.toFixed(2).replace('.',','), (p.fin>0?p.fat/p.fin:0).toFixed(2).replace('.',',')])
+            linhas.push(['TOTAL', dadosProf.reduce((s,p)=>s+p.fin,0), dadosProf.reduce((s,p)=>s+p.aber,0), dadosProf.reduce((s,p)=>s+p.canc,0), totalFat.toFixed(2).replace('.',','), (totalFin>0?totalFat/totalFin:0).toFixed(2).replace('.',',')])
+            exportarCSV('relatorio-profissional-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas])
+          } else if (aba === 'forma_pag') {
+            const header = ['Profissional','Forma de Pagamento','Qtd Pagamentos','Valor (R$)','%']
+            const linhas: string[][] = []
+            formasPorProf.forEach(({ prof, formas, totalValor: tv }) => {
+              formas.forEach(([forma, dados]) => {
+                linhas.push([prof.nome, FORMAS_LABEL[forma]||forma, String(dados.qtd), dados.valor.toFixed(2).replace('.',','), tv>0?(dados.valor/tv*100).toFixed(1)+'%':'0%'])
+              })
+            })
+            exportarCSV('relatorio-pagamentos-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas])
+          } else {
+            const header = ['Mes', ...todasFormas.map(f => FORMAS_LABEL[f]||f), 'Total']
+            const linhas = meses.map(mes => {
+              const [ano, m] = mes.split('-')
+              const nomeMes = new Date(Number(ano),Number(m)-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'})
+              const totalMes = Object.values(mesMap[mes]).reduce((s,f)=>s+f.valor,0)
+              return [nomeMes, ...todasFormas.map(f => mesMap[mes][f]?.valor ? mesMap[mes][f].valor.toFixed(2).replace('.',',') : '0,00'), totalMes.toFixed(2).replace('.',',')]
+            })
+            const totRow = ['TOTAL', ...todasFormas.map(f => meses.reduce((s,mes)=>s+(mesMap[mes][f]?.valor||0),0).toFixed(2).replace('.',',')), meses.reduce((s,mes)=>s+Object.values(mesMap[mes]).reduce((ss,f)=>ss+f.valor,0),0).toFixed(2).replace('.',',')]
+            exportarCSV('relatorio-mensal-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas, totRow])
+          }
+        }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
       </div>
       <div style={{ display:'flex', gap:'4px', background:'#f8fafc', borderRadius:'10px', padding:'4px', marginBottom:'20px', flexWrap:'wrap' }}>
         <button onClick={()=>setAba('profissional')} style={abaStyle('profissional')}>Por Profissional</button>

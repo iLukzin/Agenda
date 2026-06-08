@@ -1113,7 +1113,15 @@ export default function AgendaPage() {
                     <div>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
                         <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Forma de pagamento</label>
-                        <button type="button" onClick={()=>setPagamentos(p=>[...p,{forma:'dinheiro',valor:''}])}
+                        <button type="button" onClick={()=>{
+                            const descontoN = parseFloat(desconto) || 0
+                            const valorTotal = Math.max(0,(parseFloat(form.valor)||0) - descontoN)
+                            const jaInformado = pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                            const restante = Math.max(0, valorTotal - jaInformado)
+                            // 1o pagamento: preenche com valor total; demais: preenche com restante
+                            const novoValor = pagamentos.length === 0 ? String(valorTotal) : (restante > 0 ? String(restante) : '')
+                            setPagamentos(p=>[...p,{forma:'dinheiro',valor:novoValor}])
+                          }}
                           style={{ fontSize:'11px', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer', fontWeight:'600' }}>
                           + Adicionar
                         </button>

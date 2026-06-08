@@ -288,7 +288,7 @@ export async function listarUsuarios(empresaId: string) {
   // Buscar usuários da empresa (empresa_id = empresaId)
   const { data: diretos, error } = await sb
     .from('usuarios')
-    .select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor')
+    .select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor, permitir_desconto')
     .eq('empresa_id', empresaId)
     .order('nome')
   if (error) tratarErro('listarUsuarios', error)
@@ -307,7 +307,7 @@ export async function listarUsuarios(empresaId: string) {
   if (extrasIds.length > 0) {
     const { data: extras } = await sb
       .from('usuarios')
-      .select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor')
+      .select('id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor, permitir_desconto')
       .in('id', extrasIds)
       .order('nome')
     todos = [...todos, ...(extras || [])]

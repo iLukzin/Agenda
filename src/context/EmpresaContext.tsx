@@ -15,6 +15,7 @@ export type EmpresaResumo = {
   tipo_agenda: string  // 'grade' | 'calendario'
   whatsapp_habilitado?: boolean
   bloquear_edicao_valor?: boolean
+  permitir_desconto?: boolean
 }
 
 export type UsuarioLogado = {
@@ -65,7 +66,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       // Busca o usuário na tabela
       const { data: u } = await sb
         .from('usuarios')
-        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status')
+        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status, bloquear_edicao_valor, permitir_desconto')
         .eq('auth_id', user.id)
         .single()
 
@@ -95,6 +96,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         empresa_id:            u.empresa_id,
         profissional_id:       u.profissional_id,
         bloquear_edicao_valor: u.bloquear_edicao_valor !== false,
+        permitir_desconto: u.permitir_desconto === true,
       }
       setUsuario(usuarioLogado)
 

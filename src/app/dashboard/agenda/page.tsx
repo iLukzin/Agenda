@@ -1013,7 +1013,7 @@ export default function AgendaPage() {
                         <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>
                           {bloquearValor ? 'Valor (R$) 🔒' : 'Valor (R$)'}
                         </label>
-                        {!bloquearValor && form.valor && parseFloat(form.valor) > 0 && (
+                        {(usuario as any)?.permitir_desconto && form.valor && parseFloat(form.valor) > 0 && (
                           <button type="button" onClick={()=>{ setValorOriginal(form.valor); setModalDesconto(true) }}
                             style={{ fontSize:'11px', fontWeight:'600', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer' }}>
                             % Desconto

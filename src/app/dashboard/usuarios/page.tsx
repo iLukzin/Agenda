@@ -42,7 +42,7 @@ export default function UsuariosPage() {
   const [selecionado, setSelecionado]   = useState<Usuario|null>(null)
   const [modalConfirm, setModalConfirm] = useState<{tipo:'excluir'|'inativar';id:string}|null>(null)
   const [erro, setErro]           = useState('')
-  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'', bloquear_edicao_valor:true })
+  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'', bloquear_edicao_valor:true, permitir_desconto:false })
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
@@ -69,7 +69,7 @@ export default function UsuariosPage() {
 
   function abrirEdicao(u: Usuario) {
     setModoEdicao(true); setSelecionado(u); setErro('')
-    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'', bloquear_edicao_valor:u.bloquear_edicao_valor !== false })
+    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'', bloquear_edicao_valor:u.bloquear_edicao_valor !== false, permitir_desconto:u.permitir_desconto === true })
     setModalAberto(true)
   }
 
@@ -87,6 +87,7 @@ export default function UsuariosPage() {
         const { error } = await atualizarUsuario(selecionado.id, {
           nome: form.nome, telefone: form.telefone,
           cargo: form.cargo, nivel_acesso: form.nivel_acesso, status: form.status, bloquear_edicao_valor: form.bloquear_edicao_valor !== false,
+            permitir_desconto: form.permitir_desconto === true,
         })
         if (error) throw new Error(error.message)
       } else {
@@ -103,6 +104,7 @@ export default function UsuariosPage() {
             nivel_acesso: form.nivel_acesso,
             empresa_id:   empresaAtiva.id,
             bloquear_edicao_valor: form.bloquear_edicao_valor !== false,
+            permitir_desconto: form.permitir_desconto === true,
           }),
         })
         const result = await res.json()
@@ -297,6 +299,18 @@ export default function UsuariosPage() {
               <div onClick={()=>setForm(f=>({...f, bloquear_edicao_valor:!f.bloquear_edicao_valor}))}
                 style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.bloquear_edicao_valor?'#6366f1':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
                 <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.bloquear_edicao_valor?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+              </div>
+            </div>
+
+            {/* Toggle permitir desconto */}
+            <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f9fafb', borderRadius:'10px', padding:'12px 14px', border:'1px solid #e5e7eb' }}>
+              <div>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', marginBottom:'2px' }}>Permitir aplicar desconto no agendamento</p>
+                <p style={{ fontSize:'11px', color:'#6b7280' }}>Quando ativado, o usuário pode aplicar desconto no valor do agendamento</p>
+              </div>
+              <div onClick={()=>setForm(f=>({...f, permitir_desconto:!f.permitir_desconto}))}
+                style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.permitir_desconto?'#10b981':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
+                <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.permitir_desconto?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
               </div>
             </div>
 

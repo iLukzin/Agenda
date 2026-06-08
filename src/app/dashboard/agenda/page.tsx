@@ -432,6 +432,7 @@ export default function AgendaPage() {
     setValorOriginal(String(vBruto))
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
     // Carregar pagamentos do banco
+    console.log('[DBG-EDIT] ag.pagamentos:', ag.pagamentos, 'tipo:', typeof ag.pagamentos, 'isArray:', Array.isArray(ag.pagamentos))
     try {
       // ag.pagamentos já vem parseado do mapeamento (JSON.parse feito no carregar)
       const pagsArr = Array.isArray(ag.pagamentos) ? ag.pagamentos : []
@@ -535,6 +536,7 @@ export default function AgendaPage() {
     const pagsJSON = pagsValidos.length > 0 ? JSON.stringify(pagsValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : null
     const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:formaResumida, pagamentos:pagsJSON, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
+    console.log('[DBG-SAVE] pagsValidos:', pagsValidos.length, 'pagsJSON:', pagsJSON)
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }
     else { const res = await criarAgendamento(empresaAtiva.id, payload); error = res.error }

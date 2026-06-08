@@ -262,6 +262,8 @@ export default function AgendaPage() {
   const [intervaloMin, setIntervaloMin] = useState(30)
   const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
   const [pagamentos, setPagamentos] = useState<Array<{forma:string;valor:string}>>([])
+  const [modalFinalizar, setModalFinalizar] = useState(false)
+  const [verPagamentos, setVerPagamentos] = useState(false)
   const [desconto, setDesconto] = useState('')
   const [modalDesconto, setModalDesconto] = useState(false)
   const [valorOriginal, setValorOriginal] = useState('')
@@ -472,7 +474,7 @@ export default function AgendaPage() {
   }
 
   function fecharModal() {
-    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]); setPagamentos([]); setDesconto(''); setValorOriginal(''); setModalDesconto(false) }
+    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]); setPagamentos([]); setDesconto(''); setValorOriginal(''); setModalDesconto(false); setModalFinalizar(false); setVerPagamentos(false) }
 
   async function salvar() {
     // Validacao completa dos campos obrigatorios
@@ -891,6 +893,13 @@ export default function AgendaPage() {
                     <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Valor</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>R$ {Number(selecionado.valor).toFixed(2).replace('.',',')}</p></div>
                   </div>
                 </div>
+                  {(selecionado.pagamentos?.length > 0 || selecionado.forma_pagamento) && (
+                    <button onClick={()=>setVerPagamentos(true)}
+                      style={{ background:'none', border:'none', color:'#2563eb', fontSize:'12px', fontWeight:'600', cursor:'pointer', padding:'0', display:'flex', alignItems:'center', gap:'4px', marginTop:'4px' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                      Ver forma de pagamento
+                    </button>
+                  )}
               )}
               {/* Banner de status - cancelado */}
               {modoEdicao && selecionado?.status === 'cancelado' && (
@@ -1088,152 +1097,24 @@ export default function AgendaPage() {
                 </div>
               )}
               {!form.usar_plano && (
-                <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-                    <div>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
-                        <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>
-                          {bloquearValor ? 'Valor (R$) 🔒' : 'Valor (R$)'}
-                        </label>
-                        {(usuario as any)?.permitir_desconto && form.valor && parseFloat(form.valor) > 0 && (
-                          <button type="button" onClick={()=>{ setValorOriginal(form.valor); setModalDesconto(true) }}
-                            style={{ fontSize:'11px', fontWeight:'600', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer' }}>
-                            % Desconto
-                          </button>
-                        )}
-                      </div>
-                      <input type="number" value={form.valor} onChange={e=>{ if(!bloquearValor) setForm(f=>({...f,valor:e.target.value})) }} readOnly={bloquearValor} style={{ opacity:bloquearValor?0.6:1, cursor:bloquearValor?'not-allowed':'text', ...inputStyle }} placeholder="0,00"/>
-                      {parseFloat(desconto) > 0 && (
-                        <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px' }}>
-                          <span style={{ fontSize:'11px', color:'#6b7280' }}>Desc: R$ {parseFloat(desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                          <span style={{ fontSize:'12px', fontWeight:'700', color:'#059669' }}>Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-parseFloat(desconto)).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
-                        <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Forma de pagamento</label>
-                        <button type="button" onClick={()=>{
-                            const descontoN = parseFloat(desconto) || 0
-                            const valTotal = Math.max(0,(parseFloat(form.valor)||0) - descontoN)
-                            if (pagamentos.length === 0) {
-                              // 1a parcela: preenche com total inteiro
-                              setPagamentos([{forma:'dinheiro', valor:String(valTotal)}])
-                            } else {
-                              // 2a+ parcela:
-                              // - zera o último campo (que estava com sugestão automática)
-                              // - adiciona novo campo com o restante calculado pelos anteriores (sem o último)
-                              const semUltimo = pagamentos.slice(0, -1)
-                              const ultimoAtual = pagamentos[pagamentos.length - 1]
-                              const somaAnteriores = semUltimo.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
-                              const restanteNovo = Math.max(0, valTotal - somaAnteriores)
-                              setPagamentos([...semUltimo, {...ultimoAtual, valor:''}, {forma:'dinheiro', valor:String(restanteNovo)}])
-                            }
-                          }}
-                          style={{ fontSize:'11px', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer', fontWeight:'600' }}>
-                          + Adicionar
-                        </button>
-                      </div>
-                      {pagamentos.length === 0 && (
-                        <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
-                          {FORMAS_PAG.map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
-                        </select>
-                      )}
-                      {pagamentos.length > 0 && (
-                        <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-                          {pagamentos.map((pag, idx) => {
-                            const descontoN2 = parseFloat(desconto) || 0
-                            const valorTotal2 = Math.max(0,(parseFloat(form.valor)||0) - descontoN2)
-                            // Restante = total - soma dos pagamentos ANTERIORES a este
-                            const somaAnteriores = pagamentos.slice(0, idx).reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
-                            const restanteParaEste = Math.max(0, valorTotal2 - somaAnteriores)
-                            const isUltimo = idx === pagamentos.length - 1
-                            return (
-                            <div key={idx} style={{ display:'flex', gap:'6px', alignItems:'center' }}>
-                              <select value={pag.forma} onChange={e=>setPagamentos(ps=>ps.map((p,i)=>i===idx?{...p,forma:e.target.value}:p))}
-                                style={{ ...selectStyle, flex:2 }}>
-                                {FORMAS_PAG.filter(fp=>fp.value).map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
-                              </select>
-                              <div style={{ flex:1, position:'relative' }}>
-                                <input type="number" value={pag.valor}
-                                  placeholder={isUltimo && pagamentos.length > 1 ? restanteParaEste.toFixed(2) : 'R$ 0,00'}
-                                  onChange={e=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:e.target.value}:p))}
-                                  style={{ ...inputStyle, width:'100%', padding:'8px 10px',
-                                    background: isUltimo && pagamentos.length > 1 && !pag.valor ? '#f0fdf4' : 'white',
-                                    border: isUltimo && pagamentos.length > 1 && !pag.valor ? '1.5px solid #6ee7b7' : undefined
-                                  }}/>
-                                {isUltimo && pagamentos.length > 1 && !pag.valor && restanteParaEste > 0 && (
-                                  <button type="button"
-                                    onClick={()=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:String(restanteParaEste)}:p))}
-                                    style={{ position:'absolute', right:'4px', top:'50%', transform:'translateY(-50%)', background:'#059669', color:'white', border:'none', borderRadius:'4px', fontSize:'10px', fontWeight:'700', padding:'2px 5px', cursor:'pointer', whiteSpace:'nowrap' }}>
-                                    ✓ {restanteParaEste.toLocaleString('pt-BR',{minimumFractionDigits:2})}
-                                  </button>
-                                )}
-                              </div>
-                              <button type="button" onClick={()=>setPagamentos(ps=>ps.filter((_,i)=>i!==idx))}
-                                style={{ background:'#fef2f2', border:'none', borderRadius:'6px', color:'#ef4444', cursor:'pointer', fontSize:'16px', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                ×
-                              </button>
-                            </div>
-                            )
-                          })}
-                          {(() => {
-                            const totalPag = pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
-                            const descontoNum = parseFloat(desconto) || 0
-                            const valorBase = Math.max(0,(parseFloat(form.valor)||0) - descontoNum)
-                            const diff = valorBase - totalPag
-                            return (
-                              <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 8px', background: Math.abs(diff)<0.01?'#f0fdf4':'#fffbeb', borderRadius:'6px', border:`1px solid ${Math.abs(diff)<0.01?'#bbf7d0':'#fde68a'}` }}>
-                                <span style={{ fontSize:'12px', color:'#6b7280' }}>Pago: R$ {totalPag.toLocaleString('pt-BR',{minimumFractionDigits:2})} / Total: R$ {valorBase.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                                {diff > 0.01 && <span style={{ fontSize:'12px', color:'#d97706', fontWeight:'600' }}>Falta: R$ {diff.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
-                                {diff < -0.01 && <span style={{ fontSize:'12px', color:'#ef4444', fontWeight:'600' }}>Excede: R$ {Math.abs(diff).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
-                                {Math.abs(diff)<0.01 && <span style={{ fontSize:'12px', color:'#10b981', fontWeight:'600' }}>✓ Valor conferido</span>}
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      )}
-                    </div>
+                <div>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
+                    <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>
+                      {bloquearValor ? 'Valor (R$)' : 'Valor (R$)'}
+                    </label>
+                    {!bloquearValor && form.valor && parseFloat(form.valor) > 0 && (usuario as any)?.permitir_desconto === true && (
+                      <button type="button" onClick={()=>{ setValorOriginal(form.valor); setModalDesconto(true) }}
+                        style={{ fontSize:'11px', fontWeight:'600', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer' }}>
+                        % Desconto
+                      </button>
+                    )}
                   </div>
-                  {modalDesconto && (
-                    <div style={{ background:'#f9fafb', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'14px', display:'flex', flexDirection:'column', gap:'10px' }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        <p style={{ fontSize:'13px', fontWeight:'700', color:'#1e1b4b', margin:0 }}>Aplicar desconto</p>
-                        <button type="button" onClick={()=>setModalDesconto(false)} style={{ background:'none', border:'none', fontSize:'18px', color:'#9ca3af', cursor:'pointer', lineHeight:1 }}>×</button>
-                      </div>
-                      <div style={{ display:'flex', gap:'10px', alignItems:'center' }}>
-                        <div style={{ flex:1 }}>
-                          <label style={{ fontSize:'11px', color:'#6b7280', display:'block', marginBottom:'4px' }}>Valor do desconto (R$)</label>
-                          <input type="number" value={desconto} min="0"
-                            onChange={e=>{
-                              const v = e.target.value
-                              const d = parseFloat(v) || 0
-                              const orig = parseFloat(valorOriginal || form.valor) || 0
-                              if (!v || d === 0) {
-                                setDesconto('')
-                              } else if (d < orig) {
-                                setDesconto(v)
-                              }
-                            }}
-                            style={{ ...inputStyle, padding:'8px 10px' }} placeholder="0,00" autoFocus/>
-                        </div>
-                        <div style={{ textAlign:'center', minWidth:'90px' }}>
-                          <p style={{ fontSize:'11px', color:'#6b7280', marginBottom:'2px' }}>Total final</p>
-                          <p style={{ fontSize:'18px', fontWeight:'800', color:'#059669', margin:0 }}>
-                            R$ {Math.max(0,(parseFloat(valorOriginal||form.valor)||0)-(parseFloat(desconto)||0)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
-                          </p>
-                        </div>
-                      </div>
-                      <div style={{ display:'flex', gap:'8px' }}>
-                        <button type="button" onClick={()=>{ setDesconto(''); setForm(f=>({...f, valor: valorOriginal || f.valor})); setPagamentos([]); setModalDesconto(false) }}
-                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #e5e7eb', background:'white', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>
-                          Remover desconto
-                        </button>
-                        <button type="button" onClick={()=>{ setPagamentos([]); setModalDesconto(false) }}
-                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#6366f1', color:'white', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-                          Confirmar
-                        </button>
-                      </div>
+                  <input type="number" value={form.valor} onChange={e=>{ if(!bloquearValor) setForm(f=>({...f,valor:e.target.value})) }} readOnly={bloquearValor}
+                    style={{ opacity:bloquearValor?0.6:1, cursor:bloquearValor?'not-allowed':'text', ...inputStyle }} placeholder="0,00"/>
+                  {parseFloat(desconto) > 0 && (
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px' }}>
+                      <span style={{ fontSize:'11px', color:'#6b7280' }}>Desc: R$ {parseFloat(desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                      <span style={{ fontSize:'12px', fontWeight:'700', color:'#059669' }}>Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-parseFloat(desconto)).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
                     </div>
                   )}
                 </div>
@@ -1310,7 +1191,7 @@ export default function AgendaPage() {
                     )}
                     {enviandoWpp ? 'Enviando...' : statusWpp === 'ok' ? 'Enviado!' : 'Confirmar Wpp'}
                   </button>}
-                  <button onClick={()=>finalizar(selecionado.id)} disabled={finalizando} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>{finalizando?'Finalizando...':'Finalizar'}</button>
+                  <button onClick={()=>{ setPagamentos([]); setModalFinalizar(true) }} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Finalizar</button>
                 </div>
               ) : <div/>}
               <div style={{ display:'flex', flexDirection:'column', gap:'8px', flex:1, minWidth:'160px' }}>
@@ -1333,6 +1214,144 @@ export default function AgendaPage() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Finalizar */}
+      {modalFinalizar && selecionado && (
+        <div onClick={()=>setModalFinalizar(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.7)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'20px', width:'100%', maxWidth:'420px', overflow:'hidden', boxShadow:'0 25px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ background:'linear-gradient(135deg,#059669,#10b981)', padding:'20px 24px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <p style={{ color:'white', fontWeight:'800', fontSize:'17px' }}>Finalizar atendimento</p>
+                  <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'13px', marginTop:'2px' }}>
+                    Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-(parseFloat(desconto)||0)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                  </p>
+                </div>
+                <button onClick={()=>setModalFinalizar(false)} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'50%', width:'32px', height:'32px', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>x</button>
+              </div>
+            </div>
+            <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'10px' }}>
+              {pagamentos.map((pag, idx) => {
+                const descontoNM = parseFloat(desconto) || 0
+                const valTotalM = Math.max(0,(parseFloat(form.valor)||0) - descontoNM)
+                const somaAntM = pagamentos.slice(0,idx).reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                const restanteM = Math.max(0, valTotalM - somaAntM)
+                const isUltM = idx === pagamentos.length - 1
+                return (
+                  <div key={idx} style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+                    <select value={pag.forma} onChange={e=>setPagamentos(ps=>ps.map((p,i)=>i===idx?{...p,forma:e.target.value}:p))}
+                      style={{ flex:2, border:'1.5px solid #e5e7eb', borderRadius:'10px', padding:'10px 12px', fontSize:'13px', outline:'none', background:'white' }}>
+                      {FORMAS_PAG.filter(fp=>fp.value).map(fp=><option key={fp.value} value={fp.value}>{fp.label}</option>)}
+                    </select>
+                    <div style={{ flex:1, position:'relative' }}>
+                      <input type="number" value={pag.valor}
+                        placeholder={isUltM && pagamentos.length>1 ? restanteM.toFixed(2) : '0,00'}
+                        onChange={e=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:e.target.value}:p))}
+                        style={{ width:'100%', border:`1.5px solid ${isUltM&&pagamentos.length>1&&!pag.valor?'#6ee7b7':'#e5e7eb'}`, borderRadius:'10px', padding:'10px 12px', fontSize:'13px', outline:'none', background:isUltM&&pagamentos.length>1&&!pag.valor?'#f0fdf4':'white' }}/>
+                      {isUltM && pagamentos.length>1 && !pag.valor && restanteM>0 && (
+                        <button type="button" onClick={()=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:String(restanteM)}:p))}
+                          style={{ position:'absolute', right:'6px', top:'50%', transform:'translateY(-50%)', background:'#059669', color:'white', border:'none', borderRadius:'6px', fontSize:'10px', fontWeight:'700', padding:'3px 6px', cursor:'pointer' }}>
+                          ok {restanteM.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                        </button>
+                      )}
+                    </div>
+                    <button type="button" onClick={()=>setPagamentos(ps=>ps.filter((_,i)=>i!==idx))}
+                      style={{ background:'#fef2f2', border:'none', borderRadius:'8px', color:'#ef4444', cursor:'pointer', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', flexShrink:0 }}>x</button>
+                  </div>
+                )
+              })}
+              <button type="button" onClick={()=>{
+                  const dNM2 = parseFloat(desconto)||0
+                  const vTM2 = Math.max(0,(parseFloat(form.valor)||0)-dNM2)
+                  if (pagamentos.length===0) { setPagamentos([{forma:'dinheiro',valor:String(vTM2)}]) }
+                  else {
+                    const semUltM2=pagamentos.slice(0,-1)
+                    const ultM2=pagamentos[pagamentos.length-1]
+                    const somaM2=semUltM2.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                    const restM2=Math.max(0,vTM2-somaM2)
+                    setPagamentos([...semUltM2,{...ultM2,valor:''},{forma:'dinheiro',valor:String(restM2)}])
+                  }
+                }}
+                style={{ border:'2px dashed #d1d5db', background:'transparent', borderRadius:'10px', padding:'10px', fontSize:'13px', color:'#6b7280', cursor:'pointer', fontWeight:'600' }}>
+                + Adicionar forma de pagamento
+              </button>
+              {pagamentos.length > 0 && (()=>{
+                const dN6=parseFloat(desconto)||0
+                const vB6=Math.max(0,(parseFloat(form.valor)||0)-dN6)
+                const tP6=pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                const df6=vB6-tP6
+                return (
+                  <div style={{ padding:'10px 14px', borderRadius:'10px', background:Math.abs(df6)<0.01?'#f0fdf4':'#fffbeb', border:`1px solid ${Math.abs(df6)<0.01?'#6ee7b7':'#fde68a'}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <span style={{ fontSize:'12px', color:'#6b7280' }}>Pago: R$ {tP6.toLocaleString('pt-BR',{minimumFractionDigits:2})} / Total: R$ {vB6.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                    {Math.abs(df6)<0.01 && <span style={{ fontSize:'12px', color:'#059669', fontWeight:'700' }}>Confirmado</span>}
+                    {df6>0.01 && <span style={{ fontSize:'12px', color:'#d97706', fontWeight:'700' }}>Falta R$ {df6.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
+                    {df6<-0.01 && <span style={{ fontSize:'12px', color:'#ef4444', fontWeight:'700' }}>Excede R$ {Math.abs(df6).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
+                  </div>
+                )
+              })()}
+              {erroForm.length > 0 && (
+                <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'10px', padding:'10px 14px' }}>
+                  {erroForm.map((e,i)=><p key={i} style={{ fontSize:'12px', color:'#dc2626' }}>- {e}</p>)}
+                </div>
+              )}
+              <div style={{ display:'flex', gap:'10px', marginTop:'4px' }}>
+                <button onClick={()=>setModalFinalizar(false)} style={{ flex:1, padding:'11px', border:'1px solid #e5e7eb', borderRadius:'10px', background:'white', fontSize:'14px', cursor:'pointer', color:'#6b7280' }}>Cancelar</button>
+                <button onClick={()=>finalizar(selecionado.id)} disabled={finalizando}
+                  style={{ flex:2, padding:'11px', border:'none', borderRadius:'10px', background:finalizando?'#a7f3d0':'linear-gradient(135deg,#059669,#10b981)', color:'white', fontSize:'14px', fontWeight:'700', cursor:finalizando?'not-allowed':'pointer' }}>
+                  {finalizando ? 'Finalizando...' : 'Confirmar e Finalizar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ver Pagamentos */}
+      {verPagamentos && selecionado && (
+        <div onClick={()=>setVerPagamentos(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'20px', width:'100%', maxWidth:'380px', overflow:'hidden', boxShadow:'0 25px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ background:'linear-gradient(135deg,#1d4ed8,#2563eb)', padding:'18px 22px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <p style={{ color:'white', fontWeight:'800', fontSize:'16px' }}>Forma de pagamento</p>
+                <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>{selecionado.cliente}</p>
+              </div>
+              <button onClick={()=>setVerPagamentos(false)} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'50%', width:'30px', height:'30px', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>x</button>
+            </div>
+            <div style={{ padding:'18px 22px', display:'flex', flexDirection:'column', gap:'10px' }}>
+              {selecionado.pagamentos && selecionado.pagamentos.length > 0 ? (
+                <>
+                  {selecionado.pagamentos.map((p: any, i: number) => {
+                    const fLabel: Record<string,string> = {dinheiro:'Dinheiro',pix:'PIX',cartao_credito:'Cartao Credito',cartao_debito:'Cartao Debito',transferencia:'Transferencia',plano:'Plano Mensal'}
+                    const fBg: Record<string,string> = {dinheiro:'#ecfdf5',pix:'#eff6ff',cartao_credito:'#faf5ff',cartao_debito:'#fdf4ff',transferencia:'#fff7ed',plano:'#f0fdf4'}
+                    const fCor: Record<string,string> = {dinheiro:'#059669',pix:'#2563eb',cartao_credito:'#7c3aed',cartao_debito:'#a21caf',transferencia:'#ea580c',plano:'#16a34a'}
+                    const bg = fBg[p.forma]||'#f8fafc'
+                    const cor = fCor[p.forma]||'#374151'
+                    return (
+                      <div key={i} style={{ background:bg, borderRadius:'12px', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', border:`1px solid ${cor}22` }}>
+                        <div>
+                          <p style={{ fontSize:'13px', fontWeight:'700', color:cor }}>{fLabel[p.forma]||p.forma}</p>
+                          <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Parcela {i+1} de {selecionado.pagamentos!.length}</p>
+                        </div>
+                        <p style={{ fontSize:'18px', fontWeight:'800', color:cor }}>R$ {Number(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                      </div>
+                    )
+                  })}
+                  <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:'10px', display:'flex', justifyContent:'space-between' }}>
+                    <span style={{ fontSize:'13px', color:'#6b7280', fontWeight:'600' }}>Total recebido</span>
+                    <span style={{ fontSize:'16px', fontWeight:'800', color:'#059669' }}>R$ {selecionado.pagamentos.reduce((s: number,p: any)=>s+Number(p.valor),0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign:'center', padding:'20px', color:'#9ca3af' }}>
+                  <p style={{ fontSize:'13px' }}>Nenhum registro detalhado</p>
+                  {selecionado.forma_pagamento && <p style={{ fontSize:'12px', marginTop:'4px', color:'#6b7280' }}>{selecionado.forma_pagamento}</p>}
+                </div>
+              )}
+              <button onClick={()=>setVerPagamentos(false)} style={{ padding:'10px', border:'none', borderRadius:'10px', background:'#f3f4f6', fontSize:'13px', cursor:'pointer', fontWeight:'600', color:'#374151' }}>Fechar</button>
             </div>
           </div>
         </div>

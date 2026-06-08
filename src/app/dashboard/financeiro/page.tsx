@@ -104,7 +104,7 @@ export default function FinanceiroPage() {
         .lte('data_vencimento', periodoFim)
         .order('data_vencimento', { ascending:false }),
       sb.from('agendamentos')
-        .select('id,data_inicio,valor,status,cliente_id,servico_id')
+        .select('id,data_inicio,valor,valor_bruto,desconto,status,cliente_id,servico_id')
         .eq('empresa_id', empresaAtiva.id)
         .eq('status', 'fechado')
         .gte('data_inicio', periodoIni+'T00:00:00')
@@ -130,7 +130,7 @@ export default function FinanceiroPage() {
       ...l, cliente_nome: l.cliente_id?(cliMap[l.cliente_id]||''):'', origem:l.origem||'manual',
     })))
     setAgsFinalizados((ags||[]).map((a:any) => ({
-      id:a.id, data_inicio:a.data_inicio, valor:a.valor||0,
+      id:a.id, data_inicio:a.data_inicio, valor:a.valor||0, desconto:a.desconto||0, valor_bruto:a.valor_bruto||a.valor||0,
       cliente:cliMap[a.cliente_id]||'--', servico:servMap[a.servico_id]||'--',
     })))
     setCarregando(false)
@@ -382,7 +382,14 @@ export default function FinanceiroPage() {
                 <p style={{ fontSize:'14px', fontWeight:'500', color:'#1a1a2e', marginBottom:'2px' }}>{a.cliente}</p>
                 <p style={{ fontSize:'12px', color:'#9ca3af' }}>{a.servico} . {a.data_inicio.slice(0,10).split('-').reverse().join('/')} às {a.data_inicio.slice(11,16)}</p>
               </div>
-              <p style={{ fontSize:'15px', fontWeight:'700', color:'#10b981' }}>+{formatarMoeda(a.valor)}</p>
+              <div style={{ textAlign:'right' }}>
+                <p style={{ fontSize:'15px', fontWeight:'700', color:'#10b981', margin:0 }}>+{formatarMoeda(a.valor)}</p>
+                {a.desconto > 0 && (
+                  <p style={{ fontSize:'11px', color:'#6b7280', margin:0 }}>
+                    {formatarMoeda(a.valor_bruto)} - desc {formatarMoeda(a.desconto)}
+                  </p>
+                )}
+              </div>
             </div>
           ))}
           {agsFinalizados.length===0&&!carregando && <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af', fontSize:'14px' }}>Nenhum atendimento finalizado no período.</div>}

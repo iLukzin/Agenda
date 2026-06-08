@@ -636,8 +636,16 @@ export default function AgendaPage() {
     setFinalizando(true)
     const sb2 = createClient()
     // Salvar forma de pagamento e valor junto ao finalizar
-    const updatePayload: any = { status:'fechado', forma_pagamento: form.forma_pagamento }
-    if (form.valor) updatePayload.valor = parseFloat(form.valor) || 0
+    const descontoFinalizar = parseFloat(desconto) || 0
+    const valorFinalFinalizar = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinalizar)
+    const valorBrutoFinalizar = parseFloat(form.valor) || 0
+    const updatePayload: any = {
+      status: 'fechado',
+      forma_pagamento: form.forma_pagamento,
+      valor: valorFinalFinalizar,
+      valor_bruto: valorBrutoFinalizar,
+      desconto: descontoFinalizar > 0 ? descontoFinalizar : null,
+    }
     const { error } = await sb2.from('agendamentos').update(updatePayload).eq('id', id)
     if (error) alert('Erro: ' + error.message)
     else { await carregar(); fecharModal() }

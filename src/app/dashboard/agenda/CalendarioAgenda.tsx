@@ -26,6 +26,9 @@ type Props = {
   profissionais: any[]
   onAbrirNovo: (() => void) | undefined
   onAbrirEdicao: (ag: Ag) => void
+  onCancelarRapido?: (ag: Ag) => void
+  onFinalizarRapido?: (ag: Ag) => void
+  onVerPagamentos?: (ag: Ag) => void
   filtroProfissional: string
   setFiltroProfissional: (v: string) => void
 }
@@ -36,7 +39,7 @@ const AZUL_DARK   = '#1d4ed8'
 const AZUL_LIGHT  = '#dbeafe'
 const AZUL_XLIGHT = '#eff6ff'
 
-export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirNovo, onAbrirEdicao, filtroProfissional, setFiltroProfissional }: Props) {
+export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirNovo, onAbrirEdicao, onCancelarRapido, onFinalizarRapido, onVerPagamentos, filtroProfissional, setFiltroProfissional }: Props) {
   const hoje = hojeNoBrasil()
   const [mesBase, setMesBase] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
   const [diaSel, setDiaSel]   = useState<string>(toISO(hoje))
@@ -289,17 +292,39 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
                     <p style={{ fontSize:'11px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.servico||ag.profissional}</p>
                   </div>
                   {isFinalizado && (
-                    <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'#d1fae5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <div style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0 }} onClick={e=>e.stopPropagation()}>
+                      {onVerPagamentos && (
+                        <button onClick={()=>onVerPagamentos(ag)}
+                          style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'8px', padding:'4px 8px', fontSize:'11px', fontWeight:'700', color:'#2563eb', cursor:'pointer', whiteSpace:'nowrap' }}>
+                          Pagamento
+                        </button>
+                      )}
+                      <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:'#d1fae5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
                     </div>
                   )}
                   {isCancelado && (
-                    <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'#ffe4e6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:'#ffe4e6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </div>
                   )}
                   {!isFinalizado && !isCancelado && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    <div style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0 }} onClick={e=>e.stopPropagation()}>
+                      {onCancelarRapido && (
+                        <button onClick={()=>onCancelarRapido(ag)}
+                          style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'4px 8px', fontSize:'11px', fontWeight:'700', color:'#ef4444', cursor:'pointer', whiteSpace:'nowrap' }}>
+                          Cancelar
+                        </button>
+                      )}
+                      {onFinalizarRapido && (
+                        <button onClick={()=>onFinalizarRapido(ag)}
+                          style={{ background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'4px 8px', fontSize:'11px', fontWeight:'700', color:'#059669', cursor:'pointer', whiteSpace:'nowrap' }}>
+                          Finalizar
+                        </button>
+                      )}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
                   )}
                 </div>
               )

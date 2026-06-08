@@ -800,6 +800,9 @@ export default function AgendaPage() {
           profissionais={profissionais}
           onAbrirNovo={perm.criar ? abrirNovo : undefined}
           onAbrirEdicao={abrirEdicao}
+          onCancelarRapido={perm.editar ? (ag) => { abrirEdicao(ag); setTimeout(()=>setModalCancelar(true), 100) } : undefined}
+          onFinalizarRapido={perm.editar ? (ag) => { abrirEdicao(ag); setTimeout(()=>{ setPagamentos([]); setModalFinalizar(true) }, 100) } : undefined}
+          onVerPagamentos={(ag) => { abrirEdicao(ag); setTimeout(()=>setVerPagamentos(true), 100) }}
           filtroProfissional={filtroProfissional}
           setFiltroProfissional={setFiltroProfissional}
         />

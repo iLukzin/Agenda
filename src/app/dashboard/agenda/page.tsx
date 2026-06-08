@@ -417,7 +417,7 @@ export default function AgendaPage() {
     setPlanoCliente(null); setSessaoPlano(null)
     setIntervaloMin(30)
     setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
-    setDesconto(''); setValorOriginal(''); setModalDesconto(false); setPagamentos([]); setPagamentos([])
+    setDesconto(''); setValorOriginal(''); setModalDesconto(false); setPagamentos([])
     setModalAberto(true)
   }
 
@@ -431,36 +431,20 @@ export default function AgendaPage() {
     setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(vBruto), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
     setValorOriginal(String(vBruto))
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
-    // Carregar pagamentos salvos
+    // Carregar pagamentos do banco
     try {
-      const pagsRaw = Array.isArray(ag.pagamentos) && ag.pagamentos.length > 0
-        ? ag.pagamentos
-        : (typeof ag.pagamentos === 'string' && ag.pagamentos
-            ? JSON.parse(ag.pagamentos)
-            : null)
-      if (pagsRaw && pagsRaw.length > 0) {
-        setPagamentos(pagsRaw.map((p: any) => ({ forma: String(p.forma), valor: String(p.valor) })))
-      } else if (ag.forma_pagamento) {
-        setPagamentos([{ forma: ag.forma_pagamento.split('+')[0] || ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }])
+      // ag.pagamentos já vem parseado do mapeamento (JSON.parse feito no carregar)
+      const pagsArr = Array.isArray(ag.pagamentos) ? ag.pagamentos : []
+      if (pagsArr.length > 0) {
+        setPagamentos(pagsArr.map((p: any) => ({ forma: String(p.forma || ''), valor: String(p.valor || '') })))
       } else {
-        setPagamentos([])
+        // fallback: usar forma_pagamento simples
+        setPagamentos(ag.forma_pagamento && ag.forma_pagamento !== 'plano'
+          ? [{ forma: ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }]
+          : [])
       }
     } catch { setPagamentos([]) }
-    // Carregar pagamentos salvos
-    try {
-      const pagsRaw = Array.isArray(ag.pagamentos) && ag.pagamentos.length > 0
-        ? ag.pagamentos
-        : (typeof ag.pagamentos === 'string' && ag.pagamentos
-            ? JSON.parse(ag.pagamentos)
-            : null)
-      if (pagsRaw && pagsRaw.length > 0) {
-        setPagamentos(pagsRaw.map((p: any) => ({ forma: String(p.forma), valor: String(p.valor) })))
-      } else if (ag.forma_pagamento) {
-        setPagamentos([{ forma: ag.forma_pagamento.split('+')[0] || ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }])
-      } else {
-        setPagamentos([])
-      }
-    } catch { setPagamentos([]) }
+
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
     if (ehPlano && ag.clienteId) {
@@ -484,7 +468,7 @@ export default function AgendaPage() {
   }
 
   function fecharModal() {
-    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]) }
+    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]); setPagamentos([]); setDesconto(''); setValorOriginal(''); setModalDesconto(false) }
 
   async function salvar() {
     // Validacao completa dos campos obrigatorios
@@ -672,9 +656,22 @@ export default function AgendaPage() {
 
   async function finalizar(id: string) {
     // Validar forma de pagamento antes de finalizar
-    const temPagamento = pagamentos.some(p => p.forma && parseFloat(p.valor) > 0) || !!form.forma_pagamento
+    const descontoFin = parseFloat(desconto) || 0
+    const valorEsperadoFin = Math.max(0, (parseFloat(form.valor) || 0) - descontoFin)
+    const pagsAtivos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
+    const totalPagoFin = pagsAtivos.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0)
+    const temPagamento = pagsAtivos.length > 0 || !!form.forma_pagamento
+
     if (!temPagamento) {
       setErroForm(['Para finalizar e necessario informar a Forma de pagamento.'])
+      return
+    }
+    if (pagsAtivos.length > 0 && Math.abs(totalPagoFin - valorEsperadoFin) > 0.01) {
+      const diff = valorEsperadoFin - totalPagoFin
+      const msg = diff > 0
+        ? 'Valor incorreto: faltam R$ ' + diff.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' para fechar o total de R$ ' + valorEsperadoFin.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '.'
+        : 'Valor incorreto: o total informado excede em R$ ' + Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' o valor do servico (R$ ' + valorEsperadoFin.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ').'
+      setErroForm([msg])
       return
     }
     if (!confirm('Finalizar este atendimento?')) return

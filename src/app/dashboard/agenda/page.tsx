@@ -1115,12 +1115,20 @@ export default function AgendaPage() {
                         <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Forma de pagamento</label>
                         <button type="button" onClick={()=>{
                             const descontoN = parseFloat(desconto) || 0
-                            const valorTotal = Math.max(0,(parseFloat(form.valor)||0) - descontoN)
-                            const jaInformado = pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
-                            const restante = Math.max(0, valorTotal - jaInformado)
-                            // 1o pagamento: preenche com valor total; demais: preenche com restante
-                            const novoValor = pagamentos.length === 0 ? String(valorTotal) : (restante > 0 ? String(restante) : '')
-                            setPagamentos(p=>[...p,{forma:'dinheiro',valor:novoValor}])
+                            const valTotal = Math.max(0,(parseFloat(form.valor)||0) - descontoN)
+                            if (pagamentos.length === 0) {
+                              // 1a parcela: preenche com total inteiro
+                              setPagamentos([{forma:'dinheiro', valor:String(valTotal)}])
+                            } else {
+                              // 2a+ parcela:
+                              // - zera o último campo (que estava com sugestão automática)
+                              // - adiciona novo campo com o restante calculado pelos anteriores (sem o último)
+                              const semUltimo = pagamentos.slice(0, -1)
+                              const ultimoAtual = pagamentos[pagamentos.length - 1]
+                              const somaAnteriores = semUltimo.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                              const restanteNovo = Math.max(0, valTotal - somaAnteriores)
+                              setPagamentos([...semUltimo, {...ultimoAtual, valor:''}, {forma:'dinheiro', valor:String(restanteNovo)}])
+                            }
                           }}
                           style={{ fontSize:'11px', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer', fontWeight:'600' }}>
                           + Adicionar
@@ -1133,21 +1141,42 @@ export default function AgendaPage() {
                       )}
                       {pagamentos.length > 0 && (
                         <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-                          {pagamentos.map((pag, idx) => (
+                          {pagamentos.map((pag, idx) => {
+                            const descontoN2 = parseFloat(desconto) || 0
+                            const valorTotal2 = Math.max(0,(parseFloat(form.valor)||0) - descontoN2)
+                            // Restante = total - soma dos pagamentos ANTERIORES a este
+                            const somaAnteriores = pagamentos.slice(0, idx).reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                            const restanteParaEste = Math.max(0, valorTotal2 - somaAnteriores)
+                            const isUltimo = idx === pagamentos.length - 1
+                            return (
                             <div key={idx} style={{ display:'flex', gap:'6px', alignItems:'center' }}>
                               <select value={pag.forma} onChange={e=>setPagamentos(ps=>ps.map((p,i)=>i===idx?{...p,forma:e.target.value}:p))}
                                 style={{ ...selectStyle, flex:2 }}>
                                 {FORMAS_PAG.filter(fp=>fp.value).map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
                               </select>
-                              <input type="number" value={pag.valor} placeholder="R$ 0,00"
-                                onChange={e=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:e.target.value}:p))}
-                                style={{ ...inputStyle, flex:1, padding:'8px 10px' }}/>
+                              <div style={{ flex:1, position:'relative' }}>
+                                <input type="number" value={pag.valor}
+                                  placeholder={isUltimo && pagamentos.length > 1 ? restanteParaEste.toFixed(2) : 'R$ 0,00'}
+                                  onChange={e=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:e.target.value}:p))}
+                                  style={{ ...inputStyle, width:'100%', padding:'8px 10px',
+                                    background: isUltimo && pagamentos.length > 1 && !pag.valor ? '#f0fdf4' : 'white',
+                                    border: isUltimo && pagamentos.length > 1 && !pag.valor ? '1.5px solid #6ee7b7' : undefined
+                                  }}/>
+                                {isUltimo && pagamentos.length > 1 && !pag.valor && restanteParaEste > 0 && (
+                                  <button type="button"
+                                    onClick={()=>setPagamentos(ps=>ps.map((p,ii)=>ii===idx?{...p,valor:String(restanteParaEste)}:p))}
+                                    style={{ position:'absolute', right:'4px', top:'50%', transform:'translateY(-50%)', background:'#059669', color:'white', border:'none', borderRadius:'4px', fontSize:'10px', fontWeight:'700', padding:'2px 5px', cursor:'pointer', whiteSpace:'nowrap' }}>
+                                    ✓ {restanteParaEste.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                                  </button>
+                                )}
+                              </div>
                               <button type="button" onClick={()=>setPagamentos(ps=>ps.filter((_,i)=>i!==idx))}
                                 style={{ background:'#fef2f2', border:'none', borderRadius:'6px', color:'#ef4444', cursor:'pointer', fontSize:'16px', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                                 ×
                               </button>
                             </div>
-                          ))}
+                            )
+                          })}
                           {(() => {
                             const totalPag = pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
                             const descontoNum = parseFloat(desconto) || 0

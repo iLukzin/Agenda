@@ -28,9 +28,9 @@ const FORMAS_CORES: Record<string,{bg:string,cor:string,icon:string}> = {
 const inp = { border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 12px', fontSize:'13px', outline:'none' as const, background:'white' }
 
 function exportarCSV(nomeArquivo: string, linhas: string[][]) {
-  const bom = '﻿'
-  const csv = bom + linhas.map(linha => linha.map(cell => '"' + String(cell).replace(/"/g,'""') + '"').join(';')).join('
-')
+  const bom = '\uFEFF'
+  const sep = '\n'
+  const csv = bom + linhas.map(linha => linha.map(cell => '"' + String(cell).replace(/"/g,'""') + '"').join(';')).join(sep)
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

@@ -42,13 +42,19 @@ export default function UsuariosPage() {
   const [selecionado, setSelecionado]   = useState<Usuario|null>(null)
   const [modalConfirm, setModalConfirm] = useState<{tipo:'excluir'|'inativar';id:string}|null>(null)
   const [erro, setErro]           = useState('')
-  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'', bloquear_edicao_valor:true, permitir_desconto:false })
+  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'', bloquear_edicao_valor:true, permitir_desconto:false, permitir_cancelar:true, permitir_finalizar:true, permitir_ver_pagamento:true, profissional_id:'' })
+  const [profissionais, setProfissionais] = useState<any[]>([])
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
     setCarregando(true)
-    const { data } = await listarUsuarios(empresaAtiva.id)
+    const sb = createClient()
+    const [{ data }, { data: profs }] = await Promise.all([
+      listarUsuarios(empresaAtiva.id),
+      sb.from('profissionais').select('id,nome').eq('empresa_id', empresaAtiva.id).eq('status','ativo').order('nome'),
+    ])
     if (data) setUsuarios(data as Usuario[])
+    setProfissionais(profs || [])
     setCarregando(false)
   }, [empresaAtiva?.id])
 
@@ -69,7 +75,7 @@ export default function UsuariosPage() {
 
   function abrirEdicao(u: Usuario) {
     setModoEdicao(true); setSelecionado(u); setErro('')
-    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'', bloquear_edicao_valor:u.bloquear_edicao_valor !== false, permitir_desconto:u.permitir_desconto === true })
+    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'', bloquear_edicao_valor:u.bloquear_edicao_valor !== false, permitir_desconto:u.permitir_desconto === true, permitir_cancelar:u.permitir_cancelar !== false, permitir_finalizar:u.permitir_finalizar !== false, permitir_ver_pagamento:u.permitir_ver_pagamento !== false, profissional_id:u.profissional_id||'' })
     setModalAberto(true)
   }
 
@@ -86,8 +92,13 @@ export default function UsuariosPage() {
         // Atualiza dados na tabela usuarios
         const { error } = await atualizarUsuario(selecionado.id, {
           nome: form.nome, telefone: form.telefone,
-          cargo: form.cargo, nivel_acesso: form.nivel_acesso, status: form.status, bloquear_edicao_valor: form.bloquear_edicao_valor !== false,
-            permitir_desconto: form.permitir_desconto === true,
+          cargo: form.cargo, nivel_acesso: form.nivel_acesso, status: form.status,
+          bloquear_edicao_valor: form.bloquear_edicao_valor !== false,
+          permitir_desconto: form.permitir_desconto === true,
+          permitir_cancelar: form.permitir_cancelar !== false,
+          permitir_finalizar: form.permitir_finalizar !== false,
+          permitir_ver_pagamento: form.permitir_ver_pagamento !== false,
+          profissional_id: form.profissional_id || null,
         })
         if (error) throw new Error(error.message)
       } else {
@@ -105,6 +116,10 @@ export default function UsuariosPage() {
             empresa_id:   empresaAtiva.id,
             bloquear_edicao_valor: form.bloquear_edicao_valor !== false,
             permitir_desconto: form.permitir_desconto === true,
+            permitir_cancelar: form.permitir_cancelar !== false,
+            permitir_finalizar: form.permitir_finalizar !== false,
+            permitir_ver_pagamento: form.permitir_ver_pagamento !== false,
+            profissional_id: form.profissional_id || null,
           }),
         })
         const result = await res.json()
@@ -312,6 +327,53 @@ export default function UsuariosPage() {
                 style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.permitir_desconto?'#10b981':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
                 <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.permitir_desconto?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
               </div>
+            </div>
+
+            {/* Toggle permitir finalizar */}
+            <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f0fdf4', borderRadius:'10px', padding:'12px 14px', border:'1px solid #bbf7d0' }}>
+              <div>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', marginBottom:'2px' }}>Permitir finalizar agendamento</p>
+                <p style={{ fontSize:'11px', color:'#6b7280' }}>Quando desativado, o botão Finalizar não aparece para este usuário</p>
+              </div>
+              <div onClick={()=>setForm(f=>({...f, permitir_finalizar:!f.permitir_finalizar}))}
+                style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.permitir_finalizar?'#10b981':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
+                <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.permitir_finalizar?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+              </div>
+            </div>
+
+            {/* Toggle permitir cancelar */}
+            <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#fef2f2', borderRadius:'10px', padding:'12px 14px', border:'1px solid #fecaca' }}>
+              <div>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', marginBottom:'2px' }}>Permitir cancelar agendamento</p>
+                <p style={{ fontSize:'11px', color:'#6b7280' }}>Quando desativado, o botão Cancelar não aparece para este usuário</p>
+              </div>
+              <div onClick={()=>setForm(f=>({...f, permitir_cancelar:!f.permitir_cancelar}))}
+                style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.permitir_cancelar?'#10b981':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
+                <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.permitir_cancelar?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+              </div>
+            </div>
+
+            {/* Toggle permitir ver pagamento */}
+            <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#eff6ff', borderRadius:'10px', padding:'12px 14px', border:'1px solid #bfdbfe' }}>
+              <div>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', marginBottom:'2px' }}>Permitir visualizar forma de pagamento</p>
+                <p style={{ fontSize:'11px', color:'#6b7280' }}>Quando desativado, o botão Pagamento não aparece para este usuário</p>
+              </div>
+              <div onClick={()=>setForm(f=>({...f, permitir_ver_pagamento:!f.permitir_ver_pagamento}))}
+                style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.permitir_ver_pagamento?'#10b981':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
+                <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.permitir_ver_pagamento?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+              </div>
+            </div>
+
+            {/* Campo profissional vinculado */}
+            <div style={{ gridColumn:'1/-1' }}>
+              <label style={{ display:'block', fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'6px' }}>Profissional vinculado</label>
+              <select value={form.profissional_id} onChange={e=>setForm(f=>({...f,profissional_id:e.target.value}))}
+                style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', outline:'none', background:'white' }}>
+                <option value="">Nenhum (visualiza todos os profissionais)</option>
+                {profissionais.map((p: any)=><option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+              <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'4px' }}>Se vinculado, o usuário só verá a agenda deste profissional</p>
             </div>
 
             {erro && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 14px', marginTop:'14px', fontSize:'13px', color:'#dc2626' }}>{erro}</div>}

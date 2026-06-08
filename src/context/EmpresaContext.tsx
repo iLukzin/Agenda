@@ -16,6 +16,10 @@ export type EmpresaResumo = {
   whatsapp_habilitado?: boolean
   bloquear_edicao_valor?: boolean
   permitir_desconto?: boolean
+  permitir_cancelar?: boolean
+  permitir_finalizar?: boolean
+  permitir_ver_pagamento?: boolean
+  profissional_id?: string
 }
 
 export type UsuarioLogado = {
@@ -66,7 +70,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       // Busca o usuário na tabela
       const { data: u } = await sb
         .from('usuarios')
-        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status, bloquear_edicao_valor, permitir_desconto')
+        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status, bloquear_edicao_valor, permitir_desconto, permitir_cancelar, permitir_finalizar, permitir_ver_pagamento')
         .eq('auth_id', user.id)
         .single()
 
@@ -97,6 +101,10 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         profissional_id:       u.profissional_id,
         bloquear_edicao_valor: u.bloquear_edicao_valor !== false,
         permitir_desconto: u.permitir_desconto === true,
+        permitir_cancelar: u.permitir_cancelar !== false,
+        permitir_finalizar: u.permitir_finalizar !== false,
+        permitir_ver_pagamento: u.permitir_ver_pagamento !== false,
+        profissional_id: u.profissional_id || undefined,
       }
       setUsuario(usuarioLogado)
 

@@ -274,12 +274,13 @@ export default function AgendaPage() {
     if (!empresaAtiva?.id) return
     setCarregando(true)
     const sb = createClient()
-    // Nivel usuario e profissional com vinculo: filtrar so suas agendas
-    const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
+    // Filtrar por profissional_id do usuario logado (do contexto) se vinculado
+    const profIdVinculado = (usuario as any)?.profissional_id || null
+    const ehProf = !!profIdVinculado
     let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,desconto,valor_bruto,forma_pagamento,pagamentos,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
-    if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
+    if (ehProf) qAgs = qAgs.eq('prof_id', profIdVinculado)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
-    if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
+    if (ehProf) qProfs = qProfs.eq('id', profIdVinculado)
     const [r1, r2, r3, r4, r5] = await Promise.all([
       qAgs.order('data_inicio'),
       sb.from('clientes').select('id,nome,telefone,whatsapp,plano_id').eq('empresa_id', empresaAtiva.id),
@@ -800,9 +801,9 @@ export default function AgendaPage() {
           profissionais={profissionais}
           onAbrirNovo={perm.criar ? abrirNovo : undefined}
           onAbrirEdicao={abrirEdicao}
-          onCancelarRapido={perm.excluir ? (ag) => { abrirEdicao(ag); setTimeout(()=>setModalCancelar(true), 100) } : undefined}
-          onFinalizarRapido={perm.alterar ? (ag) => { abrirEdicao(ag); setTimeout(()=>{ setPagamentos([]); setModalFinalizar(true) }, 100) } : undefined}
-          onVerPagamentos={(ag) => { abrirEdicao(ag); setTimeout(()=>setVerPagamentos(true), 100) }}
+          onCancelarRapido={(usuario as any)?.permitir_cancelar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setModalCancelar(true), 100) } : undefined}
+          onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>{ setPagamentos([]); setModalFinalizar(true) }, 100) } : undefined}
+          onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setVerPagamentos(true), 100) } : undefined}
           filtroProfissional={filtroProfissional}
           setFiltroProfissional={setFiltroProfissional}
         />
@@ -894,11 +895,13 @@ export default function AgendaPage() {
                     <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Cliente</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.cliente}</p></div>
                     <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Servico</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>{selecionado.servico}</p></div>
                     <div><p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'2px' }}>Valor</p><p style={{ fontSize:'13px', fontWeight:'600', color:'#065f46' }}>R$ {Number(selecionado.valor).toFixed(2).replace('.',',')}</p></div>
-                    <button onClick={()=>setVerPagamentos(true)}
-                      style={{ marginLeft:'auto', background:'#dcfce7', border:'1px solid #86efac', borderRadius:'8px', color:'#059669', fontSize:'12px', fontWeight:'700', cursor:'pointer', padding:'5px 12px', display:'flex', alignItems:'center', gap:'5px' }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                      Ver pagamento
-                    </button>
+                    {(usuario as any)?.permitir_ver_pagamento !== false && (
+                      <button onClick={()=>setVerPagamentos(true)}
+                        style={{ marginLeft:'auto', background:'#dcfce7', border:'1px solid #86efac', borderRadius:'8px', color:'#059669', fontSize:'12px', fontWeight:'700', cursor:'pointer', padding:'5px 12px', display:'flex', alignItems:'center', gap:'5px' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        Ver pagamento
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1180,7 +1183,7 @@ export default function AgendaPage() {
             <div style={{ display:'flex', gap:'10px', justifyContent:'space-between', marginTop:'16px', flexWrap:'wrap' }}>
               {modoEdicao && selecionado && !isBloqEdicao ? (
                 <div style={{ display:'flex', gap:'8px' }}>
-                  {perm.excluir && <button onClick={()=>{setMotivoCancelamento('');setModalCancelar(true)}} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>Cancelar agend.</button>}
+                  {(usuario as any)?.permitir_cancelar !== false && <button onClick={()=>{setMotivoCancelamento('');setModalCancelar(true)}} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', cursor:'pointer' }}>Cancelar agend.</button>}
                   {wppConectado && !permWpp.carregando && permWpp.visualizar && <button onClick={enviarConfirmacao} disabled={enviandoWpp} title="Enviar confirmacao via WhatsApp"
                     style={{ background:statusWpp==='ok'?'#dcfce7':statusWpp==='erro'?'#fef2f2':'#f0fdf4', color:statusWpp==='ok'?'#16a34a':statusWpp==='erro'?'#dc2626':'#16a34a', border:'1px solid '+(statusWpp==='ok'?'#86efac':statusWpp==='erro'?'#fca5a5':'#86efac'), borderRadius:'8px', padding:'9px 12px', fontSize:'13px', fontWeight:'600', cursor:enviandoWpp?'not-allowed':'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
                     {enviandoWpp ? (
@@ -1192,7 +1195,7 @@ export default function AgendaPage() {
                     )}
                     {enviandoWpp ? 'Enviando...' : statusWpp === 'ok' ? 'Enviado!' : 'Confirmar Wpp'}
                   </button>}
-                  {perm.alterar && <button onClick={()=>{ setPagamentos([]); setModalFinalizar(true) }} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Finalizar</button>}
+                  {(usuario as any)?.permitir_finalizar !== false && <button onClick={()=>{ setPagamentos([]); setModalFinalizar(true) }} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Finalizar</button>}
                 </div>
               ) : <div/>}
               <div style={{ display:'flex', flexDirection:'column', gap:'8px', flex:1, minWidth:'160px' }}>

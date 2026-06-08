@@ -261,6 +261,9 @@ export default function AgendaPage() {
   const [salvandoCliente, setSalvandoCliente] = useState(false)
   const [intervaloMin, setIntervaloMin] = useState(30)
   const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
+  const [desconto, setDesconto] = useState('')
+  const [modalDesconto, setModalDesconto] = useState(false)
+  const [valorOriginal, setValorOriginal] = useState('')
   const [planoCliente, setPlanoCliente] = useState<any>(null)
   const [sessaoPlano, setSessaoPlano]   = useState<any>(null)
 
@@ -410,6 +413,7 @@ export default function AgendaPage() {
     setPlanoCliente(null); setSessaoPlano(null)
     setIntervaloMin(30)
     setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
+    setDesconto(''); setValorOriginal(''); setModalDesconto(false)
     setModalAberto(true)
   }
 
@@ -473,7 +477,8 @@ export default function AgendaPage() {
     const prof = profissionais.find((p: any) => p.nome === form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao) * 60000).toISOString()
     // Valor: na edicao manter o valor original; na criacao calcular pela sessao
-    let valorFinal = parseFloat(form.valor) || 0
+    const descontoVal = parseFloat(desconto) || 0
+    let valorFinal = Math.max(0, (parseFloat(form.valor) || 0) - descontoVal)
     let sessaoParaSalvar = 0
     let totalParaSalvar = 0
     if (!modoEdicao && form.usar_plano && planoCliente && empresaAtiva?.id) {
@@ -1001,15 +1006,70 @@ export default function AgendaPage() {
                 </div>
               )}
               {!form.usar_plano && (
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
-                  <InputField label={bloquearValor ? "Valor (R$) 🔒" : "Valor (R$)"}>
-                    <input type="number" value={form.valor} onChange={e=>{ if(!bloquearValor) setForm(f=>({...f,valor:e.target.value})) }} readOnly={bloquearValor} style={{ opacity:bloquearValor?0.6:1, cursor:bloquearValor?'not-allowed':'text' }} style={inputStyle} placeholder="0,00"/>
-                  </InputField>
-                  <InputField label="Forma de pagamento">
-                    <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
-                      {FORMAS_PAG.map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
-                    </select>
-                  </InputField>
+                <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
+                        <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>
+                          {bloquearValor ? 'Valor (R$) 🔒' : 'Valor (R$)'}
+                        </label>
+                        {!bloquearValor && form.valor && parseFloat(form.valor) > 0 && (
+                          <button type="button" onClick={()=>{ setValorOriginal(form.valor); setModalDesconto(true) }}
+                            style={{ fontSize:'11px', fontWeight:'600', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer' }}>
+                            % Desconto
+                          </button>
+                        )}
+                      </div>
+                      <input type="number" value={form.valor} onChange={e=>{ if(!bloquearValor) setForm(f=>({...f,valor:e.target.value})) }} readOnly={bloquearValor} style={{ opacity:bloquearValor?0.6:1, cursor:bloquearValor?'not-allowed':'text', ...inputStyle }} placeholder="0,00"/>
+                      {parseFloat(desconto) > 0 && (
+                        <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px' }}>
+                          <span style={{ fontSize:'11px', color:'#6b7280' }}>Desc: R$ {parseFloat(desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                          <span style={{ fontSize:'12px', fontWeight:'700', color:'#059669' }}>Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-parseFloat(desconto)).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                        </div>
+                      )}
+                    </div>
+                    <InputField label="Forma de pagamento">
+                      <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
+                        {FORMAS_PAG.map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
+                      </select>
+                    </InputField>
+                  </div>
+                  {modalDesconto && (
+                    <div style={{ background:'#f9fafb', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'14px', display:'flex', flexDirection:'column', gap:'10px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <p style={{ fontSize:'13px', fontWeight:'700', color:'#1e1b4b', margin:0 }}>Aplicar desconto</p>
+                        <button type="button" onClick={()=>setModalDesconto(false)} style={{ background:'none', border:'none', fontSize:'18px', color:'#9ca3af', cursor:'pointer', lineHeight:1 }}>×</button>
+                      </div>
+                      <div style={{ display:'flex', gap:'10px', alignItems:'center' }}>
+                        <div style={{ flex:1 }}>
+                          <label style={{ fontSize:'11px', color:'#6b7280', display:'block', marginBottom:'4px' }}>Valor do desconto (R$)</label>
+                          <input type="number" value={desconto} min="0"
+                            onChange={e=>{
+                              const d = parseFloat(e.target.value) || 0
+                              const orig = parseFloat(valorOriginal || form.valor) || 0
+                              if (d <= orig) setDesconto(e.target.value)
+                            }}
+                            style={{ ...inputStyle, padding:'8px 10px' }} placeholder="0,00" autoFocus/>
+                        </div>
+                        <div style={{ textAlign:'center', minWidth:'90px' }}>
+                          <p style={{ fontSize:'11px', color:'#6b7280', marginBottom:'2px' }}>Total final</p>
+                          <p style={{ fontSize:'18px', fontWeight:'800', color:'#059669', margin:0 }}>
+                            R$ {Math.max(0,(parseFloat(valorOriginal||form.valor)||0)-(parseFloat(desconto)||0)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                          </p>
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', gap:'8px' }}>
+                        <button type="button" onClick={()=>{ setDesconto(''); setForm(f=>({...f, valor: valorOriginal || f.valor})); setModalDesconto(false) }}
+                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'1px solid #e5e7eb', background:'white', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>
+                          Remover desconto
+                        </button>
+                        <button type="button" onClick={()=>setModalDesconto(false)}
+                          style={{ flex:1, padding:'8px', borderRadius:'8px', border:'none', background:'#6366f1', color:'white', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                          Confirmar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {!modoEdicao && form.usar_plano && infoPlano && (

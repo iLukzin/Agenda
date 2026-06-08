@@ -315,7 +315,7 @@ export default function AgendaPage() {
       status: a.status || '',
       observacoes: a.observacoes || '',
       forma_pagamento: a.forma_pagamento || '',
-      pagamentos: (() => { try { return a.pagamentos ? JSON.parse(a.pagamentos) : [] } catch { return [] } })(),
+      pagamentos: (() => { try { if (a.pagamentos === null || a.pagamentos === undefined) return null; const p = JSON.parse(a.pagamentos); return Array.isArray(p) ? p : null } catch { return null } })(),
       valor: a.valor || 0,
       desconto: a.desconto || 0,
       valor_bruto: a.valor_bruto || a.valor || 0,
@@ -434,14 +434,18 @@ export default function AgendaPage() {
     // Carregar pagamentos do banco
     try {
       // ag.pagamentos já vem parseado do mapeamento (JSON.parse feito no carregar)
-      const pagsArr = Array.isArray(ag.pagamentos) ? ag.pagamentos : []
-      if (pagsArr.length > 0) {
+      const pagsArr = Array.isArray(ag.pagamentos) ? ag.pagamentos : null
+      if (pagsArr !== null && pagsArr.length > 0) {
+        // Tem pagamentos salvos - carregar
         setPagamentos(pagsArr.map((p: any) => ({ forma: String(p.forma || ''), valor: String(p.valor || '') })))
+      } else if (pagsArr !== null && pagsArr.length === 0) {
+        // Campo pagamentos existe mas está vazio - usuário removeu tudo
+        setPagamentos([])
+        setForm(f => ({ ...f, forma_pagamento: '' }))
       } else {
-        // fallback: usar forma_pagamento simples
-        setPagamentos(ag.forma_pagamento && ag.forma_pagamento !== 'plano'
-          ? [{ forma: ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }]
-          : [])
+        // Campo pagamentos nunca foi usado (null/undefined) - usar fallback
+        setPagamentos([])
+        // Não criar linha automática - deixar o usuário usar o select simples
       }
     } catch { setPagamentos([]) }
 
@@ -531,8 +535,13 @@ export default function AgendaPage() {
     // Na edicao com plano: manter o valor original do agendamento (form.valor)
         const valorBruto = parseFloat(valorOriginal || form.valor) || valorFinal
     const pagsValidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
-    const formaResumida = pagsValidos.length > 0 ? pagsValidos.map(p => p.forma).join('+') : (form.usar_plano ? 'plano' : form.forma_pagamento || null)
-    const pagsJSON = pagsValidos.length > 0 ? JSON.stringify(pagsValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : null
+    // Se o usuário usou o sistema de múltiplos pagamentos (mesmo que tenha removido tudo),
+    // não usar form.forma_pagamento como fallback - gravar null para limpar
+    const pagsUsados = pagamentos.length >= 0  // sempre true - indica que o sistema foi usado
+    const formaResumida = pagsValidos.length > 0
+      ? pagsValidos.map(p => p.forma).join('+')
+      : (form.usar_plano ? 'plano' : (pagamentos.length === 0 && !form.forma_pagamento ? null : form.forma_pagamento || null))
+    const pagsJSON = pagsValidos.length > 0 ? JSON.stringify(pagsValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : (pagsValidos.length === 0 ? null : null)
     const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:formaResumida, pagamentos:pagsJSON, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
@@ -682,7 +691,9 @@ export default function AgendaPage() {
     const valorFinalFinalizar = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinalizar)
     const valorBrutoFinalizar = parseFloat(form.valor) || 0
     const pagsFinValidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
-    const formaFinResumida = pagsFinValidos.length > 0 ? pagsFinValidos.map(p => p.forma).join('+') : form.forma_pagamento
+    const formaFinResumida = pagsFinValidos.length > 0
+      ? pagsFinValidos.map(p => p.forma).join('+')
+      : (pagamentos.length === 0 ? form.forma_pagamento || null : form.forma_pagamento || null)
     const pagsFinJSON = pagsFinValidos.length > 0 ? JSON.stringify(pagsFinValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : null
     const updatePayload: any = {
       status: 'fechado',

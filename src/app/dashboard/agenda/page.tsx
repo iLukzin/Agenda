@@ -316,7 +316,6 @@ export default function AgendaPage() {
       observacoes: a.observacoes || '',
       forma_pagamento: a.forma_pagamento || '',
       pagamentos: (() => { try { return a.pagamentos ? JSON.parse(a.pagamentos) : [] } catch { return [] } })(),
-      pagamentos: (() => { try { return a.pagamentos ? JSON.parse(a.pagamentos) : [] } catch { return [] } })(),
       valor: a.valor || 0,
       desconto: a.desconto || 0,
       valor_bruto: a.valor_bruto || a.valor || 0,
@@ -434,17 +433,33 @@ export default function AgendaPage() {
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
     // Carregar pagamentos salvos
     try {
-      const pags = ag.pagamentos && ag.pagamentos.length > 0
-        ? ag.pagamentos.map((p: any) => ({ forma: p.forma, valor: String(p.valor) }))
-        : ag.forma_pagamento ? [{ forma: ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }] : []
-      setPagamentos(pags)
+      const pagsRaw = Array.isArray(ag.pagamentos) && ag.pagamentos.length > 0
+        ? ag.pagamentos
+        : (typeof ag.pagamentos === 'string' && ag.pagamentos
+            ? JSON.parse(ag.pagamentos)
+            : null)
+      if (pagsRaw && pagsRaw.length > 0) {
+        setPagamentos(pagsRaw.map((p: any) => ({ forma: String(p.forma), valor: String(p.valor) })))
+      } else if (ag.forma_pagamento) {
+        setPagamentos([{ forma: ag.forma_pagamento.split('+')[0] || ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }])
+      } else {
+        setPagamentos([])
+      }
     } catch { setPagamentos([]) }
     // Carregar pagamentos salvos
     try {
-      const pags = ag.pagamentos && ag.pagamentos.length > 0
-        ? ag.pagamentos.map((p: any) => ({ forma: p.forma, valor: String(p.valor) }))
-        : ag.forma_pagamento ? [{ forma: ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }] : []
-      setPagamentos(pags)
+      const pagsRaw = Array.isArray(ag.pagamentos) && ag.pagamentos.length > 0
+        ? ag.pagamentos
+        : (typeof ag.pagamentos === 'string' && ag.pagamentos
+            ? JSON.parse(ag.pagamentos)
+            : null)
+      if (pagsRaw && pagsRaw.length > 0) {
+        setPagamentos(pagsRaw.map((p: any) => ({ forma: String(p.forma), valor: String(p.valor) })))
+      } else if (ag.forma_pagamento) {
+        setPagamentos([{ forma: ag.forma_pagamento.split('+')[0] || ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }])
+      } else {
+        setPagamentos([])
+      }
     } catch { setPagamentos([]) }
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
@@ -487,6 +502,15 @@ export default function AgendaPage() {
       }
       if (!modoEdicao && slotEscolhido && !slotEscolhido.disponivel) {
         erros.push('O horario ' + form.horaInicio + ' nao esta disponivel. Escolha outro horario')
+      }
+    }
+    // Validar pagamentos: total não pode exceder valor com desconto
+    if (pagamentos.length > 0) {
+      const descontoNumVal = parseFloat(desconto) || 0
+      const valorTotalPag = pagamentos.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0)
+      const valorLimite = Math.max(0, (parseFloat(form.valor) || 0) - descontoNumVal)
+      if (valorTotalPag > valorLimite + 0.01) {
+        erros.push('O total dos pagamentos (R$ ' + valorTotalPag.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ') e maior que o valor do servico (R$ ' + valorLimite.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '). Ajuste os valores antes de salvar.')
       }
     }
     if (erros.length > 0) { setErroForm(erros); return }

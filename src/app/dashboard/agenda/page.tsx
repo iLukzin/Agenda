@@ -1099,12 +1099,14 @@ export default function AgendaPage() {
                           ))}
                           {(() => {
                             const totalPag = pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
-                            const valorBase = Math.max(0,(parseFloat(form.valor)||0)-(parseFloat(desconto)||0))
+                            const descontoNum = parseFloat(desconto) || 0
+                            const valorBase = Math.max(0,(parseFloat(form.valor)||0) - descontoNum)
                             const diff = valorBase - totalPag
                             return (
                               <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 8px', background: Math.abs(diff)<0.01?'#f0fdf4':'#fffbeb', borderRadius:'6px', border:`1px solid ${Math.abs(diff)<0.01?'#bbf7d0':'#fde68a'}` }}>
-                                <span style={{ fontSize:'12px', color:'#6b7280' }}>Total informado: R$ {totalPag.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                                {Math.abs(diff)>=0.01 && <span style={{ fontSize:'12px', color:'#d97706', fontWeight:'600' }}>Falta: R$ {diff.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
+                                <span style={{ fontSize:'12px', color:'#6b7280' }}>Pago: R$ {totalPag.toLocaleString('pt-BR',{minimumFractionDigits:2})} / Total: R$ {valorBase.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                                {diff > 0.01 && <span style={{ fontSize:'12px', color:'#d97706', fontWeight:'600' }}>Falta: R$ {diff.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
+                                {diff < -0.01 && <span style={{ fontSize:'12px', color:'#ef4444', fontWeight:'600' }}>Excede: R$ {Math.abs(diff).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
                                 {Math.abs(diff)<0.01 && <span style={{ fontSize:'12px', color:'#10b981', fontWeight:'600' }}>✓ Valor conferido</span>}
                               </div>
                             )

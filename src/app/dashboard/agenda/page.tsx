@@ -50,7 +50,7 @@ function labelPeriodoSemana(seg: Date) {
 type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
-  cor: string; status: string; observacoes: string; forma_pagamento: string
+  cor: string; status: string; observacoes: string; forma_pagamento: string; pagamentos?: Array<{forma:string;valor:number}>; pagamentos?: Array<{forma:string;valor:number}>
   valor: number; desconto?: number; valor_bruto?: number; motivoCancelamento?: string; planoId?: string; sessaoNumero?: number; sessaoTotal?: number; createdAt?: string
 }
 type HorarioDB = {
@@ -261,6 +261,8 @@ export default function AgendaPage() {
   const [salvandoCliente, setSalvandoCliente] = useState(false)
   const [intervaloMin, setIntervaloMin] = useState(30)
   const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
+  const [pagamentos, setPagamentos] = useState<Array<{forma:string;valor:string}>>([])
+  const [pagamentos, setPagamentos] = useState<Array<{forma:string;valor:string}>>([])
   const [desconto, setDesconto] = useState('')
   const [modalDesconto, setModalDesconto] = useState(false)
   const [valorOriginal, setValorOriginal] = useState('')
@@ -273,7 +275,7 @@ export default function AgendaPage() {
     const sb = createClient()
     // Nivel usuario e profissional com vinculo: filtrar so suas agendas
     const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
-    let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,desconto,valor_bruto,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,desconto,valor_bruto,forma_pagamento,pagamentos,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
     if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
@@ -314,6 +316,8 @@ export default function AgendaPage() {
       status: a.status || '',
       observacoes: a.observacoes || '',
       forma_pagamento: a.forma_pagamento || '',
+      pagamentos: (() => { try { return a.pagamentos ? JSON.parse(a.pagamentos) : [] } catch { return [] } })(),
+      pagamentos: (() => { try { return a.pagamentos ? JSON.parse(a.pagamentos) : [] } catch { return [] } })(),
       valor: a.valor || 0,
       desconto: a.desconto || 0,
       valor_bruto: a.valor_bruto || a.valor || 0,
@@ -415,7 +419,7 @@ export default function AgendaPage() {
     setPlanoCliente(null); setSessaoPlano(null)
     setIntervaloMin(30)
     setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
-    setDesconto(''); setValorOriginal(''); setModalDesconto(false)
+    setDesconto(''); setValorOriginal(''); setModalDesconto(false); setPagamentos([]); setPagamentos([])
     setModalAberto(true)
   }
 
@@ -429,6 +433,20 @@ export default function AgendaPage() {
     setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(vBruto), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
     setValorOriginal(String(vBruto))
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
+    // Carregar pagamentos salvos
+    try {
+      const pags = ag.pagamentos && ag.pagamentos.length > 0
+        ? ag.pagamentos.map((p: any) => ({ forma: p.forma, valor: String(p.valor) }))
+        : ag.forma_pagamento ? [{ forma: ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }] : []
+      setPagamentos(pags)
+    } catch { setPagamentos([]) }
+    // Carregar pagamentos salvos
+    try {
+      const pags = ag.pagamentos && ag.pagamentos.length > 0
+        ? ag.pagamentos.map((p: any) => ({ forma: p.forma, valor: String(p.valor) }))
+        : ag.forma_pagamento ? [{ forma: ag.forma_pagamento, valor: String(ag.valor_bruto || ag.valor) }] : []
+      setPagamentos(pags)
+    } catch { setPagamentos([]) }
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
     if (ehPlano && ag.clienteId) {
@@ -505,7 +523,10 @@ export default function AgendaPage() {
     }
     // Na edicao com plano: manter o valor original do agendamento (form.valor)
         const valorBruto = parseFloat(valorOriginal || form.valor) || valorFinal
-    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
+    const pagsValidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
+    const formaResumida = pagsValidos.length > 0 ? pagsValidos.map(p => p.forma).join('+') : (form.usar_plano ? 'plano' : form.forma_pagamento || null)
+    const pagsJSON = pagsValidos.length > 0 ? JSON.stringify(pagsValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : null
+    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:formaResumida, pagamentos:pagsJSON, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }
@@ -628,7 +649,8 @@ export default function AgendaPage() {
 
   async function finalizar(id: string) {
     // Validar forma de pagamento antes de finalizar
-    if (!form.forma_pagamento) {
+    const temPagamento = pagamentos.some(p => p.forma && parseFloat(p.valor) > 0) || !!form.forma_pagamento
+    if (!temPagamento) {
       setErroForm(['Para finalizar e necessario informar a Forma de pagamento.'])
       return
     }
@@ -639,9 +661,13 @@ export default function AgendaPage() {
     const descontoFinalizar = parseFloat(desconto) || 0
     const valorFinalFinalizar = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinalizar)
     const valorBrutoFinalizar = parseFloat(form.valor) || 0
+    const pagsFinValidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
+    const formaFinResumida = pagsFinValidos.length > 0 ? pagsFinValidos.map(p => p.forma).join('+') : form.forma_pagamento
+    const pagsFinJSON = pagsFinValidos.length > 0 ? JSON.stringify(pagsFinValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : null
     const updatePayload: any = {
       status: 'fechado',
-      forma_pagamento: form.forma_pagamento,
+      forma_pagamento: formaFinResumida,
+      pagamentos: pagsFinJSON,
       valor: valorFinalFinalizar,
       valor_bruto: valorBrutoFinalizar,
       desconto: descontoFinalizar > 0 ? descontoFinalizar : null,
@@ -1042,11 +1068,51 @@ export default function AgendaPage() {
                         </div>
                       )}
                     </div>
-                    <InputField label="Forma de pagamento">
-                      <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
-                        {FORMAS_PAG.map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
-                      </select>
-                    </InputField>
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
+                        <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Forma de pagamento</label>
+                        <button type="button" onClick={()=>setPagamentos(p=>[...p,{forma:'',valor:''}])}
+                          style={{ fontSize:'11px', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer', fontWeight:'600' }}>
+                          + Adicionar
+                        </button>
+                      </div>
+                      {pagamentos.length === 0 && (
+                        <select value={form.forma_pagamento} onChange={e=>setForm(f=>({...f,forma_pagamento:e.target.value}))} style={selectStyle}>
+                          {FORMAS_PAG.map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
+                        </select>
+                      )}
+                      {pagamentos.length > 0 && (
+                        <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                          {pagamentos.map((pag, idx) => (
+                            <div key={idx} style={{ display:'flex', gap:'6px', alignItems:'center' }}>
+                              <select value={pag.forma} onChange={e=>setPagamentos(ps=>ps.map((p,i)=>i===idx?{...p,forma:e.target.value}:p))}
+                                style={{ ...selectStyle, flex:2 }}>
+                                {FORMAS_PAG.filter(fp=>fp.value).map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
+                              </select>
+                              <input type="number" value={pag.valor} placeholder="R$ 0,00"
+                                onChange={e=>setPagamentos(ps=>ps.map((p,i)=>i===idx?{...p,valor:e.target.value}:p))}
+                                style={{ ...inputStyle, flex:1, padding:'8px 10px' }}/>
+                              <button type="button" onClick={()=>setPagamentos(ps=>ps.filter((_,i)=>i!==idx))}
+                                style={{ background:'#fef2f2', border:'none', borderRadius:'6px', color:'#ef4444', cursor:'pointer', fontSize:'16px', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          {(() => {
+                            const totalPag = pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                            const valorBase = Math.max(0,(parseFloat(form.valor)||0)-(parseFloat(desconto)||0))
+                            const diff = valorBase - totalPag
+                            return (
+                              <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 8px', background: Math.abs(diff)<0.01?'#f0fdf4':'#fffbeb', borderRadius:'6px', border:`1px solid ${Math.abs(diff)<0.01?'#bbf7d0':'#fde68a'}` }}>
+                                <span style={{ fontSize:'12px', color:'#6b7280' }}>Total informado: R$ {totalPag.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                                {Math.abs(diff)>=0.01 && <span style={{ fontSize:'12px', color:'#d97706', fontWeight:'600' }}>Falta: R$ {diff.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
+                                {Math.abs(diff)<0.01 && <span style={{ fontSize:'12px', color:'#10b981', fontWeight:'600' }}>✓ Valor conferido</span>}
+                              </div>
+                            )
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   {modalDesconto && (
                     <div style={{ background:'#f9fafb', border:'1.5px solid #e0e7ff', borderRadius:'12px', padding:'14px', display:'flex', flexDirection:'column', gap:'10px' }}>

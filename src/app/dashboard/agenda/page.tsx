@@ -262,7 +262,6 @@ export default function AgendaPage() {
   const [intervaloMin, setIntervaloMin] = useState(30)
   const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
   const [pagamentos, setPagamentos] = useState<Array<{forma:string;valor:string}>>([])
-  const [pagamentos, setPagamentos] = useState<Array<{forma:string;valor:string}>>([])
   const [desconto, setDesconto] = useState('')
   const [modalDesconto, setModalDesconto] = useState(false)
   const [valorOriginal, setValorOriginal] = useState('')

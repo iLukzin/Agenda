@@ -492,15 +492,21 @@ export default function AgendaPage() {
         erros.push('O horario ' + form.horaInicio + ' nao esta disponivel. Escolha outro horario')
       }
     }
-    // Validar pagamentos: total não pode exceder valor com desconto
-    if (pagamentos.length > 0) {
-      const descontoNumVal = parseFloat(desconto) || 0
-      const valorTotalPag = pagamentos.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0)
-      const valorLimite = Math.max(0, (parseFloat(form.valor) || 0) - descontoNumVal)
-      if (valorTotalPag > valorLimite + 0.01) {
-        erros.push('O total dos pagamentos (R$ ' + valorTotalPag.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ') e maior que o valor do servico (R$ ' + valorLimite.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '). Ajuste os valores antes de salvar.')
+    // Validar pagamentos ao salvar
+    const pagsPreenchidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
+    if (pagsPreenchidos.length > 0) {
+      // Se informou pagamentos, o total deve fechar exato com o valor do serviço - desconto
+      const descontoNumVal2 = parseFloat(desconto) || 0
+      const valorTotalPag2 = pagsPreenchidos.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0)
+      const valorEsperado2 = Math.max(0, (parseFloat(form.valor) || 0) - descontoNumVal2)
+      const diff2 = valorEsperado2 - valorTotalPag2
+      if (diff2 > 0.01) {
+        erros.push('Forma de pagamento: faltam R$ ' + diff2.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' para fechar o total de R$ ' + valorEsperado2.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '. Ajuste ou remova as formas de pagamento.')
+      } else if (diff2 < -0.01) {
+        erros.push('Forma de pagamento: o total excede em R$ ' + Math.abs(diff2).toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' o valor do servico (R$ ' + valorEsperado2.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '). Ajuste os valores.')
       }
     }
+    // Se não informou nenhuma forma de pagamento (pagamentos vazio E form.forma_pagamento vazio) → permite salvar
     if (erros.length > 0) { setErroForm(erros); return }
     setErroForm([])
     if (!empresaAtiva?.id) return
@@ -675,14 +681,19 @@ export default function AgendaPage() {
       setErroForm(['Para finalizar e necessario informar a Forma de pagamento.'])
       return
     }
-    if (pagsAtivos.length > 0 && Math.abs(totalPagoFin - valorEsperadoFin) > 0.01) {
-      const diff = valorEsperadoFin - totalPagoFin
-      const msg = diff > 0
-        ? 'Valor incorreto: faltam R$ ' + diff.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' para fechar o total de R$ ' + valorEsperadoFin.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '.'
-        : 'Valor incorreto: o total informado excede em R$ ' + Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' o valor do servico (R$ ' + valorEsperadoFin.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ').'
-      setErroForm([msg])
-      return
+    // Se informou pagamentos múltiplos → total deve fechar exato
+    if (pagsAtivos.length > 0) {
+      const diffFin = valorEsperadoFin - totalPagoFin
+      if (diffFin > 0.01) {
+        setErroForm(['Para finalizar: faltam R$ ' + diffFin.toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' para fechar o total de R$ ' + valorEsperadoFin.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '. Ajuste os valores informados.'])
+        return
+      }
+      if (diffFin < -0.01) {
+        setErroForm(['Para finalizar: o total dos pagamentos excede em R$ ' + Math.abs(diffFin).toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' o valor do servico (R$ ' + valorEsperadoFin.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '). Ajuste os valores.'])
+        return
+      }
     }
+    // Se tem só forma simples (select) → valida apenas que foi preenchida, não verifica valor
     if (!confirm('Finalizar este atendimento?')) return
     setFinalizando(true)
     const sb2 = createClient()

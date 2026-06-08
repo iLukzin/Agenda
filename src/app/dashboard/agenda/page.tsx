@@ -51,7 +51,7 @@ type AgendamentoLocal = {
   id: string; dataISO: string; horaInicio: number; duracao: number
   cliente: string; clienteId: string; servico: string; profissional: string
   cor: string; status: string; observacoes: string; forma_pagamento: string
-  valor: number; motivoCancelamento?: string; planoId?: string; sessaoNumero?: number; sessaoTotal?: number; createdAt?: string
+  valor: number; desconto?: number; valor_bruto?: number; motivoCancelamento?: string; planoId?: string; sessaoNumero?: number; sessaoTotal?: number; createdAt?: string
 }
 type HorarioDB = {
   profissional_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
@@ -273,7 +273,7 @@ export default function AgendaPage() {
     const sb = createClient()
     // Nivel usuario e profissional com vinculo: filtrar so suas agendas
     const ehProf = (usuario?.nivel_acesso === 'profissional' || usuario?.nivel_acesso === 'usuario') && !!usuario?.profissional_id
-    let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,desconto,valor_bruto,forma_pagamento,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
     if (ehProf && usuario.profissional_id) qAgs = qAgs.eq('prof_id', usuario.profissional_id)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf && usuario.profissional_id) qProfs = qProfs.eq('id', usuario.profissional_id)
@@ -315,6 +315,8 @@ export default function AgendaPage() {
       observacoes: a.observacoes || '',
       forma_pagamento: a.forma_pagamento || '',
       valor: a.valor || 0,
+      desconto: a.desconto || 0,
+      valor_bruto: a.valor_bruto || a.valor || 0,
       motivoCancelamento: a.motivo_cancelamento || undefined,
       planoId: !a.servico_id ? 'plano' : undefined,
       createdAt: a.created_at || a.data_inicio,
@@ -423,7 +425,10 @@ export default function AgendaPage() {
     setClienteSel(cl); setBuscaCliente('')
     const hiH = Math.floor(ag.horaInicio), hiM = Math.round((ag.horaInicio - hiH) * 60)
     const ehPlano = !!ag.planoId
-    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(ag.valor), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
+    const vBruto = ag.valor_bruto && ag.valor_bruto > 0 ? ag.valor_bruto : ag.valor
+    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(vBruto), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
+    setValorOriginal(String(vBruto))
+    setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
     setIntervaloMin(30); setModalAberto(true)
     // Carregar plano do cliente se for plano
     if (ehPlano && ag.clienteId) {
@@ -499,7 +504,8 @@ export default function AgendaPage() {
       totalParaSalvar = total
     }
     // Na edicao com plano: manter o valor original do agendamento (form.valor)
-    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
+        const valorBruto = parseFloat(valorOriginal || form.valor) || valorFinal
+    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:form.usar_plano?'plano':form.forma_pagamento||null, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }
@@ -947,7 +953,7 @@ export default function AgendaPage() {
                       Incluso no plano mensal
                     </div>
                   ) : (
-                    <select value={form.servico} onChange={e=>{const srv=servicosDoProf.find((s: any)=>s.nome===e.target.value);setForm(f=>({...f,servico:e.target.value,duracao:srv?.duracao_min?String(srv.duracao_min):f.duracao,valor:srv?.valor?String(srv.valor):f.valor}))}} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
+                    <select value={form.servico} onChange={e=>{const srv=servicosDoProf.find((s: any)=>s.nome===e.target.value);const vSrv=srv?.valor?String(srv.valor):form.valor;setValorOriginal(vSrv);setDesconto('');setForm(f=>({...f,servico:e.target.value,duracao:srv?.duracao_min?String(srv.duracao_min):f.duracao,valor:vSrv}))}} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
                       <option value="">{form.profissional?'Selecione...':'Selecione o profissional primeiro'}</option>
                       {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
                     </select>
@@ -1045,9 +1051,14 @@ export default function AgendaPage() {
                           <label style={{ fontSize:'11px', color:'#6b7280', display:'block', marginBottom:'4px' }}>Valor do desconto (R$)</label>
                           <input type="number" value={desconto} min="0"
                             onChange={e=>{
-                              const d = parseFloat(e.target.value) || 0
+                              const v = e.target.value
+                              const d = parseFloat(v) || 0
                               const orig = parseFloat(valorOriginal || form.valor) || 0
-                              if (d <= orig) setDesconto(e.target.value)
+                              if (!v || d === 0) {
+                                setDesconto('')
+                              } else if (d < orig) {
+                                setDesconto(v)
+                              }
                             }}
                             style={{ ...inputStyle, padding:'8px 10px' }} placeholder="0,00" autoFocus/>
                         </div>

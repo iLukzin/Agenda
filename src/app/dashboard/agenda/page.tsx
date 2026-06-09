@@ -286,7 +286,7 @@ export default function AgendaPage() {
     if (ehProf) qProfs = qProfs.eq('id', profIdVinculado)
     const [r1, r2, r3, r4, r5] = await Promise.all([
       qAgs.order('data_inicio'),
-      sb.from('clientes').select('id,nome,telefone,whatsapp,plano_id').eq('empresa_id', empresaAtiva.id),
+      sb.from('clientes').select('id,nome,telefone,whatsapp,plano_id').eq('empresa_id', empresaAtiva.id).eq('status','ativo').order('nome'),
       qProfs.order('nome'),
       sb.from('servicos').select('id,nome,cor,duracao_min,valor,status').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo').order('nome'),
       sb.from('horarios_prof').select('profissional_id,dia_semana,hora_inicio,hora_fim,ativo').eq('empresa_id', empresaAtiva.id).eq('ativo', true),

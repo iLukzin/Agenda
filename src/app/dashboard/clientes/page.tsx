@@ -19,6 +19,7 @@ type Cliente = {
   plano_id: string
   status: string
   plano_nome: string
+  created_at?: string
 }
 
 function mascaraTel(v: string): string {
@@ -54,7 +55,7 @@ function useVisibilityRefresh(fn: () => void) {
   }, [])
 }
 export default function ClientesPage() {
-  const { empresaAtiva } = useEmpresa()
+  const { empresaAtiva, isMaster, usuario } = useEmpresa()
   const perm = usePermissao('clientes')
   const [clientes, setClientes]     = useState<Cliente[]>([])
   const [planos, setPlanos]         = useState<{id:string;nome:string}[]>([])
@@ -82,7 +83,7 @@ export default function ClientesPage() {
     // Busca clientes
     const { data: cls, error: errCls } = await sb
       .from('clientes')
-      .select('id, nome, cpf, telefone, whatsapp, email, endereco, data_nascimento, observacoes, plano_id, status')
+      .select('id, nome, cpf, telefone, whatsapp, email, endereco, data_nascimento, observacoes, plano_id, status, created_at')
       .eq('empresa_id', empresaAtiva.id)
       .order('nome')
 
@@ -246,19 +247,58 @@ export default function ClientesPage() {
 
   const f = (k: keyof typeof form) => (e: any) => { const v = e.target.value; const mascarados = ['telefone','whatsapp']; setForm(p => ({ ...p, [k]: mascarados.includes(k) ? mascaraTel(v) : v })) }
 
+  const ehLucas = usuario?.email === 'lucas@fortitude.com'
+
+  function exportarClientesExcel() {
+    const sep = '\t'
+    const nl  = '\n'
+    const header = [
+      'Nome','Email','Telefone','WhatsApp','Data Nascimento',
+      'Plano','Status','Observacoes','Data Cadastro'
+    ].join(sep)
+    const linhas = clientes.map(c => [
+      c.nome || '',
+      c.email || '',
+      c.telefone || '',
+      c.whatsapp || '',
+      c.data_nascimento ? new Date(c.data_nascimento+'T12:00:00').toLocaleDateString('pt-BR') : '',
+      c.plano_id ? (planos.find(p=>p.id===c.plano_id)?.nome || '') : '',
+      c.status || '',
+      (c.observacoes || '').replace(/\t|\n/g,' '),
+      c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '',
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(sep))
+    const tsv = '\uFEFF' + header + nl + linhas.join(nl)
+    const blob = new Blob([tsv], { type:'text/tab-separated-values;charset=utf-8;' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    const emp  = empresaAtiva?.nome?.replace(/\s+/g,'_') || 'empresa'
+    const data = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')
+    a.href = url; a.download = `clientes_${emp}_${data}.xls`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div style={{ padding: '24px 16px' }}>
       {/* Cabeçalho */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Clientes</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{clientes.length} cadastrados</p>
+          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{clientes.length} cadastrados{empresaAtiva ? ` · ${empresaAtiva.nome}` : ''}</p>
         </div>
-        {perm.criar && (
-          <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-            + Novo cliente
-          </button>
-        )}
+        <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+          {ehLucas && (
+            <button onClick={exportarClientesExcel}
+              style={{ background:'#16a34a', color:'white', border:'none', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar Excel
+            </button>
+          )}
+          {perm.criar && (
+            <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
+              + Novo cliente
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}

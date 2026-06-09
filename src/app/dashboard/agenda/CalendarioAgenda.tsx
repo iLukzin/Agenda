@@ -46,6 +46,7 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
   const [filtroPanelAberto, setFiltroPanelAberto] = useState(false)
   const [filtroIni, setFiltroIni] = useState('')
   const [filtroFim, setFiltroFim] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState<'todos'|'aberto'|'fechado'|'cancelado'>('todos')
   const modoFiltro = !!(filtroIni || filtroFim)
 
   const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab']
@@ -76,12 +77,12 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
     return ags
   }, [agsProfFiltrados, filtroIni, filtroFim])
 
-  // Agendamentos do dia selecionado
+  // Agendamentos do dia selecionado (com filtro de status)
   const agsDia = useMemo(() => {
-    return agsProfFiltrados
-      .filter(a => a.dataISO === diaSel)
-      .sort((a,b) => a.horaInicio - b.horaInicio)
-  }, [agsProfFiltrados, diaSel])
+    let ags = agsProfFiltrados.filter(a => a.dataISO === diaSel)
+    if (filtroStatus !== 'todos') ags = ags.filter(a => a.status === filtroStatus)
+    return ags.sort((a,b) => a.horaInicio - b.horaInicio)
+  }, [agsProfFiltrados, diaSel, filtroStatus])
 
   // Contagem por dia
   const contagemPorDia = useMemo(() => {
@@ -210,6 +211,21 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
               {profissionais.map((p: any) => <option key={p.id} value={p.nome} style={{ color:'#374151' }}>{p.nome}</option>)}
             </select>
           )}
+
+          {/* Filtro status */}
+          <div style={{ display:'flex', gap:'4px', marginLeft:'auto' }}>
+            {([
+              { key:'todos',    label:'Todos',      bg:'rgba(255,255,255,0.2)',  cor:'white',   bgAtivo:'white',    corAtivo:AZUL     },
+              { key:'aberto',   label:'Em aberto',  bg:'rgba(255,255,255,0.1)', cor:'#93c5fd', bgAtivo:'#dbeafe',  corAtivo:'#1d4ed8' },
+              { key:'fechado',  label:'Finalizados', bg:'rgba(255,255,255,0.1)', cor:'#6ee7b7', bgAtivo:'#d1fae5',  corAtivo:'#065f46' },
+              { key:'cancelado',label:'Cancelados', bg:'rgba(255,255,255,0.1)', cor:'#fca5a5', bgAtivo:'#fef2f2',  corAtivo:'#b91c1c' },
+            ] as const).map(op => (
+              <button key={op.key} onClick={()=>setFiltroStatus(op.key)}
+                style={{ background:filtroStatus===op.key?op.bgAtivo:op.bg, border:`1px solid ${filtroStatus===op.key?op.corAtivo:'rgba(255,255,255,0.25)'}`, borderRadius:'7px', padding:'4px 9px', cursor:'pointer', color:filtroStatus===op.key?op.corAtivo:op.cor, fontSize:'11px', fontWeight:'700', transition:'all .15s', whiteSpace:'nowrap' }}>
+                {op.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -254,9 +270,16 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
         <span style={{ color:'white', fontSize:'13px', fontWeight:'700', textTransform:'capitalize' }}>
           {labelDia(diaSel)}
         </span>
-        <span style={{ color:'rgba(255,255,255,0.75)', fontSize:'11px', background:'rgba(255,255,255,0.15)', borderRadius:'99px', padding:'2px 10px' }}>
-          {agsDia.length} agend.
-        </span>
+        <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+          {filtroStatus !== 'todos' && (
+            <span style={{ color:'rgba(255,255,255,0.9)', fontSize:'11px', background:'rgba(255,255,255,0.2)', borderRadius:'99px', padding:'2px 8px', fontWeight:'600' }}>
+              {filtroStatus === 'aberto' ? 'Em aberto' : filtroStatus === 'fechado' ? 'Finalizados' : 'Cancelados'}
+            </span>
+          )}
+          <span style={{ color:'rgba(255,255,255,0.75)', fontSize:'11px', background:'rgba(255,255,255,0.15)', borderRadius:'99px', padding:'2px 10px' }}>
+            {agsDia.length} agend.
+          </span>
+        </div>
       </div>
 
       {/* Lista de horarios */}
@@ -266,7 +289,10 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
             <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:AZUL_XLIGHT, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 10px' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </div>
-            Nenhum agendamento neste dia
+            {filtroStatus === 'todos' ? 'Nenhum agendamento neste dia' :
+             filtroStatus === 'aberto' ? 'Nenhum agendamento em aberto' :
+             filtroStatus === 'fechado' ? 'Nenhum agendamento finalizado' :
+             'Nenhum agendamento cancelado'}
           </div>
         ) : (
           <div style={{ padding:'8px 12px', display:'flex', flexDirection:'column', gap:'7px' }}>

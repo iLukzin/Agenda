@@ -252,6 +252,7 @@ export default function AgendaPage() {
   const [finalizando, setFinalizando] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)
   const [motivoCancelamento, setMotivoCancelamento] = useState('')
+  const [agRapido, setAgRapido] = useState<any>(null)
   const [cancelando, setCancelando] = useState(false)
   const [buscaCliente, setBuscaCliente] = useState('')
   const [clienteSel, setClienteSel] = useState<any>(null)
@@ -587,13 +588,15 @@ export default function AgendaPage() {
   }
 
   async function confirmarCancelamento() {
-    if (!selecionado) return
+    const agId = agRapido?.id || selecionado?.id
+    if (!agId) return
     setCancelando(true)
     const sb2 = createClient()
-    const { error } = await sb2.from('agendamentos').update({ status:'cancelado', motivo_cancelamento:motivoCancelamento||null }).eq('id', selecionado.id)
+    const { error } = await sb2.from('agendamentos').update({ status:'cancelado', motivo_cancelamento:motivoCancelamento||null }).eq('id', agId)
     if (error) { alert('Erro: ' + error.message); setCancelando(false); return }
-    setCancelando(false); setModalCancelar(false)
-    await carregar(); fecharModal()
+    setCancelando(false); setModalCancelar(false); setMotivoCancelamento(''); setAgRapido(null)
+    await carregar()
+    if (!agRapido) fecharModal()
   }
 
   function mascaraTel(v: string) {
@@ -683,9 +686,10 @@ export default function AgendaPage() {
   }
 
   async function finalizar(id: string) {
-    // Validar forma de pagamento antes de finalizar
+    // Se veio do botão rápido, usar o valor do agRapido
+    const valorBase = agRapido ? agRapido.valor : (parseFloat(form.valor) || 0)
     const descontoFinVal = parseFloat(descontoFin || desconto) || 0
-    const valorEsperadoFin = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinVal)
+    const valorEsperadoFin = Math.max(0, valorBase - descontoFinVal)
     const pagsAtivos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
     const totalPagoFin = pagsAtivos.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0)
     const temPagamento = pagsAtivos.length > 0 || !!form.forma_pagamento
@@ -694,7 +698,6 @@ export default function AgendaPage() {
       setErroForm(['Para finalizar e necessario informar a Forma de pagamento.'])
       return
     }
-    // Se informou pagamentos múltiplos → total deve fechar exato
     if (pagsAtivos.length > 0) {
       const diffFin = valorEsperadoFin - totalPagoFin
       if (diffFin > 0.01) {
@@ -706,13 +709,11 @@ export default function AgendaPage() {
         return
       }
     }
-    // Se tem só forma simples (select) → valida apenas que foi preenchida, não verifica valor
     if (!confirm('Finalizar este atendimento?')) return
     setFinalizando(true)
     const sb2 = createClient()
-    // Salvar forma de pagamento e valor junto ao finalizar
-    const valorFinalFinalizar = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinVal)
-    const valorBrutoFinalizar = parseFloat(form.valor) || 0
+    const valorFinalFinalizar = valorEsperadoFin
+    const valorBrutoFinalizar = valorBase
     const pagsFinValidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
     const formaFinResumida = pagsFinValidos.length > 0
       ? pagsFinValidos.map(p => p.forma).join('+')
@@ -728,7 +729,11 @@ export default function AgendaPage() {
     }
     const { error } = await sb2.from('agendamentos').update(updatePayload).eq('id', id)
     if (error) alert('Erro: ' + error.message)
-    else { await carregar(); fecharModal() }
+    else {
+      await carregar()
+      setModalFinalizar(false); setPagamentos([]); setDescontoFin(''); setAgRapido(null)
+      if (!agRapido) fecharModal()
+    }
     setFinalizando(false)
   }
 
@@ -810,10 +815,38 @@ export default function AgendaPage() {
           profissionais={profissionais}
           onAbrirNovo={perm.criar ? abrirNovo : undefined}
           onAbrirEdicao={abrirEdicao}
-          onCancelarRapido={(usuario as any)?.permitir_cancelar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setModalCancelar(true), 100) } : undefined}
-          onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>{ setPagamentos([]); setDescontoFin(''); setModalFinalizar(true) }, 100) } : undefined}
+          onCancelarRapido={(usuario as any)?.permitir_cancelar !== false ? (ag) => {
+            setAgRapido(ag); setMotivoCancelamento(''); setModalCancelar(true)
+          } : undefined}
+          onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => {
+            setAgRapido(ag); setPagamentos([]); setDescontoFin(''); setErroForm([]); setModalFinalizar(true)
+          } : undefined}
           onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setVerPagamentos(true), 100) } : undefined}
-          onEnviarWpp={wppConectado ? (ag) => { abrirEdicao(ag); setTimeout(()=>enviarConfirmacao(), 150) } : undefined}
+          onEnviarWpp={wppConectado ? async (ag) => {
+            if (!confirm(`Enviar confirmação de WhatsApp para ${ag.cliente}?`)) return
+            // Buscar dados necessários para enviar direto
+            const sb = createClient()
+            const { data: cli } = await sb.from('clientes').select('nome,whatsapp,telefone').eq('id', ag.clienteId).single()
+            const fone = cli?.whatsapp || cli?.telefone
+            if (!fone) { alert('Cliente sem número de WhatsApp cadastrado.'); return }
+            const { data: emp } = await sb.from('empresas').select('nome,whatsapp_instancia').eq('id', empresaAtiva?.id || '').single()
+            const { data: srvObj } = await sb.from('servicos').select('nome').eq('id', ag.servico || '').maybeSingle()
+            const { data: tmpl } = await sb.from('mensagens_template').select('mensagem').eq('empresa_id', empresaAtiva?.id || '').eq('tipo','confirmacao').eq('ativo',true).single()
+            const dtBRT = new Date(new Date(ag.dataISO + 'T' + String(Math.floor(ag.horaInicio)).padStart(2,'0') + ':' + String(Math.round((ag.horaInicio % 1)*60)).padStart(2,'0') + ':00+00:00'))
+            const dataStr = dtBRT.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'})
+            const horaStr = dtBRT.toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})
+            let msg = tmpl?.mensagem || `Olá {{cliente}}! Lembrando do seu horário:\n*Data:* {{data}}\n*Hora:* {{hora}}\n*Serviço:* {{servico}}`
+            msg = msg.replace(/{{cliente}}/g,ag.cliente).replace(/{{data}}/g,dataStr).replace(/{{hora}}/g,horaStr).replace(/{{servico}}/g,ag.servico||'').replace(/{{empresa}}/g,emp?.nome||'')
+            const instancia = emp?.whatsapp_instancia || ('emp-'+(empresaAtiva?.id||'').slice(0,8))
+            const { data: cfgs } = await sb.from('config_sistema').select('chave,valor').in('chave',['evolution_api_url','evolution_api_key'])
+            const cfgMap: Record<string,string> = {}; if (cfgs) cfgs.forEach((c:any)=>{ cfgMap[c.chave]=c.valor||'' })
+            const numero = fone.replace(/\D/g,''); const numeroFinal = numero.startsWith('55')?numero:'55'+numero
+            try {
+              const res = await fetch(cfgMap['evolution_api_url'].replace(/\/$/,'')+'/message/sendText/'+instancia, { method:'POST', headers:{'apikey':cfgMap['evolution_api_key'],'Content-Type':'application/json'}, body:JSON.stringify({number:numeroFinal,text:msg}) })
+              if (res.ok) { alert('Mensagem enviada com sucesso!') }
+              else { alert('Erro ao enviar mensagem.') }
+            } catch { alert('Erro ao conectar com a API do WhatsApp.') }
+          } : undefined}
           filtroProfissional={filtroProfissional}
           setFiltroProfissional={setFiltroProfissional}
         />
@@ -865,11 +898,12 @@ export default function AgendaPage() {
       {modalCancelar && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
           <div style={{ background:'white', borderRadius:'18px', padding:'28px 24px', maxWidth:'400px', width:'100%' }}>
-            <h3 style={{ fontSize:'17px', fontWeight:'700', color:'#1a1a2e', marginBottom:'6px' }}>Cancelar agendamento?</h3>
+            <h3 style={{ fontSize:'17px', fontWeight:'700', color:'#1a1a2e', marginBottom:'4px' }}>Cancelar agendamento?</h3>
+            {(agRapido || selecionado) && <p style={{ fontSize:'13px', color:'#6b7280', marginBottom:'4px' }}>{agRapido?.cliente || selecionado?.cliente}</p>}
             <p style={{ fontSize:'13px', color:'#9ca3af', marginBottom:'16px' }}>Informe o motivo (opcional)</p>
             <textarea value={motivoCancelamento} onChange={e=>setMotivoCancelamento(e.target.value)} rows={3} style={{ width:'100%', border:'1px solid #e5e7eb', borderRadius:'10px', padding:'10px 12px', fontSize:'14px', outline:'none', resize:'none', boxSizing:'border-box', marginBottom:'16px' }}/>
             <div style={{ display:'flex', gap:'10px' }}>
-              <button onClick={()=>setModalCancelar(false)} style={{ flex:1, background:'#f3f4f6', color:'#374151', border:'none', borderRadius:'10px', padding:'12px', fontSize:'14px', cursor:'pointer' }}>Voltar</button>
+              <button onClick={()=>{ setModalCancelar(false); setAgRapido(null); setMotivoCancelamento('') }} style={{ flex:1, background:'#f3f4f6', color:'#374151', border:'none', borderRadius:'10px', padding:'12px', fontSize:'14px', cursor:'pointer' }}>Voltar</button>
               <button onClick={confirmarCancelamento} disabled={cancelando} style={{ flex:1, background:'#ef4444', color:'white', border:'none', borderRadius:'10px', padding:'12px', fontSize:'14px', fontWeight:'600', cursor:'pointer' }}>{cancelando?'Cancelando...':'Confirmar'}</button>
             </div>
           </div>
@@ -1234,22 +1268,26 @@ export default function AgendaPage() {
       )}
 
       {/* Modal Finalizar */}
-      {modalFinalizar && selecionado && (
-        <div onClick={()=>setModalFinalizar(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.7)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+      {modalFinalizar && (agRapido || selecionado) && (
+        <div onClick={()=>{ setModalFinalizar(false); setAgRapido(null); setPagamentos([]); setDescontoFin(''); setErroForm([]) }} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.7)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'20px', width:'100%', maxWidth:'420px', overflow:'hidden', boxShadow:'0 25px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ background:'linear-gradient(135deg,#059669,#10b981)', padding:'20px 24px' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div>
                   <p style={{ color:'white', fontWeight:'800', fontSize:'17px' }}>Finalizar atendimento</p>
+                  <p style={{ color:'rgba(255,255,255,0.85)', fontSize:'13px', marginTop:'2px' }}>
+                    {agRapido?.cliente || selecionado?.cliente}
+                  </p>
                   <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'13px', marginTop:'2px' }}>
                     {(() => {
                       const dFin = parseFloat(descontoFin || desconto) || 0
-                      const total = Math.max(0,(parseFloat(form.valor)||0) - dFin)
+                      const valorRef = agRapido ? agRapido.valor : (parseFloat(form.valor)||0)
+                      const total = Math.max(0, valorRef - dFin)
                       return `Total a receber: R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}`
                     })()}
                   </p>
                 </div>
-                <button onClick={()=>setModalFinalizar(false)} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'50%', width:'32px', height:'32px', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>x</button>
+                <button onClick={()=>{ setModalFinalizar(false); setAgRapido(null); setPagamentos([]); setDescontoFin(''); setErroForm([]) }} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'50%', width:'32px', height:'32px', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>x</button>
               </div>
             </div>
             <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'10px' }}>
@@ -1259,13 +1297,13 @@ export default function AgendaPage() {
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
                     <label style={{ fontSize:'13px', fontWeight:'600', color:'#374151' }}>Desconto (R$)</label>
                     <span style={{ fontSize:'12px', color:'#6b7280' }}>
-                      Valor bruto: R$ {(parseFloat(form.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                      Valor bruto: R$ {(agRapido ? agRapido.valor : (parseFloat(form.valor)||0)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
                     </span>
                   </div>
                   <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
                     <input type="number" value={descontoFin} placeholder="0,00" min="0"
-                      max={parseFloat(form.valor)||0}
-                      onChange={e=>{ const v=parseFloat(e.target.value)||0; const max=parseFloat(form.valor)||0; if(v<=max) { setDescontoFin(e.target.value); setPagamentos([]) } }}
+                      max={agRapido ? agRapido.valor : (parseFloat(form.valor)||0)}
+                      onChange={e=>{ const v=parseFloat(e.target.value)||0; const max=agRapido?agRapido.valor:(parseFloat(form.valor)||0); if(v<=max) { setDescontoFin(e.target.value); setPagamentos([]) } }}
                       style={{ flex:1, border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none' }}/>
                     {descontoFin && parseFloat(descontoFin)>0 && (
                       <button onClick={()=>{ setDescontoFin(''); setPagamentos([]) }}
@@ -1349,7 +1387,7 @@ export default function AgendaPage() {
               )}
               <div style={{ display:'flex', gap:'10px', marginTop:'4px' }}>
                 <button onClick={()=>setModalFinalizar(false)} style={{ flex:1, padding:'11px', border:'1px solid #e5e7eb', borderRadius:'10px', background:'white', fontSize:'14px', cursor:'pointer', color:'#6b7280' }}>Cancelar</button>
-                <button onClick={()=>finalizar(selecionado.id)} disabled={finalizando}
+                <button onClick={()=>finalizar(agRapido?.id || selecionado!.id)} disabled={finalizando}
                   style={{ flex:2, padding:'11px', border:'none', borderRadius:'10px', background:finalizando?'#a7f3d0':'linear-gradient(135deg,#059669,#10b981)', color:'white', fontSize:'14px', fontWeight:'700', cursor:finalizando?'not-allowed':'pointer' }}>
                   {finalizando ? 'Finalizando...' : 'Confirmar e Finalizar'}
                 </button>

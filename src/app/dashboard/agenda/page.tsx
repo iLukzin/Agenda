@@ -804,6 +804,7 @@ export default function AgendaPage() {
           onCancelarRapido={(usuario as any)?.permitir_cancelar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setModalCancelar(true), 100) } : undefined}
           onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>{ setPagamentos([]); setDescontoFin(''); setModalFinalizar(true) }, 100) } : undefined}
           onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setVerPagamentos(true), 100) } : undefined}
+          onEnviarWpp={wppConectado ? (ag) => { abrirEdicao(ag); setTimeout(()=>enviarConfirmacao(), 150) } : undefined}
           filtroProfissional={filtroProfissional}
           setFiltroProfissional={setFiltroProfissional}
         />

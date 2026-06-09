@@ -19,13 +19,23 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  // Vercel roda em UTC. Agendamentos salvos com offset -03:00 (Brasília)
+  // Precisamos comparar considerando que data_inicio tem +00:00 mas representa hora local
+  // Ex: agendamento 14:15 BRT está salvo como 14:15:00+00:00 (não convertido para UTC)
+  // Então não aplicamos conversão - comparamos direto com hora local brasileira
   const agora = new Date()
-  // Janela: agendamentos entre 75min e 105min a partir de agora (90min ± 15min)
-  const ini = new Date(agora.getTime() + 75 * 60 * 1000)
-  const fim = new Date(agora.getTime() + 105 * 60 * 1000)
+  // Converter agora para horário de Brasília (UTC-3)
+  const agoraBRT = new Date(agora.getTime() - 3 * 60 * 60 * 1000)
 
-  const iniISO = ini.toISOString()
-  const fimISO = fim.toISOString()
+  // Janela: 75min a 105min a partir de agora (BRT)
+  const ini = new Date(agoraBRT.getTime() + 75 * 60 * 1000)
+  const fim = new Date(agoraBRT.getTime() + 105 * 60 * 1000)
+
+  // Formatar como string local sem timezone para comparar com data_inicio do banco
+  const toLocalStr = (d: Date) => d.toISOString().replace('Z', '+00:00')
+
+  const iniISO = toLocalStr(ini)
+  const fimISO = toLocalStr(fim)
 
   // Debug: buscar TODOS os agendamentos abertos para ver o que existe
   const { data: todos } = await sb

@@ -250,12 +250,14 @@ export default function ClientesPage() {
   const ehLucas = usuario?.email === 'lucas@fortitude.com'
 
   function exportarClientesExcel() {
-    const sep = '\t'
-    const nl  = '\n'
-    const header = [
-      'Nome','Email','Telefone','WhatsApp','Data Nascimento',
-      'Plano','Status','Observacoes','Data Cadastro'
-    ].join(sep)
+    const BOM = '\uFEFF'
+    const SEP = ';'
+    const NL  = '\r\n'
+    const esc = (v: string) => {
+      const s = String(v || '').replace(/\r?\n/g, ' ')
+      return s.includes(SEP) || s.includes('"') ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+    const header = ['Nome','Email','Telefone','WhatsApp','Data Nascimento','Plano','Status','Observacoes','Data Cadastro']
     const linhas = clientes.map(c => [
       c.nome || '',
       c.email || '',
@@ -263,17 +265,17 @@ export default function ClientesPage() {
       c.whatsapp || '',
       c.data_nascimento ? new Date(c.data_nascimento+'T12:00:00').toLocaleDateString('pt-BR') : '',
       c.plano_id ? (planos.find(p=>p.id===c.plano_id)?.nome || '') : '',
-      c.status || '',
-      (c.observacoes || '').replace(/\t|\n/g,' '),
+      c.status === 'ativo' ? 'Ativo' : c.status === 'inativo' ? 'Inativo' : (c.status || ''),
+      c.observacoes || '',
       c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '',
-    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(sep))
-    const tsv = '\uFEFF' + header + nl + linhas.join(nl)
-    const blob = new Blob([tsv], { type:'text/tab-separated-values;charset=utf-8;' })
+    ].map(esc).join(SEP))
+    const csv = BOM + header.map(esc).join(SEP) + NL + linhas.join(NL)
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     const emp  = empresaAtiva?.nome?.replace(/\s+/g,'_') || 'empresa'
     const data = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')
-    a.href = url; a.download = `clientes_${emp}_${data}.xls`; a.click()
+    a.href = url; a.download = `clientes_${emp}_${data}.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 

@@ -90,8 +90,27 @@ export default function EmpresasPage() {
     const sb = createClient()
     const payload = { nome:form.nome.trim(), cnpj:form.cnpj||null, email:form.email||null, telefone:form.telefone||null, endereco:form.endereco||null, plano:form.plano, status:form.status, vencimento:form.vencimento||null, bloqueada:form.bloqueada, motivo_bloqueio:form.bloqueada?(form.motivo_bloqueio||'Falta de pagamento'):null, whatsapp_habilitado:form.whatsapp_habilitado }
     let error: any
-    if (modoEdicao && selecionada) { const r = await sb.from('empresas').update(payload).eq('id', selecionada.id); error = r.error }
-    else { const r = await sb.from('empresas').insert(payload); error = r.error }
+    if (modoEdicao && selecionada) {
+      const r = await sb.from('empresas').update(payload).eq('id', selecionada.id)
+      error = r.error
+    } else {
+      // Criar empresa
+      const r = await sb.from('empresas').insert(payload).select('id').single()
+      error = r.error
+      if (!error && r.data?.id) {
+        // Vincular todos os usuários master automaticamente
+        const { data: masters } = await sb
+          .from('usuarios')
+          .select('id')
+          .eq('nivel_acesso', 'master')
+          .eq('status', 'ativo')
+        if (masters && masters.length > 0) {
+          await sb.from('usuario_empresas').insert(
+            masters.map((m: any) => ({ usuario_id: m.id, empresa_id: r.data.id }))
+          )
+        }
+      }
+    }
     if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
     await carregar(); recarregar(); fecharModal(); setSalvando(false)
   }

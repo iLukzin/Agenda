@@ -542,43 +542,123 @@ export default function ConfiguracoesPage() {
       {/* WhatsApp */}
       {aba==='whatsapp' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
-          {/* Status da conexão */}
+
+          {/* Card: Configuração da instância (por empresa) */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'4px' }}>
+              <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e' }}>Configuração desta empresa</h2>
+              <span style={{ fontSize:'11px', background:'#eef2ff', color:'#6366f1', padding:'2px 8px', borderRadius:'99px', fontWeight:'600' }}>Por empresa</span>
+            </div>
+            <p style={{ fontSize:'12px', color:'#9ca3af', marginBottom:'16px' }}>Cada empresa conecta em um número de WhatsApp diferente</p>
+            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+              <div>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Nome da instância</label>
+                <input value={evoConfig.instancia} onChange={e=>setEvoConfig(c=>({...c,instancia:e.target.value}))}
+                  style={inputStyle} placeholder={`emp-${(empresaAtiva?.id||'').slice(0,8)}`}/>
+                <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'4px' }}>Identificador único desta empresa na Evolution API. Sugestão: <strong>emp-{(empresaAtiva?.id||'').slice(0,8)}</strong></p>
+              </div>
+            </div>
+          </div>
+
+          {/* Card: Configuração global da API (compartilhado) */}
+          <div style={{ background:'#fffbeb', borderRadius:'14px', border:'1px solid #fde68a', padding:'20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'4px' }}>
+              <h3 style={{ fontSize:'14px', fontWeight:'600', color:'#92400e' }}>Configuração da Evolution API</h3>
+              <span style={{ fontSize:'11px', background:'#fef3c7', color:'#92400e', padding:'2px 8px', borderRadius:'99px', fontWeight:'600' }}>Global (todas empresas)</span>
+            </div>
+            <p style={{ fontSize:'12px', color:'#92400e', marginBottom:'14px', opacity:0.8 }}>URL e Token são compartilhados por todas as empresas — altere com cuidado</p>
+            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+              <div>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>URL da API</label>
+                <input value={evoConfig.url} onChange={e=>setEvoConfig(c=>({...c,url:e.target.value}))}
+                  style={inputStyle} placeholder="https://api.agendafortitude.com.br"/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Token (apikey)</label>
+                <input value={evoConfig.token} onChange={e=>setEvoConfig(c=>({...c,token:e.target.value}))}
+                  style={inputStyle} placeholder="Seu token da Evolution API" type="password"/>
+              </div>
+            </div>
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'14px' }}>
+              <button onClick={salvarEvoConfig} disabled={salvandoEvo}
+                style={{ background:salvandoEvo?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'13px', fontWeight:'600', cursor:salvandoEvo?'not-allowed':'pointer' }}>
+                {salvandoEvo?'Salvando...':'Salvar configuração'}
+              </button>
+            </div>
+          </div>
+
+          {/* Card: Conexão */}
           <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
-              <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e' }}>Conexão WhatsApp</h2>
+              <h3 style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e' }}>Status da conexão</h3>
               <span style={{ fontSize:'12px', fontWeight:'700', padding:'4px 12px', borderRadius:'99px', background:statusConexao==='conectado'?'#d1fae5':statusConexao==='aguardando'?'#fef3c7':'#fef2f2', color:statusConexao==='conectado'?'#065f46':statusConexao==='aguardando'?'#92400e':'#991b1b' }}>
                 {statusConexao==='conectado'?'Conectado':statusConexao==='aguardando'?'Aguardando QR':'Desconectado'}
               </span>
             </div>
             {qrCode && statusConexao==='aguardando' && (
               <div style={{ textAlign:'center', marginBottom:'16px' }}>
-                <p style={{ fontSize:'13px', color:'#6b7280', marginBottom:'10px' }}>Escaneie o QR Code com o WhatsApp</p>
+                <p style={{ fontSize:'13px', color:'#6b7280', marginBottom:'10px' }}>Escaneie o QR Code com o WhatsApp do número desta empresa</p>
                 <img src={qrCode} alt="QR Code" style={{ width:'200px', height:'200px', border:'1px solid #e5e7eb', borderRadius:'8px' }}/>
               </div>
             )}
             {msgWpp && <p style={{ fontSize:'13px', color:msgWpp.includes('erro')||msgWpp.includes('Erro')?'#ef4444':'#059669', marginBottom:'12px' }}>{msgWpp}</p>}
             <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
-              <button onClick={conectarWpp} style={{ background:'#ecfdf5', color:'#059669', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-                {statusConexao==='conectado'?'Reconectar':'Conectar'}
+              <button onClick={conectarWpp} disabled={buscandoQr}
+                style={{ background:'#ecfdf5', color:'#059669', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:buscandoQr?'not-allowed':'pointer' }}>
+                {buscandoQr?'Gerando QR...':statusConexao==='conectado'?'Reconectar':'Conectar WhatsApp'}
               </button>
               {statusConexao==='conectado' && (
-                <button onClick={desconectarWpp} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Desconectar</button>
+                <button onClick={desconectarWpp}
+                  style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                  Desconectar
+                </button>
               )}
             </div>
           </div>
-          {/* Teste */}
+
+          {/* Card: Automações */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <h3 style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e', marginBottom:'14px' }}>Automações</h3>
+            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+              {[
+                { label:'Confirmação automática de agendamento', desc:'Envia mensagem quando um agendamento é criado', key:'autoConfirmacao', val:autoConfirmacao, set:setAutoConfirmacao },
+                { label:'Mensagem de aniversário', desc:'Envia parabéns automaticamente no aniversário do cliente', key:'autoAniversario', val:autoAniversario, set:setAutoAniversario },
+              ].map(item=>(
+                <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:'10px', background:'#f9fafb', border:'1px solid #f0f0f0' }}>
+                  <div>
+                    <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', marginBottom:'2px' }}>{item.label}</p>
+                    <p style={{ fontSize:'11px', color:'#6b7280' }}>{item.desc}</p>
+                  </div>
+                  <div onClick={()=>item.set(!item.val)}
+                    style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:item.val?'#10b981':'#e5e7eb', position:'relative', transition:'background .2s', marginLeft:'12px' }}>
+                    <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:item.val?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left .2s' }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'14px' }}>
+              <button onClick={salvarWpp} disabled={salvandoWpp}
+                style={{ background:salvandoWpp?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'13px', fontWeight:'600', cursor:salvandoWpp?'not-allowed':'pointer' }}>
+                {salvandoWpp?'Salvando...':'Salvar automações'}
+              </button>
+            </div>
+          </div>
+
+          {/* Card: Teste */}
           {statusConexao==='conectado' && (
             <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
               <h3 style={{ fontSize:'14px', fontWeight:'600', marginBottom:'14px' }}>Enviar mensagem de teste</h3>
               <div style={{ display:'flex', gap:'10px' }}>
                 <input value={testeNum} onChange={e=>setTesteNum(e.target.value)} placeholder="5534999999999" style={{ ...inputStyle, flex:1 }}/>
-                <button onClick={testarWpp} disabled={testando} style={{ background:testando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:testando?'not-allowed':'pointer', whiteSpace:'nowrap' }}>
+                <button onClick={testarWpp} disabled={testando}
+                  style={{ background:testando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:testando?'not-allowed':'pointer', whiteSpace:'nowrap' }}>
                   {testando?'Enviando...':'Testar'}
                 </button>
               </div>
             </div>
           )}
-          {/* Templates */}
+
+          {/* Card: Templates */}
           {templates.length > 0 && (
             <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
               <h3 style={{ fontSize:'14px', fontWeight:'600', marginBottom:'16px' }}>Templates de mensagem</h3>

@@ -285,7 +285,7 @@ export async function excluirLancamento(id: string) {
 
 export async function listarUsuarios(empresaId: string) {
   const sb = createClient()
-  const selectCols = 'id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor, permitir_desconto, permitir_cancelar, permitir_finalizar, permitir_ver_pagamento, profissional_id'
+  const selectCols = 'id, nome, email, telefone, cargo, nivel_acesso, empresa_id, status, bloquear_edicao_valor, permitir_desconto, permitir_cancelar, permitir_finalizar, permitir_ver_pagamento, permitir_enviar_wpp, profissional_id'
   // Buscar usuários da empresa (empresa_id = empresaId)
   const { data: diretos, error } = await sb
     .from('usuarios')

@@ -28,6 +28,7 @@ export type UsuarioLogado = {
   permitir_cancelar?: boolean
   permitir_finalizar?: boolean
   permitir_ver_pagamento?: boolean
+  permitir_enviar_wpp?: boolean
 }
 
 type EmpresaContextType = {
@@ -68,7 +69,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       // Busca o usuário na tabela
       const { data: u } = await sb
         .from('usuarios')
-        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status, bloquear_edicao_valor, permitir_desconto, permitir_cancelar, permitir_finalizar, permitir_ver_pagamento')
+        .select('id, nome, email, nivel_acesso, empresa_id, profissional_id, status, bloquear_edicao_valor, permitir_desconto, permitir_cancelar, permitir_finalizar, permitir_ver_pagamento, permitir_enviar_wpp')
         .eq('auth_id', user.id)
         .single()
 
@@ -102,6 +103,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         permitir_cancelar:       u.permitir_cancelar !== false,
         permitir_finalizar:      u.permitir_finalizar !== false,
         permitir_ver_pagamento:  u.permitir_ver_pagamento !== false,
+        permitir_enviar_wpp:     u.permitir_enviar_wpp !== false,
       }
       setUsuario(usuarioLogado)
 

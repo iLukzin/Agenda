@@ -42,7 +42,7 @@ export default function UsuariosPage() {
   const [selecionado, setSelecionado]   = useState<Usuario|null>(null)
   const [modalConfirm, setModalConfirm] = useState<{tipo:'excluir'|'inativar';id:string}|null>(null)
   const [erro, setErro]           = useState('')
-  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'', bloquear_edicao_valor:true, permitir_desconto:false, permitir_cancelar:true, permitir_finalizar:true, permitir_ver_pagamento:true, profissional_id:'' })
+  const [form, setForm] = useState({ nome:'', email:'', telefone:'', cargo:'', nivel_acesso:'profissional', status:'ativo', senha:'', bloquear_edicao_valor:true, permitir_desconto:false, permitir_cancelar:true, permitir_finalizar:true, permitir_ver_pagamento:true, permitir_enviar_wpp:true, profissional_id:'' })
   const [profissionais, setProfissionais] = useState<any[]>([])
 
   const carregar = useCallback(async () => {
@@ -75,7 +75,7 @@ export default function UsuariosPage() {
 
   function abrirEdicao(u: Usuario) {
     setModoEdicao(true); setSelecionado(u); setErro('')
-    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'', bloquear_edicao_valor:u.bloquear_edicao_valor !== false, permitir_desconto:u.permitir_desconto === true, permitir_cancelar:u.permitir_cancelar !== false, permitir_finalizar:u.permitir_finalizar !== false, permitir_ver_pagamento:u.permitir_ver_pagamento !== false, profissional_id:u.profissional_id||'' })
+    setForm({ nome:u.nome, email:u.email, telefone:u.telefone||'', cargo:u.cargo||'', nivel_acesso:u.nivel_acesso, status:u.status, senha:'', bloquear_edicao_valor:u.bloquear_edicao_valor !== false, permitir_desconto:u.permitir_desconto === true, permitir_cancelar:u.permitir_cancelar !== false, permitir_finalizar:u.permitir_finalizar !== false, permitir_ver_pagamento:u.permitir_ver_pagamento !== false, permitir_enviar_wpp:u.permitir_enviar_wpp !== false, profissional_id:u.profissional_id||'' })
     setModalAberto(true)
   }
 
@@ -98,6 +98,7 @@ export default function UsuariosPage() {
           permitir_cancelar: form.permitir_cancelar !== false,
           permitir_finalizar: form.permitir_finalizar !== false,
           permitir_ver_pagamento: form.permitir_ver_pagamento !== false,
+          permitir_enviar_wpp: form.permitir_enviar_wpp !== false,
           profissional_id: form.profissional_id || null,
         })
         if (error) throw new Error(error.message)
@@ -119,6 +120,7 @@ export default function UsuariosPage() {
             permitir_cancelar: form.permitir_cancelar !== false,
             permitir_finalizar: form.permitir_finalizar !== false,
             permitir_ver_pagamento: form.permitir_ver_pagamento !== false,
+            permitir_enviar_wpp: form.permitir_enviar_wpp !== false,
             profissional_id: form.profissional_id || null,
           }),
         })
@@ -362,6 +364,18 @@ export default function UsuariosPage() {
               <div onClick={()=>setForm(f=>({...f, permitir_ver_pagamento:!f.permitir_ver_pagamento}))}
                 style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.permitir_ver_pagamento?'#10b981':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
                 <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.permitir_ver_pagamento?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+              </div>
+            </div>
+
+            {/* Toggle permitir enviar wpp */}
+            <div style={{ gridColumn:'1/-1', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#f0fdf4', borderRadius:'10px', padding:'12px 14px', border:'1px solid #bbf7d0' }}>
+              <div>
+                <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', marginBottom:'2px' }}>Permitir enviar confirmação WhatsApp</p>
+                <p style={{ fontSize:'11px', color:'#6b7280' }}>Quando desativado, o botão WPP não aparece para este usuário</p>
+              </div>
+              <div onClick={()=>setForm(f=>({...f, permitir_enviar_wpp:!f.permitir_enviar_wpp}))}
+                style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:form.permitir_enviar_wpp?'#10b981':'#e5e7eb', position:'relative', transition:'background 0.2s' }}>
+                <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.permitir_enviar_wpp?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
               </div>
             </div>
 

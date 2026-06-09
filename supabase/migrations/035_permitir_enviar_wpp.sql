@@ -1,0 +1,1 @@
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS permitir_enviar_wpp BOOLEAN DEFAULT TRUE;

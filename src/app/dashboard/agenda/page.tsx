@@ -1324,7 +1324,8 @@ export default function AgendaPage() {
               )}
               {pagamentos.map((pag, idx) => {
                 const descontoNM = parseFloat(descontoFin || desconto) || 0
-                const valTotalM = Math.max(0,(parseFloat(form.valor)||0) - descontoNM)
+                const valorRefM = agRapido ? agRapido.valor : (parseFloat(form.valor)||0)
+                const valTotalM = Math.max(0, valorRefM - descontoNM)
                 const somaAntM = pagamentos.slice(0,idx).reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
                 const restanteM = Math.max(0, valTotalM - somaAntM)
                 const isUltM = idx === pagamentos.length - 1
@@ -1353,7 +1354,8 @@ export default function AgendaPage() {
               })}
               <button type="button" onClick={()=>{
                   const dNM2 = parseFloat(descontoFin || desconto)||0
-                  const vTM2 = Math.max(0,(parseFloat(form.valor)||0)-dNM2)
+                  const valorRefBtn = agRapido ? agRapido.valor : (parseFloat(form.valor)||0)
+                  const vTM2 = Math.max(0, valorRefBtn - dNM2)
                   if (pagamentos.length===0) { setPagamentos([{forma:'dinheiro',valor:String(vTM2)}]) }
                   else {
                     const semUltM2=pagamentos.slice(0,-1)
@@ -1367,14 +1369,15 @@ export default function AgendaPage() {
                 + Adicionar forma de pagamento
               </button>
               {pagamentos.length > 0 && (()=>{
-                const dN6=parseFloat(descontoFin || desconto)||0
-                const vB6=Math.max(0,(parseFloat(form.valor)||0)-dN6)
-                const tP6=pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
-                const df6=vB6-tP6
+                const dN6 = parseFloat(descontoFin || desconto)||0
+                const valorRefConf = agRapido ? agRapido.valor : (parseFloat(form.valor)||0)
+                const vB6 = Math.max(0, valorRefConf - dN6)
+                const tP6 = pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
+                const df6 = vB6 - tP6
                 return (
-                  <div style={{ padding:'10px 14px', borderRadius:'10px', background:Math.abs(df6)<0.01?'#f0fdf4':'#fffbeb', border:`1px solid ${Math.abs(df6)<0.01?'#6ee7b7':'#fde68a'}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ padding:'10px 14px', borderRadius:'10px', background:Math.abs(df6)<0.01?'#f0fdf4':df6>0?'#fffbeb':'#fef2f2', border:`1px solid ${Math.abs(df6)<0.01?'#6ee7b7':df6>0?'#fde68a':'#fecaca'}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <span style={{ fontSize:'12px', color:'#6b7280' }}>Pago: R$ {tP6.toLocaleString('pt-BR',{minimumFractionDigits:2})} / Total: R$ {vB6.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                    {Math.abs(df6)<0.01 && <span style={{ fontSize:'12px', color:'#059669', fontWeight:'700' }}>Confirmado</span>}
+                    {Math.abs(df6)<0.01 && <span style={{ fontSize:'12px', color:'#059669', fontWeight:'700' }}>✓ Confirmado</span>}
                     {df6>0.01 && <span style={{ fontSize:'12px', color:'#d97706', fontWeight:'700' }}>Falta R$ {df6.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
                     {df6<-0.01 && <span style={{ fontSize:'12px', color:'#ef4444', fontWeight:'700' }}>Excede R$ {Math.abs(df6).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>}
                   </div>

@@ -19,23 +19,13 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Vercel roda em UTC. Agendamentos salvos com offset -03:00 (Brasília)
-  // Precisamos comparar considerando que data_inicio tem +00:00 mas representa hora local
-  // Ex: agendamento 14:15 BRT está salvo como 14:15:00+00:00 (não convertido para UTC)
-  // Então não aplicamos conversão - comparamos direto com hora local brasileira
+  // Agendamentos salvos em UTC real (data_inicio em UTC)
+  // Vercel também roda em UTC - comparação direta
   const agora = new Date()
-  // Converter agora para horário de Brasília (UTC-3)
-  const agoraBRT = new Date(agora.getTime() - 3 * 60 * 60 * 1000)
-
-  // Janela: 75min a 105min a partir de agora (BRT)
-  const ini = new Date(agoraBRT.getTime() + 75 * 60 * 1000)
-  const fim = new Date(agoraBRT.getTime() + 105 * 60 * 1000)
-
-  // Formatar como string local sem timezone para comparar com data_inicio do banco
-  const toLocalStr = (d: Date) => d.toISOString().replace('Z', '+00:00')
-
-  const iniISO = toLocalStr(ini)
-  const fimISO = toLocalStr(fim)
+  const ini = new Date(agora.getTime() + 75 * 60 * 1000)
+  const fim = new Date(agora.getTime() + 105 * 60 * 1000)
+  const iniISO = ini.toISOString()
+  const fimISO = fim.toISOString()
 
   // Debug: buscar TODOS os agendamentos abertos para ver o que existe
   const { data: todos } = await sb
@@ -45,7 +35,7 @@ export async function GET(req: NextRequest) {
     .order('data_inicio')
     .limit(10)
 
-  // Buscar agendamentos abertos na janela
+  // Buscar agendamentos na janela
   const { data: agendamentos, error } = await sb
     .from('agendamentos')
     .select('id, data_inicio, cliente_id, servico_id, prof_id, empresa_id, confirmacao_wpp_enviada')
@@ -53,30 +43,31 @@ export async function GET(req: NextRequest) {
     .gte('data_inicio', iniISO)
     .lte('data_inicio', fimISO)
 
+  // Debug completo
+  const debugInfo = {
+    agora_utc: agora.toISOString(),
+    agora_brt: agoraBRT.toISOString(),
+    janela_ini: iniISO,
+    janela_fim: fimISO,
+    todos_abertos: todos?.map(a => ({ id: a.id.slice(0,8), data_inicio: a.data_inicio })),
+    na_janela_count: agendamentos?.length ?? 0,
+    na_janela_erro: error?.message,
+  }
+
   if (error) {
-    // Se erro por coluna inexistente, buscar sem ela
     const { data: ags2, error: err2 } = await sb
       .from('agendamentos')
       .select('id, data_inicio, cliente_id, servico_id, prof_id, empresa_id')
       .eq('status', 'aberto')
       .gte('data_inicio', iniISO)
       .lte('data_inicio', fimISO)
-    if (err2) return NextResponse.json({ error: err2.message, debug: { agora: agora.toISOString(), ini: iniISO, fim: fimISO } }, { status: 500 })
-    if (!ags2 || ags2.length === 0) return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0, debug: { agora: agora.toISOString(), ini: iniISO, fim: fimISO, todos_abertos: todos } })
+    if (err2) return NextResponse.json({ error: err2.message, debug: debugInfo }, { status: 500 })
+    if (!ags2 || ags2.length === 0) return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0, debug: debugInfo })
     return await processarAgendamentos(sb, ags2.map(a => ({ ...a, confirmacao_wpp_enviada: false })), iniISO, fimISO)
   }
 
   if (!agendamentos || agendamentos.length === 0) {
-    return NextResponse.json({
-      message: 'Nenhum agendamento na janela',
-      count: 0,
-      debug: {
-        agora: agora.toISOString(),
-        janela_ini: iniISO,
-        janela_fim: fimISO,
-        todos_abertos_proximos: todos?.map(a => ({ id: a.id.slice(0,8), data_inicio: a.data_inicio, status: a.status }))
-      }
-    })
+    return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0, debug: debugInfo })
   }
 
   // Filtrar os que já receberam confirmação

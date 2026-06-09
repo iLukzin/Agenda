@@ -306,10 +306,16 @@ export default function AgendaPage() {
     setClientes(clsRaw)
     setProfissionais(profsRaw)
     setServicos(servsRaw)
-    setAgendamentos(agsRaw.map((a: any) => ({
+    setAgendamentos(agsRaw.map((a: any) => {
+      // Converter data_inicio de UTC para BRT (UTC-3)
+      const dtUTC = a.data_inicio ? new Date(a.data_inicio) : null
+      const dtBRT = dtUTC ? new Date(dtUTC.getTime() - 3 * 60 * 60 * 1000) : null
+      const dataISO = dtBRT ? toISO(dtBRT) : toISO(hojeNoBrasil())
+      const horaInicio = dtBRT ? dtBRT.getUTCHours() + dtBRT.getUTCMinutes() / 60 : 0
+      return {
       id: a.id,
-      dataISO: a.data_inicio ? a.data_inicio.slice(0,10) : toISO(hojeNoBrasil()),
-      horaInicio: a.data_inicio ? parseInt(a.data_inicio.slice(11,13)) + parseInt(a.data_inicio.slice(14,16)) / 60 : 0,
+      dataISO,
+      horaInicio,
       duracao: servDur[a.servico_id] || 60,
       cliente: cliMap[a.cliente_id] || '',
       clienteId: a.cliente_id || '',
@@ -328,7 +334,8 @@ export default function AgendaPage() {
       createdAt: a.created_at || a.data_inicio,
       sessaoNumero: a.sessao_numero || undefined,
       sessaoTotal: a.sessao_total || undefined,
-    })))
+      }
+    }))
     setCarregando(false)
   }, [empresaAtiva?.id, usuario?.nivel_acesso, usuario?.profissional_id])
 
@@ -516,7 +523,9 @@ export default function AgendaPage() {
     if (!empresaAtiva?.id) return
     setSalvando(true)
     const parts = (form.horaInicio || '09:00').split(':').map(Number)
-    const dataInicio = form.dataISO + 'T' + String(parts[0]).padStart(2,'0') + ':' + String(parts[1]).padStart(2,'0') + ':00'
+    // Montar data/hora local BRT e converter para UTC (-3h)
+    const dataLocalBRT = new Date(form.dataISO + 'T' + String(parts[0]).padStart(2,'0') + ':' + String(parts[1]).padStart(2,'0') + ':00-03:00')
+    const dataInicio = dataLocalBRT.toISOString()
     const srv = servicos.find((s: any) => s.nome === form.servico)
     const prof = profissionais.find((p: any) => p.nome === form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao) * 60000).toISOString()

@@ -257,7 +257,7 @@ export default function ClientesPage() {
       const s = String(v || '').replace(/\r?\n/g, ' ')
       return s.includes(SEP) || s.includes('"') ? '"' + s.replace(/"/g, '""') + '"' : s
     }
-    const header = ['Nome','Email','Telefone','WhatsApp','Data Nascimento','Plano','Status','Observacoes','Data Cadastro']
+    const header = ['Nome','Email','Telefone','WhatsApp','Data Nascimento','Plano','Status','Endereco','Observacoes','Data Cadastro']
     const linhas = clientes.map(c => [
       c.nome || '',
       c.email || '',
@@ -266,6 +266,7 @@ export default function ClientesPage() {
       c.data_nascimento ? new Date(c.data_nascimento+'T12:00:00').toLocaleDateString('pt-BR') : '',
       c.plano_id ? (planos.find(p=>p.id===c.plano_id)?.nome || '') : '',
       c.status === 'ativo' ? 'Ativo' : c.status === 'inativo' ? 'Inativo' : (c.status || ''),
+      c.endereco || '',
       c.observacoes || '',
       c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '',
     ].map(esc).join(SEP))

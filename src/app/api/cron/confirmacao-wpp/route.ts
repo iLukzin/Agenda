@@ -27,8 +27,15 @@ export async function GET(req: NextRequest) {
   const iniISO = ini.toISOString()
   const fimISO = fim.toISOString()
 
-  // Buscar agendamentos abertos na janela - sem filtrar confirmacao_wpp_enviada
-  // pois a coluna pode não existir ainda
+  // Debug: buscar TODOS os agendamentos abertos para ver o que existe
+  const { data: todos } = await sb
+    .from('agendamentos')
+    .select('id, data_inicio, status, empresa_id')
+    .eq('status', 'aberto')
+    .order('data_inicio')
+    .limit(10)
+
+  // Buscar agendamentos abertos na janela
   const { data: agendamentos, error } = await sb
     .from('agendamentos')
     .select('id, data_inicio, cliente_id, servico_id, prof_id, empresa_id, confirmacao_wpp_enviada')
@@ -44,14 +51,22 @@ export async function GET(req: NextRequest) {
       .eq('status', 'aberto')
       .gte('data_inicio', iniISO)
       .lte('data_inicio', fimISO)
-    if (err2) return NextResponse.json({ error: err2.message }, { status: 500 })
-    if (!ags2 || ags2.length === 0) return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0 })
-    // Processar sem verificar confirmacao_wpp_enviada
+    if (err2) return NextResponse.json({ error: err2.message, debug: { agora: agora.toISOString(), ini: iniISO, fim: fimISO } }, { status: 500 })
+    if (!ags2 || ags2.length === 0) return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0, debug: { agora: agora.toISOString(), ini: iniISO, fim: fimISO, todos_abertos: todos } })
     return await processarAgendamentos(sb, ags2.map(a => ({ ...a, confirmacao_wpp_enviada: false })), iniISO, fimISO)
   }
 
   if (!agendamentos || agendamentos.length === 0) {
-    return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0 })
+    return NextResponse.json({
+      message: 'Nenhum agendamento na janela',
+      count: 0,
+      debug: {
+        agora: agora.toISOString(),
+        janela_ini: iniISO,
+        janela_fim: fimISO,
+        todos_abertos_proximos: todos?.map(a => ({ id: a.id.slice(0,8), data_inicio: a.data_inicio, status: a.status }))
+      }
+    })
   }
 
   // Filtrar os que já receberam confirmação

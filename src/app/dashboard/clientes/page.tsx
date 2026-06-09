@@ -467,29 +467,39 @@ export default function ClientesPage() {
                 })
                 if (filt.length === 0) return <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af', fontSize:'14px' }}>Nenhum atendimento encontrado.</div>
                 return filt.map((h:any) => (
-                  <div key={h.id} style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 16px', borderRadius:'12px', border:'1px solid #f0f0f8', marginBottom:'8px', background:h.status==='fechado'?'#f0fdf4':h.status==='cancelado'?'#fff1f2':'#f8faff' }}>
-                    <div style={{ width:'44px', textAlign:'center', flexShrink:0 }}>
-                      <p style={{ fontSize:'13px', fontWeight:'700', color:'#374151', fontFamily:'monospace' }}>{h.hora}</p>
-                      <p style={{ fontSize:'10px', color:'#9ca3af' }}>{h.data ? new Date(h.data+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) : ''}</p>
+                  <div key={h.id} style={{ padding:'12px 14px', borderRadius:'12px', border:'1px solid #f0f0f8', marginBottom:'8px', background:h.status==='fechado'?'#f0fdf4':h.status==='cancelado'?'#fff1f2':'#f8faff' }}>
+                    {/* Linha 1: hora/data + badge status */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                        <p style={{ fontSize:'13px', fontWeight:'700', color:'#374151', fontFamily:'monospace' }}>{h.hora}</p>
+                        <p style={{ fontSize:'11px', color:'#9ca3af' }}>{h.data ? new Date(h.data+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) : ''}</p>
+                      </div>
+                      <span style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'99px', flexShrink:0, background:h.status==='fechado'?'#d1fae5':h.status==='cancelado'?'#ffe4e6':'#dbeafe', color:h.status==='fechado'?'#065f46':h.status==='cancelado'?'#be123c':'#1d4ed8' }}>
+                        {h.status==='fechado'?'Finalizado':h.status==='cancelado'?'Cancelado':'Aberto'}
+                      </span>
                     </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{h.servico}</p>
-                      <p style={{ fontSize:'12px', color:'#6b7280' }}>{h.profissional}</p>
-                      {h.observacoes && (
-                        <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'4px', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {h.observacoes}
+                    {/* Linha 2: servico + valor */}
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'8px' }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827' }}>{h.servico}</p>
+                        <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'1px' }}>{h.profissional}</p>
+                        {h.observacoes && (
+                          <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'3px', fontStyle:'italic' }}>
+                            {h.observacoes}
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <p style={{ fontSize:'14px', fontWeight:'700', color:h.status==='fechado'?'#059669':'#9ca3af' }}>
+                          {h.status==='fechado' ? 'R$ '+Number(h.valor).toFixed(2).replace('.',',') : '--'}
                         </p>
-                      )}
+                        {h.forma && (
+                          <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px', maxWidth:'120px', wordBreak:'break-word', textAlign:'right' }}>
+                            {h.forma.split('+').join(' + ')}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <p style={{ fontSize:'14px', fontWeight:'700', color:h.status==='fechado'?'#059669':'#9ca3af' }}>
-                        {h.status==='fechado' ? 'R$ '+Number(h.valor).toFixed(2).replace('.',',') : '--'}
-                      </p>
-                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{h.forma || ''}</p>
-                    </div>
-                    <span style={{ fontSize:'10px', fontWeight:'700', padding:'3px 8px', borderRadius:'99px', flexShrink:0, background:h.status==='fechado'?'#d1fae5':h.status==='cancelado'?'#ffe4e6':'#dbeafe', color:h.status==='fechado'?'#065f46':h.status==='cancelado'?'#be123c':'#1d4ed8' }}>
-                      {h.status==='fechado'?'Finalizado':h.status==='cancelado'?'Cancelado':'Aberto'}
-                    </span>
                   </div>
                 ))
               })()}

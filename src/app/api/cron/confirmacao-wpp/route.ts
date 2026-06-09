@@ -27,32 +27,48 @@ export async function GET(req: NextRequest) {
   const iniISO = ini.toISOString()
   const fimISO = fim.toISOString()
 
-  // Buscar agendamentos abertos na janela que ainda não receberam confirmação
+  // Buscar agendamentos abertos na janela - sem filtrar confirmacao_wpp_enviada
+  // pois a coluna pode não existir ainda
   const { data: agendamentos, error } = await sb
     .from('agendamentos')
-    .select(`
-      id, data_inicio, cliente_id, servico_id, prof_id,
-      empresa_id, confirmacao_wpp_enviada
-    `)
+    .select('id, data_inicio, cliente_id, servico_id, prof_id, empresa_id, confirmacao_wpp_enviada')
     .eq('status', 'aberto')
     .gte('data_inicio', iniISO)
     .lte('data_inicio', fimISO)
-    .not('confirmacao_wpp_enviada', 'is', true)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    // Se erro por coluna inexistente, buscar sem ela
+    const { data: ags2, error: err2 } = await sb
+      .from('agendamentos')
+      .select('id, data_inicio, cliente_id, servico_id, prof_id, empresa_id')
+      .eq('status', 'aberto')
+      .gte('data_inicio', iniISO)
+      .lte('data_inicio', fimISO)
+    if (err2) return NextResponse.json({ error: err2.message }, { status: 500 })
+    if (!ags2 || ags2.length === 0) return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0 })
+    // Processar sem verificar confirmacao_wpp_enviada
+    return await processarAgendamentos(sb, ags2.map(a => ({ ...a, confirmacao_wpp_enviada: false })), iniISO, fimISO)
   }
 
   if (!agendamentos || agendamentos.length === 0) {
     return NextResponse.json({ message: 'Nenhum agendamento na janela', count: 0 })
   }
 
+  // Filtrar os que já receberam confirmação
+  const pendentes = agendamentos.filter((a: any) => !a.confirmacao_wpp_enviada)
+  if (pendentes.length === 0) {
+    return NextResponse.json({ message: 'Todos já receberam confirmação', count: 0 })
+  }
+
+  return await processarAgendamentos(sb, pendentes, iniISO, fimISO)
+}
+
+async function processarAgendamentos(sb: any, agendamentos: any[], iniISO: string, fimISO: string) {
   let enviados = 0
   let erros = 0
 
   for (const ag of agendamentos) {
     try {
-      // Buscar dados da empresa (config WhatsApp)
       const { data: empresa } = await sb
         .from('empresas')
         .select('id, nome, whatsapp_habilitado, whatsapp_instancia, wpp_auto_confirmacao')
@@ -61,7 +77,6 @@ export async function GET(req: NextRequest) {
 
       if (!empresa?.whatsapp_habilitado || !empresa?.wpp_auto_confirmacao) continue
 
-      // Buscar URL e token da Evolution API (config global)
       const { data: cfgs } = await sb
         .from('config_sistema')
         .select('chave, valor')
@@ -76,7 +91,6 @@ export async function GET(req: NextRequest) {
 
       if (!evoUrl || !evoKey) continue
 
-      // Buscar dados do cliente
       const { data: cliente } = await sb
         .from('clientes')
         .select('nome, whatsapp, telefone')
@@ -86,14 +100,12 @@ export async function GET(req: NextRequest) {
       const fone = cliente?.whatsapp || cliente?.telefone
       if (!fone) continue
 
-      // Buscar serviço
       const { data: servico } = await sb
         .from('servicos')
         .select('nome')
         .eq('id', ag.servico_id)
         .maybeSingle()
 
-      // Buscar template de confirmação da empresa
       const { data: tmpl } = await sb
         .from('mensagens_template')
         .select('mensagem')
@@ -106,7 +118,7 @@ export async function GET(req: NextRequest) {
       const data = dataHora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' })
       const hora = dataHora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
 
-      let mensagem = tmpl?.mensagem || `Olá {{cliente}}! Lembrando do seu horário:\n*Data:* {{data}}\n*Hora:* {{hora}}\n*Serviço:* {{servico}}\n\nAté logo! 😊`
+      let mensagem = tmpl?.mensagem || `Olá {{cliente}}! Lembrando do seu horário:\n*Data:* {{data}}\n*Hora:* {{hora}}\n*Serviço:* {{servico}}\n\nAté logo!`
       mensagem = mensagem
         .replace(/{{cliente}}/g, cliente?.nome || 'Cliente')
         .replace(/{{data}}/g, data)
@@ -114,11 +126,9 @@ export async function GET(req: NextRequest) {
         .replace(/{{servico}}/g, servico?.nome || '')
         .replace(/{{empresa}}/g, empresa.nome || '')
 
-      // Formatar número
       const numero = fone.replace(/\D/g, '')
       const numeroFinal = numero.startsWith('55') ? numero : '55' + numero
 
-      // Enviar via Evolution API
       const res = await fetch(
         evoUrl.replace(/\/$/, '') + '/message/sendText/' + instancia,
         {
@@ -129,11 +139,9 @@ export async function GET(req: NextRequest) {
       )
 
       if (res.ok) {
-        // Marcar como enviado para não reenviar
-        await sb
-          .from('agendamentos')
-          .update({ confirmacao_wpp_enviada: true })
-          .eq('id', ag.id)
+        try {
+          await sb.from('agendamentos').update({ confirmacao_wpp_enviada: true }).eq('id', ag.id)
+        } catch {}
         enviados++
       } else {
         erros++

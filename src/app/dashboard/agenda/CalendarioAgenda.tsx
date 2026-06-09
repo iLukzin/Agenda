@@ -305,61 +305,65 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
               const bg    = isFinalizado ? '#f0fdf4' : isCancelado ? '#fff1f2' : AZUL_XLIGHT
               return (
                 <div key={ag.id} onClick={()=>onAbrirEdicao(ag)}
-                  style={{ display:'flex', alignItems:'center', gap:'10px', padding:'11px 12px', borderRadius:'12px', background:bg, border:'1px solid '+(isFinalizado?'#bbf7d0':isCancelado?'#fecdd3':AZUL_LIGHT), borderLeft:'3px solid '+borda, cursor:'pointer', transition:'filter .1s' }}
+                  style={{ display:'flex', flexDirection:'column', gap:'8px', padding:'11px 12px', borderRadius:'12px', background:bg, border:'1px solid '+(isFinalizado?'#bbf7d0':isCancelado?'#fecdd3':AZUL_LIGHT), borderLeft:'3px solid '+borda, cursor:'pointer', transition:'filter .1s' }}
                   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.filter='brightness(0.97)'}}
                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.filter='none'}}>
-                  <div style={{ width:'50px', textAlign:'center', flexShrink:0, background:'white', borderRadius:'8px', padding:'5px 4px', border:'1px solid '+(isFinalizado?'#bbf7d0':isCancelado?'#fecdd3':AZUL_LIGHT) }}>
-                    <p style={{ fontSize:'14px', fontWeight:'800', color:isFinalizado?'#059669':isCancelado?'#e11d48':AZUL, fontFamily:'monospace', letterSpacing:'-0.5px' }}>{hora}</p>
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'2px' }}>
-                      <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:isFinalizado?'#10b981':isCancelado?'#e11d48':AZUL, flexShrink:0 }}/>
-                      <p style={{ fontSize:'14px', fontWeight:'700', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.cliente}</p>
+                  {/* Linha 1: hora + cliente + serviço */}
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                    <div style={{ width:'46px', textAlign:'center', flexShrink:0, background:'white', borderRadius:'8px', padding:'4px 3px', border:'1px solid '+(isFinalizado?'#bbf7d0':isCancelado?'#fecdd3':AZUL_LIGHT) }}>
+                      <p style={{ fontSize:'13px', fontWeight:'800', color:isFinalizado?'#059669':isCancelado?'#e11d48':AZUL, fontFamily:'monospace', letterSpacing:'-0.5px' }}>{hora}</p>
                     </div>
-                    <p style={{ fontSize:'11px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.servico||ag.profissional}</p>
-                  </div>
-                  {isFinalizado && (
-                    <div style={{ display:'flex', alignItems:'center', gap:'4px', flexShrink:0 }} onClick={e=>e.stopPropagation()}>
-                      {onVerPagamentos && (
-                        <button onClick={()=>onVerPagamentos(ag)}
-                          style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'7px', padding:'4px 7px', fontSize:'10px', fontWeight:'700', color:'#2563eb', cursor:'pointer', whiteSpace:'nowrap', letterSpacing:'0.01em' }}>
-                          Pagamento
-                        </button>
-                      )}
-                      <div style={{ width:'24px', height:'24px', borderRadius:'50%', background:'#d1fae5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'5px', marginBottom:'1px' }}>
+                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:isFinalizado?'#10b981':isCancelado?'#e11d48':AZUL, flexShrink:0 }}/>
+                        <p style={{ fontSize:'13px', fontWeight:'700', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.cliente}</p>
                       </div>
+                      <p style={{ fontSize:'11px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingLeft:'11px' }}>{ag.servico||ag.profissional}</p>
                     </div>
-                  )}
-                  {isCancelado && (
-                    <div style={{ width:'24px', height:'24px', borderRadius:'50%', background:'#ffe4e6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </div>
-                  )}
-                  {!isFinalizado && !isCancelado && (
-                    <div style={{ display:'flex', alignItems:'center', gap:'4px', flexShrink:0 }} onClick={e=>e.stopPropagation()}>
+                    {/* Status icon */}
+                    {isFinalizado && (
+                      <div style={{ width:'22px', height:'22px', borderRadius:'50%', background:'#d1fae5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                    )}
+                    {isCancelado && (
+                      <div style={{ width:'22px', height:'22px', borderRadius:'50%', background:'#ffe4e6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </div>
+                    )}
+                  </div>
+                  {/* Linha 2: botões de ação */}
+                  {!isFinalizado && !isCancelado && (onEnviarWpp || onCancelarRapido || onFinalizarRapido) && (
+                    <div style={{ display:'flex', gap:'6px', paddingLeft:'56px' }} onClick={e=>e.stopPropagation()}>
                       {onEnviarWpp && (
                         <button onClick={()=>onEnviarWpp(ag)} title="Enviar confirmação WhatsApp"
-                          style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'7px', padding:'4px 6px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="#16a34a" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                            <path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.7 0-3.286-.467-4.641-1.28l-.333-.198-3.454.98.94-3.417-.216-.35A7.97 7.97 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
+                          style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'7px', padding:'5px 8px', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', fontWeight:'700', color:'#16a34a' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#16a34a">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.7 0-3.286-.467-4.641-1.28l-.333-.198-3.454.98.94-3.417-.216-.35A7.97 7.97 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
                           </svg>
+                          WPP
                         </button>
                       )}
                       {onCancelarRapido && (
                         <button onClick={()=>onCancelarRapido(ag)}
-                          style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'7px', padding:'4px 7px', fontSize:'10px', fontWeight:'700', color:'#ef4444', cursor:'pointer', whiteSpace:'nowrap', letterSpacing:'0.01em' }}>
+                          style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'7px', padding:'5px 10px', fontSize:'11px', fontWeight:'700', color:'#ef4444', cursor:'pointer' }}>
                           Cancelar
                         </button>
                       )}
                       {onFinalizarRapido && (
                         <button onClick={()=>onFinalizarRapido(ag)}
-                          style={{ background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'7px', padding:'4px 7px', fontSize:'10px', fontWeight:'700', color:'#059669', cursor:'pointer', whiteSpace:'nowrap', letterSpacing:'0.01em' }}>
+                          style={{ background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'7px', padding:'5px 10px', fontSize:'11px', fontWeight:'700', color:'#059669', cursor:'pointer' }}>
                           Finalizar
                         </button>
                       )}
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={AZUL_LIGHT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  )}
+                  {isFinalizado && onVerPagamentos && (
+                    <div style={{ display:'flex', gap:'6px', paddingLeft:'56px' }} onClick={e=>e.stopPropagation()}>
+                      <button onClick={()=>onVerPagamentos(ag)}
+                        style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'7px', padding:'5px 10px', fontSize:'11px', fontWeight:'700', color:'#2563eb', cursor:'pointer' }}>
+                        Ver pagamento
+                      </button>
                     </div>
                   )}
                 </div>

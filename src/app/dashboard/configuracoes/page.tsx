@@ -138,6 +138,20 @@ export default function ConfiguracoesPage() {
     setSalvando(false)
   }
 
+  async function salvarHorarios() {
+    if (!empresaAtiva?.id) return
+    setSalvando(true)
+    const sb = createClient()
+    const { error } = await sb.from('empresas').update({ horarios_funcionamento: horarios }).eq('id', empresaAtiva.id)
+    if (!error) { setSalvo(true); setTimeout(()=>setSalvo(false),2500) }
+    else { console.error('Erro ao salvar horários:', error) }
+    setSalvando(false)
+  }
+
+  async function conectarWpp() {
+    await buscarQrCode()
+  }
+
   function abrirNovoPlano() { setModoEdicaoPlano(false); setPlanoSel(null); setErroPlano(''); setFormPlano({nome:'',descricao:'',valor_mensal:'',sessoes_mes:'',validade_dias:'30',status:'ativo',ilimitado:false}); setModalPlano(true) }
   function abrirEdicaoPlano(p: Plano) { setModoEdicaoPlano(true); setPlanoSel(p); setErroPlano(''); setFormPlano({nome:p.nome,descricao:p.descricao||'',valor_mensal:String(p.valor_mensal),sessoes_mes:p.sessoes_mes!=null?String(p.sessoes_mes):'',validade_dias:String(p.validade_dias),status:p.status,ilimitado:p.sessoes_mes===null}); setModalPlano(true) }
   function fecharModalPlano() { setModalPlano(false); setPlanoSel(null) }
@@ -391,6 +405,193 @@ export default function ConfiguracoesPage() {
               <input value={empresa.endereco||''} onChange={e=>setEmpresa((p: any)=>({...p,endereco:e.target.value}))} style={inputStyle} placeholder="Rua, número, bairro, cidade"/>
             </div>
           </div>
+          <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'20px' }}>
+            <button onClick={salvarEmpresa} disabled={salvando} style={{ background:salvo?'#22c55e':salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'10px 24px', fontSize:'14px', fontWeight:'600', cursor:salvando?'not-allowed':'pointer' }}>
+              {salvo?'Salvo!':salvando?'Salvando...':'Salvar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Horários */}
+      {aba==='horarios' && (
+        <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'24px' }}>
+          <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e', marginBottom:'20px' }}>Horários de funcionamento</h2>
+          <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+            {horarios.map((h,i)=>(
+              <div key={h.dia} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 16px', borderRadius:'10px', background:h.ativo?'#f8f9ff':'#fafafa', border:`1px solid ${h.ativo?'#e0e7ff':'#f0f0f0'}` }}>
+                <div onClick={()=>setHorarios(hs=>hs.map((x,j)=>j===i?{...x,ativo:!x.ativo}:x))}
+                  style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', flexShrink:0, background:h.ativo?'#6366f1':'#e5e7eb', position:'relative', transition:'background .2s' }}>
+                  <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:h.ativo?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left .2s' }}/>
+                </div>
+                <span style={{ width:'80px', fontSize:'14px', fontWeight:'500', color:h.ativo?'#374151':'#9ca3af' }}>{h.dia}</span>
+                {h.ativo && (
+                  <>
+                    <input type="time" value={h.inicio} onChange={e=>setHorarios(hs=>hs.map((x,j)=>j===i?{...x,inicio:e.target.value}:x))}
+                      style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'13px', outline:'none' }}/>
+                    <span style={{ color:'#9ca3af', fontSize:'13px' }}>até</span>
+                    <input type="time" value={h.fim} onChange={e=>setHorarios(hs=>hs.map((x,j)=>j===i?{...x,fim:e.target.value}:x))}
+                      style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'13px', outline:'none' }}/>
+                  </>
+                )}
+                {!h.ativo && <span style={{ fontSize:'13px', color:'#9ca3af' }}>Fechado</span>}
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'20px' }}>
+            <button onClick={salvarHorarios} disabled={salvando} style={{ background:salvo?'#22c55e':salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'10px 24px', fontSize:'14px', fontWeight:'600', cursor:salvando?'not-allowed':'pointer' }}>
+              {salvo?'Salvo!':salvando?'Salvando...':'Salvar horários'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Planos */}
+      {aba==='planos' && (
+        <div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+            <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e' }}>Planos de assinatura</h2>
+            <button onClick={()=>{ setModoEdicaoPlano(false); setPlanoSel(null); setFormPlano({ nome:'', descricao:'', valor_mensal:'', sessoes_mes:'', validade_dias:'30', status:'ativo', ilimitado:false }); setErroPlano(''); setModalPlano(true) }}
+              style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+              + Novo plano
+            </button>
+          </div>
+          {planos.length === 0 && (
+            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'32px', textAlign:'center', color:'#9ca3af' }}>
+              Nenhum plano cadastrado
+            </div>
+          )}
+          <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+            {planos.map(p=>(
+              <div key={p.id} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'12px' }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                    <p style={{ fontSize:'15px', fontWeight:'600', color:'#111827' }}>{p.nome}</p>
+                    <span style={{ fontSize:'11px', fontWeight:'600', padding:'2px 8px', borderRadius:'99px', background:p.status==='ativo'?'#d1fae5':'#fee2e2', color:p.status==='ativo'?'#065f46':'#991b1b' }}>{p.status}</span>
+                  </div>
+                  {p.descricao && <p style={{ fontSize:'12px', color:'#6b7280', marginTop:'2px' }}>{p.descricao}</p>}
+                  <div style={{ display:'flex', gap:'16px', marginTop:'6px' }}>
+                    <span style={{ fontSize:'13px', color:'#6366f1', fontWeight:'700' }}>R$ {Number(p.valor_mensal).toFixed(2).replace('.',',')}/mês</span>
+                    <span style={{ fontSize:'12px', color:'#6b7280' }}>{p.sessoes_mes ? `${p.sessoes_mes} sessões/mês` : 'Ilimitado'}</span>
+                    <span style={{ fontSize:'12px', color:'#6b7280' }}>Validade: {p.validade_dias}d</span>
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:'8px' }}>
+                  <button onClick={()=>{ setModoEdicaoPlano(true); setPlanoSel(p); setFormPlano({ nome:p.nome, descricao:p.descricao||'', valor_mensal:String(p.valor_mensal), sessoes_mes:p.sessoes_mes?String(p.sessoes_mes):'', validade_dias:String(p.validade_dias), status:p.status, ilimitado:!p.sessoes_mes }); setErroPlano(''); setModalPlano(true) }}
+                    style={{ background:'#f3f4f6', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', cursor:'pointer', color:'#374151', fontWeight:'500' }}>Editar</button>
+                  <button onClick={async()=>{ if(confirm('Excluir plano?')){ await excluirPlano(p.id); const {data} = await listarPlanos(empresaAtiva!.id); if(data) setPlanos(data as Plano[]) } }}
+                    style={{ background:'#fef2f2', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', cursor:'pointer', color:'#ef4444', fontWeight:'500' }}>Excluir</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Modal plano */}
+          {modalPlano && (
+            <div onClick={()=>setModalPlano(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'16px', width:'100%', maxWidth:'460px', padding:'24px', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+                <h3 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'20px' }}>{modoEdicaoPlano?'Editar plano':'Novo plano'}</h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+                  {[{label:'Nome',key:'nome',placeholder:'Ex: Plano Mensal'},{label:'Descrição',key:'descricao',placeholder:'Descrição opcional'}].map(f=>(
+                    <div key={f.key}>
+                      <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>{f.label}</label>
+                      <input value={(formPlano as any)[f.key]} onChange={e=>setFormPlano(p=>({...p,[f.key]:e.target.value}))} style={inputStyle} placeholder={f.placeholder}/>
+                    </div>
+                  ))}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                    <div>
+                      <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Valor mensal (R$)</label>
+                      <input type="number" value={formPlano.valor_mensal} onChange={e=>setFormPlano(p=>({...p,valor_mensal:e.target.value}))} style={inputStyle} placeholder="0,00"/>
+                    </div>
+                    <div>
+                      <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Validade (dias)</label>
+                      <input type="number" value={formPlano.validade_dias} onChange={e=>setFormPlano(p=>({...p,validade_dias:e.target.value}))} style={inputStyle} placeholder="30"/>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px' }}>
+                      <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Sessões por mês</label>
+                      <div onClick={()=>setFormPlano(p=>({...p,ilimitado:!p.ilimitado,sessoes_mes:''}))}
+                        style={{ width:'36px', height:'20px', borderRadius:'99px', cursor:'pointer', background:formPlano.ilimitado?'#6366f1':'#e5e7eb', position:'relative', transition:'background .2s', flexShrink:0 }}>
+                        <div style={{ position:'absolute', top:'2px', width:'16px', height:'16px', borderRadius:'50%', background:'white', left:formPlano.ilimitado?'18px':'2px', transition:'left .2s' }}/>
+                      </div>
+                      <span style={{ fontSize:'12px', color:'#6b7280' }}>Ilimitado</span>
+                    </div>
+                    {!formPlano.ilimitado && <input type="number" value={formPlano.sessoes_mes} onChange={e=>setFormPlano(p=>({...p,sessoes_mes:e.target.value}))} style={inputStyle} placeholder="Ex: 4"/>}
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Status</label>
+                    <select value={formPlano.status} onChange={e=>setFormPlano(p=>({...p,status:e.target.value}))} style={inputStyle}>
+                      <option value="ativo">Ativo</option>
+                      <option value="inativo">Inativo</option>
+                    </select>
+                  </div>
+                  {erroPlano && <p style={{ fontSize:'13px', color:'#ef4444' }}>{erroPlano}</p>}
+                  <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
+                    <button onClick={()=>setModalPlano(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
+                    <button onClick={salvarPlano} disabled={salvandoPlano} style={{ background:salvandoPlano?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'600', cursor:salvandoPlano?'not-allowed':'pointer' }}>
+                      {salvandoPlano?'Salvando...':'Salvar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* WhatsApp */}
+      {aba==='whatsapp' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+          {/* Status da conexão */}
+          <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+              <h2 style={{ fontSize:'16px', fontWeight:'600', color:'#1a1a2e' }}>Conexão WhatsApp</h2>
+              <span style={{ fontSize:'12px', fontWeight:'700', padding:'4px 12px', borderRadius:'99px', background:statusConexao==='conectado'?'#d1fae5':statusConexao==='aguardando'?'#fef3c7':'#fef2f2', color:statusConexao==='conectado'?'#065f46':statusConexao==='aguardando'?'#92400e':'#991b1b' }}>
+                {statusConexao==='conectado'?'Conectado':statusConexao==='aguardando'?'Aguardando QR':'Desconectado'}
+              </span>
+            </div>
+            {qrCode && statusConexao==='aguardando' && (
+              <div style={{ textAlign:'center', marginBottom:'16px' }}>
+                <p style={{ fontSize:'13px', color:'#6b7280', marginBottom:'10px' }}>Escaneie o QR Code com o WhatsApp</p>
+                <img src={qrCode} alt="QR Code" style={{ width:'200px', height:'200px', border:'1px solid #e5e7eb', borderRadius:'8px' }}/>
+              </div>
+            )}
+            {msgWpp && <p style={{ fontSize:'13px', color:msgWpp.includes('erro')||msgWpp.includes('Erro')?'#ef4444':'#059669', marginBottom:'12px' }}>{msgWpp}</p>}
+            <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+              <button onClick={conectarWpp} style={{ background:'#ecfdf5', color:'#059669', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                {statusConexao==='conectado'?'Reconectar':'Conectar'}
+              </button>
+              {statusConexao==='conectado' && (
+                <button onClick={desconectarWpp} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Desconectar</button>
+              )}
+            </div>
+          </div>
+          {/* Teste */}
+          {statusConexao==='conectado' && (
+            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+              <h3 style={{ fontSize:'14px', fontWeight:'600', marginBottom:'14px' }}>Enviar mensagem de teste</h3>
+              <div style={{ display:'flex', gap:'10px' }}>
+                <input value={testeNum} onChange={e=>setTesteNum(e.target.value)} placeholder="5534999999999" style={{ ...inputStyle, flex:1 }}/>
+                <button onClick={testarWpp} disabled={testando} style={{ background:testando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:testando?'not-allowed':'pointer', whiteSpace:'nowrap' }}>
+                  {testando?'Enviando...':'Testar'}
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Templates */}
+          {templates.length > 0 && (
+            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
+              <h3 style={{ fontSize:'14px', fontWeight:'600', marginBottom:'16px' }}>Templates de mensagem</h3>
+              <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+                {templates.map(t=>(
+                  <div key={t.id}>
+                    <p style={{ fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'8px', textTransform:'capitalize' }}>{t.tipo?.replace('_',' ')}</p>
+                    <TemplateEditor template={t} onSave={salvarTemplate}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

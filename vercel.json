@@ -4,5 +4,11 @@
   "installCommand": "npm install",
   "env": {
     "BUILD_ID": "1780489713009205971"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/confirmacao-wpp",
+      "schedule": "*/30 * * * *"
+    }
+  ]
 }

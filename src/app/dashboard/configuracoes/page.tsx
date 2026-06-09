@@ -621,7 +621,7 @@ export default function ConfiguracoesPage() {
             <h3 style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e', marginBottom:'14px' }}>Automações</h3>
             <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
               {[
-                { label:'Confirmação automática de agendamento', desc:'Envia mensagem quando um agendamento é criado', key:'autoConfirmacao', val:autoConfirmacao, set:setAutoConfirmacao },
+                { label:'Confirmação automática de agendamento', desc:'Envia mensagem automaticamente 1h30 antes do horário agendado', key:'autoConfirmacao', val:autoConfirmacao, set:setAutoConfirmacao },
                 { label:'Mensagem de aniversário', desc:'Envia parabéns automaticamente no aniversário do cliente', key:'autoAniversario', val:autoAniversario, set:setAutoAniversario },
               ].map(item=>(
                 <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:'10px', background:'#f9fafb', border:'1px solid #f0f0f0' }}>

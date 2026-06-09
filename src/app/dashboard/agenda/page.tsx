@@ -263,6 +263,7 @@ export default function AgendaPage() {
   const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
   const [pagamentos, setPagamentos] = useState<Array<{forma:string;valor:string}>>([])
   const [modalFinalizar, setModalFinalizar] = useState(false)
+  const [descontoFin, setDescontoFin] = useState('')
   const [verPagamentos, setVerPagamentos] = useState(false)
   const [desconto, setDesconto] = useState('')
   const [modalDesconto, setModalDesconto] = useState(false)
@@ -475,7 +476,7 @@ export default function AgendaPage() {
   }
 
   function fecharModal() {
-    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]); setPagamentos([]); setDesconto(''); setValorOriginal(''); setModalDesconto(false); setModalFinalizar(false); setVerPagamentos(false) }
+    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]); setPagamentos([]); setDesconto(''); setValorOriginal(''); setModalDesconto(false); setModalFinalizar(false); setVerPagamentos(false); setDescontoFin('') }
 
   async function salvar() {
     // Validacao completa dos campos obrigatorios
@@ -674,8 +675,8 @@ export default function AgendaPage() {
 
   async function finalizar(id: string) {
     // Validar forma de pagamento antes de finalizar
-    const descontoFin = parseFloat(desconto) || 0
-    const valorEsperadoFin = Math.max(0, (parseFloat(form.valor) || 0) - descontoFin)
+    const descontoFinVal = parseFloat(descontoFin || desconto) || 0
+    const valorEsperadoFin = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinVal)
     const pagsAtivos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
     const totalPagoFin = pagsAtivos.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0)
     const temPagamento = pagsAtivos.length > 0 || !!form.forma_pagamento
@@ -701,8 +702,7 @@ export default function AgendaPage() {
     setFinalizando(true)
     const sb2 = createClient()
     // Salvar forma de pagamento e valor junto ao finalizar
-    const descontoFinalizar = parseFloat(desconto) || 0
-    const valorFinalFinalizar = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinalizar)
+    const valorFinalFinalizar = Math.max(0, (parseFloat(form.valor) || 0) - descontoFinVal)
     const valorBrutoFinalizar = parseFloat(form.valor) || 0
     const pagsFinValidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
     const formaFinResumida = pagsFinValidos.length > 0
@@ -715,7 +715,7 @@ export default function AgendaPage() {
       pagamentos: pagsFinJSON,
       valor: valorFinalFinalizar,
       valor_bruto: valorBrutoFinalizar,
-      desconto: descontoFinalizar > 0 ? descontoFinalizar : null,
+      desconto: descontoFinVal > 0 ? descontoFinVal : null,
     }
     const { error } = await sb2.from('agendamentos').update(updatePayload).eq('id', id)
     if (error) alert('Erro: ' + error.message)
@@ -802,7 +802,7 @@ export default function AgendaPage() {
           onAbrirNovo={perm.criar ? abrirNovo : undefined}
           onAbrirEdicao={abrirEdicao}
           onCancelarRapido={(usuario as any)?.permitir_cancelar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setModalCancelar(true), 100) } : undefined}
-          onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>{ setPagamentos([]); setModalFinalizar(true) }, 100) } : undefined}
+          onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>{ setPagamentos([]); setDescontoFin(''); setModalFinalizar(true) }, 100) } : undefined}
           onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setVerPagamentos(true), 100) } : undefined}
           filtroProfissional={filtroProfissional}
           setFiltroProfissional={setFiltroProfissional}
@@ -1195,7 +1195,7 @@ export default function AgendaPage() {
                     )}
                     {enviandoWpp ? 'Enviando...' : statusWpp === 'ok' ? 'Enviado!' : 'Confirmar Wpp'}
                   </button>}
-                  {(usuario as any)?.permitir_finalizar !== false && <button onClick={()=>{ setPagamentos([]); setModalFinalizar(true) }} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Finalizar</button>}
+                  {(usuario as any)?.permitir_finalizar !== false && <button onClick={()=>{ setPagamentos([]); setDescontoFin(''); setModalFinalizar(true) }} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Finalizar</button>}
                 </div>
               ) : <div/>}
               <div style={{ display:'flex', flexDirection:'column', gap:'8px', flex:1, minWidth:'160px' }}>
@@ -1232,15 +1232,50 @@ export default function AgendaPage() {
                 <div>
                   <p style={{ color:'white', fontWeight:'800', fontSize:'17px' }}>Finalizar atendimento</p>
                   <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'13px', marginTop:'2px' }}>
-                    Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-(parseFloat(desconto)||0)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                    {(() => {
+                      const dFin = parseFloat(descontoFin || desconto) || 0
+                      const total = Math.max(0,(parseFloat(form.valor)||0) - dFin)
+                      return `Total a receber: R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}`
+                    })()}
                   </p>
                 </div>
                 <button onClick={()=>setModalFinalizar(false)} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'50%', width:'32px', height:'32px', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>x</button>
               </div>
             </div>
             <div style={{ padding:'20px 24px', display:'flex', flexDirection:'column', gap:'10px' }}>
+              {/* Campo de desconto */}
+              {(usuario as any)?.permitir_desconto === true && (
+                <div style={{ background:'#fafafa', borderRadius:'12px', padding:'12px 14px', border:'1px solid #e5e7eb' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
+                    <label style={{ fontSize:'13px', fontWeight:'600', color:'#374151' }}>Desconto (R$)</label>
+                    <span style={{ fontSize:'12px', color:'#6b7280' }}>
+                      Valor bruto: R$ {(parseFloat(form.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                    </span>
+                  </div>
+                  <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
+                    <input type="number" value={descontoFin} placeholder="0,00" min="0"
+                      max={parseFloat(form.valor)||0}
+                      onChange={e=>{ const v=parseFloat(e.target.value)||0; const max=parseFloat(form.valor)||0; if(v<=max) { setDescontoFin(e.target.value); setPagamentos([]) } }}
+                      style={{ flex:1, border:'1.5px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none' }}/>
+                    {descontoFin && parseFloat(descontoFin)>0 && (
+                      <button onClick={()=>{ setDescontoFin(''); setPagamentos([]) }}
+                        style={{ background:'#fef2f2', border:'none', borderRadius:'8px', padding:'9px 10px', color:'#ef4444', cursor:'pointer', fontSize:'12px', fontWeight:'600' }}>
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                  {descontoFin && parseFloat(descontoFin)>0 && (
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:'6px' }}>
+                      <span style={{ fontSize:'11px', color:'#6b7280' }}>- Desconto: R$ {parseFloat(descontoFin).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                      <span style={{ fontSize:'13px', fontWeight:'700', color:'#059669' }}>
+                        Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-parseFloat(descontoFin)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               {pagamentos.map((pag, idx) => {
-                const descontoNM = parseFloat(desconto) || 0
+                const descontoNM = parseFloat(descontoFin || desconto) || 0
                 const valTotalM = Math.max(0,(parseFloat(form.valor)||0) - descontoNM)
                 const somaAntM = pagamentos.slice(0,idx).reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
                 const restanteM = Math.max(0, valTotalM - somaAntM)
@@ -1269,7 +1304,7 @@ export default function AgendaPage() {
                 )
               })}
               <button type="button" onClick={()=>{
-                  const dNM2 = parseFloat(desconto)||0
+                  const dNM2 = parseFloat(descontoFin || desconto)||0
                   const vTM2 = Math.max(0,(parseFloat(form.valor)||0)-dNM2)
                   if (pagamentos.length===0) { setPagamentos([{forma:'dinheiro',valor:String(vTM2)}]) }
                   else {
@@ -1284,7 +1319,7 @@ export default function AgendaPage() {
                 + Adicionar forma de pagamento
               </button>
               {pagamentos.length > 0 && (()=>{
-                const dN6=parseFloat(desconto)||0
+                const dN6=parseFloat(descontoFin || desconto)||0
                 const vB6=Math.max(0,(parseFloat(form.valor)||0)-dN6)
                 const tP6=pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0),0)
                 const df6=vB6-tP6

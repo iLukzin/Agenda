@@ -266,6 +266,7 @@ export default function AgendaPage() {
   const [modalFinalizar, setModalFinalizar] = useState(false)
   const [descontoFin, setDescontoFin] = useState('')
   const [verPagamentos, setVerPagamentos] = useState(false)
+  const [agVerPag, setAgVerPag] = useState<any>(null)
   const [desconto, setDesconto] = useState('')
   const [modalDesconto, setModalDesconto] = useState(false)
   const [valorOriginal, setValorOriginal] = useState('')
@@ -821,7 +822,7 @@ export default function AgendaPage() {
           onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => {
             setAgRapido(ag); setPagamentos([]); setDescontoFin(''); setErroForm([]); setModalFinalizar(true)
           } : undefined}
-          onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false ? (ag) => { abrirEdicao(ag); setTimeout(()=>setVerPagamentos(true), 100) } : undefined}
+          onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false ? (ag) => { setAgVerPag(ag); setVerPagamentos(true) } : undefined}
           onEnviarWpp={wppConectado ? async (ag) => {
             if (!confirm(`Enviar confirmação de WhatsApp para ${ag.cliente}?`)) return
             // Buscar dados necessários para enviar direto
@@ -1401,65 +1402,68 @@ export default function AgendaPage() {
       )}
 
       {/* Modal Ver Pagamentos */}
-      {verPagamentos && selecionado && (
-        <div onClick={()=>setVerPagamentos(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'20px', width:'100%', maxWidth:'380px', overflow:'hidden', boxShadow:'0 25px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ background:'linear-gradient(135deg,#1d4ed8,#2563eb)', padding:'18px 22px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div>
-                <p style={{ color:'white', fontWeight:'800', fontSize:'16px' }}>Forma de pagamento</p>
-                <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>{selecionado.cliente}</p>
-              </div>
-              <button onClick={()=>setVerPagamentos(false)} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'50%', width:'30px', height:'30px', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>x</button>
-            </div>
-            <div style={{ padding:'18px 22px', display:'flex', flexDirection:'column', gap:'10px' }}>
-              {selecionado.pagamentos && selecionado.pagamentos.length > 0 ? (
-                <>
-                  {selecionado.pagamentos.map((p: any, i: number) => {
-                    const fLabel: Record<string,string> = {dinheiro:'Dinheiro',pix:'PIX',cartao_credito:'Cartao Credito',cartao_debito:'Cartao Debito',transferencia:'Transferencia',plano:'Plano Mensal'}
-                    const fBg: Record<string,string> = {dinheiro:'#ecfdf5',pix:'#eff6ff',cartao_credito:'#faf5ff',cartao_debito:'#fdf4ff',transferencia:'#fff7ed',plano:'#f0fdf4'}
-                    const fCor: Record<string,string> = {dinheiro:'#059669',pix:'#2563eb',cartao_credito:'#7c3aed',cartao_debito:'#a21caf',transferencia:'#ea580c',plano:'#16a34a'}
-                    const bg = fBg[p.forma]||'#f8fafc'
-                    const cor = fCor[p.forma]||'#374151'
-                    return (
-                      <div key={i} style={{ background:bg, borderRadius:'12px', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', border:`1px solid ${cor}22` }}>
-                        <div>
-                          <p style={{ fontSize:'13px', fontWeight:'700', color:cor }}>{fLabel[p.forma]||p.forma}</p>
-                          <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Parcela {i+1} de {selecionado.pagamentos!.length}</p>
-                        </div>
-                        <p style={{ fontSize:'18px', fontWeight:'800', color:cor }}>R$ {Number(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
-                      </div>
-                    )
-                  })}
-                  <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:'10px', display:'flex', flexDirection:'column', gap:'4px' }}>
-                    {selecionado.desconto > 0 && (
-                      <div style={{ display:'flex', justifyContent:'space-between' }}>
-                        <span style={{ fontSize:'12px', color:'#6b7280' }}>Valor bruto</span>
-                        <span style={{ fontSize:'13px', color:'#6b7280' }}>R$ {Number(selecionado.valor_bruto || selecionado.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                      </div>
-                    )}
-                    {selecionado.desconto > 0 && (
-                      <div style={{ display:'flex', justifyContent:'space-between' }}>
-                        <span style={{ fontSize:'12px', color:'#6b7280' }}>Desconto</span>
-                        <span style={{ fontSize:'13px', color:'#ef4444' }}>- R$ {Number(selecionado.desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                      </div>
-                    )}
-                    <div style={{ display:'flex', justifyContent:'space-between', borderTop: selecionado.desconto > 0 ? '1px solid #f3f4f6' : 'none', paddingTop: selecionado.desconto > 0 ? '6px' : '0', marginTop: selecionado.desconto > 0 ? '2px' : '0' }}>
-                      <span style={{ fontSize:'13px', color:'#6b7280', fontWeight:'600' }}>Total recebido</span>
-                      <span style={{ fontSize:'16px', fontWeight:'800', color:'#059669' }}>R$ {Number(selecionado.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div style={{ textAlign:'center', padding:'20px', color:'#9ca3af' }}>
-                  <p style={{ fontSize:'13px' }}>Nenhum registro detalhado</p>
-                  {selecionado.forma_pagamento && <p style={{ fontSize:'12px', marginTop:'4px', color:'#6b7280' }}>{selecionado.forma_pagamento}</p>}
+      {verPagamentos && (agVerPag || selecionado) && (() => {
+        const ag = agVerPag || selecionado
+        const fechar = () => { setVerPagamentos(false); setAgVerPag(null) }
+        const fLabel: Record<string,string> = {dinheiro:'Dinheiro',pix:'PIX',cartao_credito:'Cartão Crédito',cartao_debito:'Cartão Débito',transferencia:'Transferência',plano:'Plano Mensal'}
+        const fBg: Record<string,string> = {dinheiro:'#ecfdf5',pix:'#eff6ff',cartao_credito:'#faf5ff',cartao_debito:'#fdf4ff',transferencia:'#fff7ed',plano:'#f0fdf4'}
+        const fCor: Record<string,string> = {dinheiro:'#059669',pix:'#2563eb',cartao_credito:'#7c3aed',cartao_debito:'#a21caf',transferencia:'#ea580c',plano:'#16a34a'}
+        const pags: any[] = Array.isArray(ag.pagamentos) ? ag.pagamentos : []
+        return (
+          <div onClick={fechar} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'20px', width:'100%', maxWidth:'380px', overflow:'hidden', boxShadow:'0 25px 60px rgba(0,0,0,0.2)' }}>
+              <div style={{ background:'linear-gradient(135deg,#1d4ed8,#2563eb)', padding:'18px 22px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <p style={{ color:'white', fontWeight:'800', fontSize:'16px' }}>Forma de pagamento</p>
+                  <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'12px', marginTop:'2px' }}>{ag.cliente}</p>
                 </div>
-              )}
-              <button onClick={()=>setVerPagamentos(false)} style={{ padding:'10px', border:'none', borderRadius:'10px', background:'#f3f4f6', fontSize:'13px', cursor:'pointer', fontWeight:'600', color:'#374151' }}>Fechar</button>
+                <button onClick={fechar} style={{ background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'50%', width:'30px', height:'30px', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>x</button>
+              </div>
+              <div style={{ padding:'18px 22px', display:'flex', flexDirection:'column', gap:'10px' }}>
+                {pags.length > 0 ? (
+                  <>
+                    {pags.map((p: any, i: number) => {
+                      const bg = fBg[p.forma]||'#f8fafc'
+                      const cor = fCor[p.forma]||'#374151'
+                      return (
+                        <div key={i} style={{ background:bg, borderRadius:'12px', padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', border:`1px solid ${cor}22` }}>
+                          <div>
+                            <p style={{ fontSize:'13px', fontWeight:'700', color:cor }}>{fLabel[p.forma]||p.forma}</p>
+                            <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'2px' }}>Parcela {i+1} de {pags.length}</p>
+                          </div>
+                          <p style={{ fontSize:'18px', fontWeight:'800', color:cor }}>R$ {Number(p.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                        </div>
+                      )
+                    })}
+                    <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:'10px', display:'flex', flexDirection:'column', gap:'4px' }}>
+                      {ag.desconto > 0 && <>
+                        <div style={{ display:'flex', justifyContent:'space-between' }}>
+                          <span style={{ fontSize:'12px', color:'#6b7280' }}>Valor bruto</span>
+                          <span style={{ fontSize:'13px', color:'#6b7280' }}>R$ {Number(ag.valor_bruto || ag.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between' }}>
+                          <span style={{ fontSize:'12px', color:'#6b7280' }}>Desconto</span>
+                          <span style={{ fontSize:'13px', color:'#ef4444' }}>- R$ {Number(ag.desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                        </div>
+                      </>}
+                      <div style={{ display:'flex', justifyContent:'space-between', borderTop: ag.desconto > 0 ? '1px solid #f3f4f6' : 'none', paddingTop: ag.desconto > 0 ? '6px' : '0', marginTop: ag.desconto > 0 ? '2px' : '0' }}>
+                        <span style={{ fontSize:'13px', color:'#6b7280', fontWeight:'600' }}>Total recebido</span>
+                        <span style={{ fontSize:'16px', fontWeight:'800', color:'#059669' }}>R$ {Number(ag.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ textAlign:'center', padding:'20px', color:'#9ca3af' }}>
+                    <p style={{ fontSize:'13px' }}>Nenhum registro detalhado</p>
+                    {ag.forma_pagamento && <p style={{ fontSize:'12px', marginTop:'4px', color:'#6b7280' }}>{ag.forma_pagamento}</p>}
+                  </div>
+                )}
+                <button onClick={fechar} style={{ padding:'10px', border:'none', borderRadius:'10px', background:'#f3f4f6', fontSize:'13px', cursor:'pointer', fontWeight:'600', color:'#374151' }}>Fechar</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

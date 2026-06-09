@@ -19,13 +19,24 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Agendamentos salvos em UTC real (data_inicio em UTC)
-  // Vercel também roda em UTC - comparação direta
-  const agora = new Date()
-  const ini = new Date(agora.getTime() + 75 * 60 * 1000)
-  const fim = new Date(agora.getTime() + 105 * 60 * 1000)
-  const iniISO = ini.toISOString()
-  const fimISO = fim.toISOString()
+  // O banco tem dois tipos de agendamentos:
+  // - Antigos: salvos sem timezone, ex: 15:00:00+00:00 = 15h BRT (errado como UTC)
+  // - Novos: salvos em UTC real, ex: 18:00:00Z = 15h BRT (correto)
+  // Para cobrir ambos, buscamos em duas janelas:
+  const agora = new Date() // UTC real do Vercel
+
+  // Janela 1: agendamentos novos salvos em UTC correto (hora BRT = UTC-3)
+  const ini1 = new Date(agora.getTime() + 75 * 60 * 1000)
+  const fim1 = new Date(agora.getTime() + 105 * 60 * 1000)
+
+  // Janela 2: agendamentos antigos salvos sem conversão (hora BRT salva como UTC)
+  // Esses têm 3h a menos que o correto, então buscamos -3h
+  const ini2 = new Date(agora.getTime() + 75 * 60 * 1000 - 3 * 60 * 60 * 1000)
+  const fim2 = new Date(agora.getTime() + 105 * 60 * 1000 - 3 * 60 * 60 * 1000)
+
+  const iniISO = ini2.toISOString() // janela mais cedo
+  const fimISO = fim1.toISOString() // janela mais tarde
+  // Isso cobre uma janela ampla de 4h que pega ambos os formatos
 
   // Debug: buscar TODOS os agendamentos abertos para ver o que existe
   const { data: todos } = await sb
@@ -46,7 +57,6 @@ export async function GET(req: NextRequest) {
   // Debug completo
   const debugInfo = {
     agora_utc: agora.toISOString(),
-    agora_brt: agoraBRT.toISOString(),
     janela_ini: iniISO,
     janela_fim: fimISO,
     todos_abertos: todos?.map(a => ({ id: a.id.slice(0,8), data_inicio: a.data_inicio })),

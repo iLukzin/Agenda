@@ -336,7 +336,7 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
                   {!isFinalizado && !isCancelado && (onEnviarWpp || onCancelarRapido || onFinalizarRapido) && (
                     <div style={{ display:'flex', gap:'6px', paddingLeft:'56px' }} onClick={e=>e.stopPropagation()}>
                       {onEnviarWpp && (
-                        <button onClick={()=>onEnviarWpp(ag)} title="Enviar confirmação WhatsApp"
+                        <button onClick={e=>{ e.stopPropagation(); onEnviarWpp(ag) }} title="Enviar confirmação WhatsApp"
                           style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'7px', padding:'5px 8px', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', fontWeight:'700', color:'#16a34a' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="#16a34a">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.7 0-3.286-.467-4.641-1.28l-.333-.198-3.454.98.94-3.417-.216-.35A7.97 7.97 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
@@ -345,13 +345,13 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
                         </button>
                       )}
                       {onCancelarRapido && (
-                        <button onClick={()=>onCancelarRapido(ag)}
+                        <button onClick={e=>{ e.stopPropagation(); onCancelarRapido(ag) }}
                           style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'7px', padding:'5px 10px', fontSize:'11px', fontWeight:'700', color:'#ef4444', cursor:'pointer' }}>
                           Cancelar
                         </button>
                       )}
                       {onFinalizarRapido && (
-                        <button onClick={()=>onFinalizarRapido(ag)}
+                        <button onClick={e=>{ e.stopPropagation(); onFinalizarRapido(ag) }}
                           style={{ background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'7px', padding:'5px 10px', fontSize:'11px', fontWeight:'700', color:'#059669', cursor:'pointer' }}>
                           Finalizar
                         </button>
@@ -359,8 +359,8 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
                     </div>
                   )}
                   {isFinalizado && onVerPagamentos && (
-                    <div style={{ display:'flex', gap:'6px', paddingLeft:'56px' }} onClick={e=>e.stopPropagation()}>
-                      <button onClick={()=>onVerPagamentos(ag)}
+                    <div style={{ display:'flex', gap:'6px', paddingLeft:'56px' }}>
+                      <button onClick={e=>{ e.stopPropagation(); onVerPagamentos(ag) }}
                         style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'7px', padding:'5px 10px', fontSize:'11px', fontWeight:'700', color:'#2563eb', cursor:'pointer' }}>
                         Ver pagamento
                       </button>

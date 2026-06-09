@@ -1316,7 +1316,7 @@ export default function AgendaPage() {
                     <div style={{ display:'flex', justifyContent:'space-between', marginTop:'6px' }}>
                       <span style={{ fontSize:'11px', color:'#6b7280' }}>- Desconto: R$ {parseFloat(descontoFin).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
                       <span style={{ fontSize:'13px', fontWeight:'700', color:'#059669' }}>
-                        Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-parseFloat(descontoFin)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                        Total: R$ {Math.max(0,(agRapido?agRapido.valor:(parseFloat(form.valor)||0))-parseFloat(descontoFin)).toLocaleString('pt-BR',{minimumFractionDigits:2})}
                       </span>
                     </div>
                   )}

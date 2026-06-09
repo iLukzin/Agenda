@@ -1379,9 +1379,23 @@ export default function AgendaPage() {
                       </div>
                     )
                   })}
-                  <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:'10px', display:'flex', justifyContent:'space-between' }}>
-                    <span style={{ fontSize:'13px', color:'#6b7280', fontWeight:'600' }}>Total recebido</span>
-                    <span style={{ fontSize:'16px', fontWeight:'800', color:'#059669' }}>R$ {selecionado.pagamentos.reduce((s: number,p: any)=>s+Number(p.valor),0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                  <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:'10px', display:'flex', flexDirection:'column', gap:'4px' }}>
+                    {selecionado.desconto > 0 && (
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span style={{ fontSize:'12px', color:'#6b7280' }}>Valor bruto</span>
+                        <span style={{ fontSize:'13px', color:'#6b7280' }}>R$ {Number(selecionado.valor_bruto || selecionado.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                      </div>
+                    )}
+                    {selecionado.desconto > 0 && (
+                      <div style={{ display:'flex', justifyContent:'space-between' }}>
+                        <span style={{ fontSize:'12px', color:'#6b7280' }}>Desconto</span>
+                        <span style={{ fontSize:'13px', color:'#ef4444' }}>- R$ {Number(selecionado.desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                      </div>
+                    )}
+                    <div style={{ display:'flex', justifyContent:'space-between', borderTop: selecionado.desconto > 0 ? '1px solid #f3f4f6' : 'none', paddingTop: selecionado.desconto > 0 ? '6px' : '0', marginTop: selecionado.desconto > 0 ? '2px' : '0' }}>
+                      <span style={{ fontSize:'13px', color:'#6b7280', fontWeight:'600' }}>Total recebido</span>
+                      <span style={{ fontSize:'16px', fontWeight:'800', color:'#059669' }}>R$ {Number(selecionado.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                    </div>
                   </div>
                 </>
               ) : (

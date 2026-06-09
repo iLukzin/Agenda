@@ -165,13 +165,18 @@ export default function DashboardPage() {
       ticketMedio:       ticket,
     })
 
-    setAgLista(ags.slice(0, 20).map((a:any) => ({
-      id:      a.id,
-      hora:    a.data_inicio ? a.data_inicio.slice(11,16) : '--:--',
-      cliente: cliMap[a.cliente_id] || '--',
-      servico: servMap[a.servico_id] || '--',
-      status:  a.status || '--',
-    })))
+    setAgLista(ags.slice(0, 20).map((a:any) => {
+      // Converter data_inicio de UTC para BRT (UTC-3)
+      const dtBRT = a.data_inicio ? new Date(new Date(a.data_inicio).getTime() - 3 * 60 * 60 * 1000) : null
+      const hora = dtBRT ? String(dtBRT.getUTCHours()).padStart(2,'0') + ':' + String(dtBRT.getUTCMinutes()).padStart(2,'0') : '--:--'
+      return {
+        id:      a.id,
+        hora,
+        cliente: cliMap[a.cliente_id] || '--',
+        servico: servMap[a.servico_id] || '--',
+        status:  a.status || '--',
+      }
+    }))
 
     setGraficoDados(grafico)
     setCarregando(false)

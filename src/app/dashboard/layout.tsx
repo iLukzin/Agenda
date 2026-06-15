@@ -23,9 +23,10 @@ const navItems = [
 ]
 
 const navMaster = [
-  { href:'/master/empresas',   icon:'BLD', label:'Empresas'       },
-  { href:'/master/usuarios',   icon:'CRW', label:'Usuarios Master' },
-  { href:'/master/permissoes', icon:'LCK', label:'Permissoes'      },
+  { href:'/master/empresas',     icon:'BLD', label:'Empresas'       },
+  { href:'/master/recebimentos', icon:'FIN', label:'Recebimentos'   },
+  { href:'/master/usuarios',     icon:'CRW', label:'Usuarios Master' },
+  { href:'/master/permissoes',   icon:'LCK', label:'Permissoes'      },
 ]
 
 function NavIcon({ code, size = 18 }: { code: string; size?: number }) {
@@ -373,7 +374,10 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
           <>
             <div style={{ height:'1px', background:'rgba(255,255,255,0.06)', margin:'8px 4px' }}/>
             <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.2)', textTransform:'uppercase', letterSpacing:'0.08em', padding:'4px 10px' }}>Master</p>
-            {navMaster.map(item => {
+            {navMaster.filter(item => {
+              if (item.href === '/master/recebimentos' && usuario?.email !== 'lucas@fortitude.com') return false
+              return true
+            }).map(item => {
               const ativo = pathname.startsWith(item.href)
               return (
                 <Link key={item.href} href={item.href} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 10px', borderRadius:'9px', textDecoration:'none', fontSize:'13px', fontWeight:ativo?'600':'400', color:ativo?'white':'rgba(255,255,255,0.5)', background:ativo?'rgba(99,102,241,0.15)':'transparent', transition:'all .15s', whiteSpace:'nowrap' }}>

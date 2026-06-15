@@ -7,7 +7,7 @@ import { useEmpresa } from '@/context/EmpresaContext'
 const inp = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const, minHeight:'42px' }
 const planoCor: any = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
 const planoBg: any  = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
-function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada: false, motivo_bloqueio:'', whatsapp_habilitado: false } }
+function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada: false, motivo_bloqueio:'', whatsapp_habilitado: false, valor_mensal:'', dia_vencimento:'' } }
 
 export default function EmpresasPage() {
   const router = useRouter()
@@ -30,8 +30,8 @@ export default function EmpresasPage() {
   const carregar = useCallback(async function() {
     setCarregando(true)
     const sb = createClient()
-    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado').order('nome')
-    setEmpresas((data || []).map(function(e: any) { return { id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false, } }))
+    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado,valor_mensal,dia_vencimento').order('nome')
+    setEmpresas((data || []).map(function(e: any) { return { id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false, valor_mensal:e.valor_mensal||null, dia_vencimento:e.dia_vencimento||null, } }))
     setCarregando(false)
   }, [])
 
@@ -47,7 +47,7 @@ export default function EmpresasPage() {
   })
 
   function abrirNova() { setModoEdicao(false); setSelecionada(null); setErro(''); setForm(formVazio()); setAbaModal('dados'); setModalAberto(true) }
-  function abrirEdicao(e: any) { setModoEdicao(true); setSelecionada(e); setErro(''); setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:e.whatsapp_habilitado||false }); setAbaModal('dados'); setModalAberto(true) }
+  function abrirEdicao(e: any) { setModoEdicao(true); setSelecionada(e); setErro(''); setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:e.whatsapp_habilitado||false, valor_mensal:e.valor_mensal!=null?String(e.valor_mensal):'', dia_vencimento:e.dia_vencimento!=null?String(e.dia_vencimento):'' }); setAbaModal('dados'); setModalAberto(true) }
   function fecharModal() { setModalAberto(false); setSelecionada(null); setErro(''); setAbaModal('dados'); setTodosUsuarios([]); setUsuariosVinculados([]) }
 
   async function carregarUsuariosEmpresa(empresaId: any) {
@@ -88,7 +88,7 @@ export default function EmpresasPage() {
     if (!form.nome.trim()) { setErro('Nome e obrigatorio.'); return }
     setSalvando(true); setErro('')
     const sb = createClient()
-    const payload = { nome:form.nome.trim(), cnpj:form.cnpj||null, email:form.email||null, telefone:form.telefone||null, endereco:form.endereco||null, plano:form.plano, status:form.status, vencimento:form.vencimento||null, bloqueada:form.bloqueada, motivo_bloqueio:form.bloqueada?(form.motivo_bloqueio||'Falta de pagamento'):null, whatsapp_habilitado:form.whatsapp_habilitado }
+    const payload = { nome:form.nome.trim(), cnpj:form.cnpj||null, email:form.email||null, telefone:form.telefone||null, endereco:form.endereco||null, plano:form.plano, status:form.status, vencimento:form.vencimento||null, bloqueada:form.bloqueada, motivo_bloqueio:form.bloqueada?(form.motivo_bloqueio||'Falta de pagamento'):null, whatsapp_habilitado:form.whatsapp_habilitado, valor_mensal:form.valor_mensal?parseFloat(form.valor_mensal):null, dia_vencimento:form.dia_vencimento?parseInt(form.dia_vencimento):null }
     let error: any
     if (modoEdicao && selecionada) {
       const r = await sb.from('empresas').update(payload).eq('id', selecionada.id)
@@ -236,6 +236,20 @@ export default function EmpresasPage() {
               <div>
                 <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Vencimento</label>
                 <input type="date" value={form.vencimento} onChange={function(e) { setForm(function(p) { return { ...p, vencimento: e.target.value } }) }} style={inp}/>
+              </div>
+              <div style={{ background:'#eef2ff', borderRadius:'10px', padding:'14px', border:'1px solid #c7d2fe' }}>
+                <p style={{ fontSize:'12px', fontWeight:'700', color:'#4338ca', marginBottom:'10px' }}>Mensalidade do sistema</p>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                  <div>
+                    <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Valor mensal (R$)</label>
+                    <input type="number" value={form.valor_mensal} onChange={function(e) { setForm(function(p) { return { ...p, valor_mensal: e.target.value } }) }} style={inp} placeholder="0,00"/>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'12px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Dia do vencimento</label>
+                    <input type="number" min="1" max="31" value={form.dia_vencimento} onChange={function(e) { const v=parseInt(e.target.value)||0; if(v>=1&&v<=31||e.target.value==='') setForm(function(p) { return { ...p, dia_vencimento: e.target.value } }) }} style={inp} placeholder="Ex: 5"/>
+                  </div>
+                </div>
+                <p style={{ fontSize:'11px', color:'#6b7280', marginTop:'8px' }}>Usado para gerar as cobranças mensais automaticamente na tela de Recebimentos</p>
               </div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', background:'#f0fdf4', borderRadius:'10px', border:'1px solid #bbf7d0' }}>
                 <div>

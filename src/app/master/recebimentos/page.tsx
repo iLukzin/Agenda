@@ -43,6 +43,15 @@ export default function RecebimentosPage() {
   const [modoEdicao, setModoEdicao] = useState(false)
   const [selecionado, setSelecionado] = useState<any>(null)
   const [form, setForm] = useState(formVazio(''))
+  const [modalGerar, setModalGerar] = useState(false)
+  const [gerando, setGerando] = useState(false)
+  const [resultadoGerar, setResultadoGerar] = useState<{gerados:number; ignorados:Array<{empresa:string;mes:string}>} | null>(null)
+  const hoje0 = new Date()
+  const [formGerar, setFormGerar] = useState({
+    mesInicial: `${hoje0.getFullYear()}-${String(hoje0.getMonth()+1).padStart(2,'0')}`,
+    mesFinal: `${hoje0.getFullYear()}-${String(hoje0.getMonth()+1).padStart(2,'0')}`,
+    empresaIds: [] as string[],
+  })
 
   const ehLucas = usuario?.email === 'lucas@fortitude.com'
 
@@ -50,7 +59,7 @@ export default function RecebimentosPage() {
     setCarregando(true)
     const sb = createClient()
     const [{ data: emps }, { data: recs }] = await Promise.all([
-      sb.from('empresas').select('id,nome').order('nome'),
+      sb.from('empresas').select('id,nome,valor_mensal,dia_vencimento').order('nome'),
       sb.from('recebimentos_master').select('*').order('vencimento', { ascending: false }),
     ])
     setEmpresas(emps || [])
@@ -194,9 +203,81 @@ export default function RecebimentosPage() {
     await carregar()
   }
 
-  // ────────────────────────────────────────────────────────────
-  // Proteção: acesso restrito ao lucas@fortitude.com
-  // ────────────────────────────────────────────────────────────
+  function abrirModalGerar() {
+    setResultadoGerar(null)
+    setFormGerar(f => ({ ...f, empresaIds: empresas.filter(e => e.valor_mensal).map(e => e.id) }))
+    setModalGerar(true)
+  }
+
+  async function gerarParcelas() {
+    setGerando(true)
+    setResultadoGerar(null)
+    const sb = createClient()
+
+    const [anoIni, mesIni] = formGerar.mesInicial.split('-').map(Number)
+    const [anoFim, mesFim] = formGerar.mesFinal.split('-').map(Number)
+
+    // Lista de meses no intervalo (inclusive)
+    const meses: Array<{ano:number; mes:number}> = []
+    let ano = anoIni, mes = mesIni
+    while (ano < anoFim || (ano === anoFim && mes <= mesFim)) {
+      meses.push({ ano, mes })
+      mes++
+      if (mes > 12) { mes = 1; ano++ }
+      if (meses.length > 120) break // limite de segurança
+    }
+
+    const empresasSelecionadas = empresas.filter(e => formGerar.empresaIds.includes(e.id) && e.valor_mensal)
+
+    let gerados = 0
+    const ignorados: Array<{empresa:string; mes:string}> = []
+    const novos: any[] = []
+
+    for (const emp of empresasSelecionadas) {
+      const dia = emp.dia_vencimento || 5
+      for (const { ano: a, mes: m } of meses) {
+        // Calcular vencimento - ajustar dia se o mes nao tiver esse dia (ex: dia 31 em fevereiro)
+        const ultimoDia = new Date(a, m, 0).getDate()
+        const diaFinal = Math.min(dia, ultimoDia)
+        const vencimento = `${a}-${String(m).padStart(2,'0')}-${String(diaFinal).padStart(2,'0')}`
+
+        // Verificar se já existe parcela desta empresa para este mes/ano
+        const jaExiste = recebimentos.some(r =>
+          r.empresa_id === emp.id &&
+          r.vencimento.slice(0,4) === String(a) &&
+          r.vencimento.slice(5,7) === String(m).padStart(2,'0')
+        ) || novos.some(r =>
+          r.empresa_id === emp.id &&
+          r.vencimento.slice(0,7) === `${a}-${String(m).padStart(2,'0')}`
+        )
+
+        if (jaExiste) {
+          const nomeMes = new Date(a, m-1, 1).toLocaleDateString('pt-BR', { month:'long', year:'numeric' })
+          ignorados.push({ empresa: emp.nome, mes: nomeMes })
+          continue
+        }
+
+        novos.push({
+          empresa_id: emp.id,
+          valor: emp.valor_mensal,
+          vencimento,
+          pago: false,
+        })
+      }
+    }
+
+    if (novos.length > 0) {
+      const { error } = await sb.from('recebimentos_master').insert(novos)
+      if (error) { alert('Erro ao gerar: ' + error.message); setGerando(false); return }
+      gerados = novos.length
+    }
+
+    await carregar()
+    setResultadoGerar({ gerados, ignorados })
+    setGerando(false)
+  }
+
+
   if (carregandoCtx) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh' }}>
@@ -226,9 +307,15 @@ export default function RecebimentosPage() {
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Recebimentos</h1>
           <p style={{ fontSize:'13px', color:'#9ca3af' }}>Controle de pagamentos do sistema pelas empresas</p>
         </div>
-        <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-          + Novo recebimento
-        </button>
+        <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+          <button onClick={abrirModalGerar} style={{ background:'#eef2ff', color:'#6366f1', border:'1px solid #c7d2fe', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+            Gerar parcelas
+          </button>
+          <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
+            + Novo recebimento
+          </button>
+        </div>
       </div>
 
       {/* Cards de resumo */}
@@ -328,6 +415,84 @@ export default function RecebimentosPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Modal Gerar parcelas */}
+      {modalGerar && (
+        <div onClick={()=>setModalGerar(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'16px', width:'100%', maxWidth:'520px', padding:'24px', boxShadow:'0 20px 60px rgba(0,0,0,0.2)', maxHeight:'90vh', overflowY:'auto' }}>
+            <h3 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'4px' }}>Gerar parcelas mensais</h3>
+            <p style={{ fontSize:'12px', color:'#9ca3af', marginBottom:'18px' }}>Cria as cobranças do período para as empresas selecionadas, usando o valor e dia de vencimento cadastrados em cada empresa.</p>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px', marginBottom:'16px' }}>
+              <div>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Mês inicial</label>
+                <input type="month" value={formGerar.mesInicial} onChange={e=>setFormGerar(f=>({...f, mesInicial:e.target.value}))} style={inp}/>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Mês final</label>
+                <input type="month" value={formGerar.mesFinal} onChange={e=>setFormGerar(f=>({...f, mesFinal:e.target.value}))} style={inp}/>
+              </div>
+            </div>
+
+            <div style={{ marginBottom:'16px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
+                <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Empresas</label>
+                <div style={{ display:'flex', gap:'10px' }}>
+                  <button onClick={()=>setFormGerar(f=>({...f, empresaIds: empresas.filter(e=>e.valor_mensal).map(e=>e.id)}))} style={{ background:'none', border:'none', color:'#6366f1', fontSize:'12px', cursor:'pointer', fontWeight:'600' }}>Marcar todas</button>
+                  <button onClick={()=>setFormGerar(f=>({...f, empresaIds: []}))} style={{ background:'none', border:'none', color:'#9ca3af', fontSize:'12px', cursor:'pointer', fontWeight:'600' }}>Desmarcar</button>
+                </div>
+              </div>
+              <div style={{ border:'1px solid #e5e7eb', borderRadius:'10px', maxHeight:'220px', overflowY:'auto' }}>
+                {empresas.map(e => {
+                  const semValor = !e.valor_mensal
+                  const marcado = formGerar.empresaIds.includes(e.id)
+                  return (
+                    <label key={e.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', borderBottom:'1px solid #f3f4f6', cursor:semValor?'not-allowed':'pointer', opacity:semValor?0.5:1 }}>
+                      <input type="checkbox" disabled={semValor} checked={marcado}
+                        onChange={()=>setFormGerar(f=>({...f, empresaIds: marcado ? f.empresaIds.filter(id=>id!==e.id) : [...f.empresaIds, e.id]}))}
+                        style={{ width:'16px', height:'16px', cursor:semValor?'not-allowed':'pointer' }}/>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:'13px', fontWeight:'600', color:'#111827' }}>{e.nome}</p>
+                        {semValor ? (
+                          <p style={{ fontSize:'11px', color:'#ef4444' }}>Sem valor mensal cadastrado</p>
+                        ) : (
+                          <p style={{ fontSize:'11px', color:'#6b7280' }}>R$ {Number(e.valor_mensal).toLocaleString('pt-BR',{minimumFractionDigits:2})} · vence dia {e.dia_vencimento || 5}</p>
+                        )}
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            {resultadoGerar && (
+              <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'10px', padding:'12px 14px', marginBottom:'16px' }}>
+                <p style={{ fontSize:'13px', fontWeight:'700', color:'#065f46', marginBottom:'4px' }}>
+                  {resultadoGerar.gerados} {resultadoGerar.gerados === 1 ? 'parcela gerada' : 'parcelas geradas'} com sucesso!
+                </p>
+                {resultadoGerar.ignorados.length > 0 && (
+                  <div style={{ marginTop:'8px', borderTop:'1px solid #d1fae5', paddingTop:'8px' }}>
+                    <p style={{ fontSize:'12px', fontWeight:'600', color:'#92400e', marginBottom:'4px' }}>
+                      Já existia boleto gerado para:
+                    </p>
+                    {resultadoGerar.ignorados.map((it,i) => (
+                      <p key={i} style={{ fontSize:'11px', color:'#92400e' }}>• {it.empresa} — {it.mes}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
+              <button onClick={()=>setModalGerar(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
+              <button onClick={gerarParcelas} disabled={gerando || formGerar.empresaIds.length===0}
+                style={{ background:gerando||formGerar.empresaIds.length===0?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'600', cursor:gerando||formGerar.empresaIds.length===0?'not-allowed':'pointer' }}>
+                {gerando?'Gerando...':'Gerar parcelas'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

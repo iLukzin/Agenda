@@ -44,6 +44,10 @@ export default function RecebimentosPage() {
   const [periodoIni, setPeriodoIni] = useState('')
   const [periodoFim, setPeriodoFim] = useState('')
   const [ordem, setOrdem] = useState<'asc'|'desc'>('asc')
+  const [modalPagar, setModalPagar] = useState(false)
+  const [pagarSel, setPagarSel] = useState<any>(null)
+  const [formPagar, setFormPagar] = useState({ data_pagamento:'', desconto:'', forma_pagamento:'pix' })
+  const [salvandoPagar, setSalvandoPagar] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
   const [selecionado, setSelecionado] = useState<any>(null)
@@ -109,11 +113,14 @@ export default function RecebimentosPage() {
       : (a.vencimento > b.vencimento ? -1 : 1)
   })
 
-  // Resumo
-  const totalPago = recebimentos.filter(r => getStatus(r) === 'pago').reduce((s,r) => s + Number(r.valor), 0)
-  const totalPendente = recebimentos.filter(r => getStatus(r) === 'pendente').reduce((s,r) => s + Number(r.valor), 0)
-  const totalAtrasado = recebimentos.filter(r => getStatus(r) === 'atrasado').reduce((s,r) => s + Number(r.valor), 0)
-  const countAtrasado = recebimentos.filter(r => getStatus(r) === 'atrasado').length
+  // Resumo - acompanha o filtro aplicado (filtrados)
+  function valorEfetivo(r: any) {
+    return r.pago && r.valor_pago != null ? Number(r.valor_pago) : Number(r.valor)
+  }
+  const totalPago = filtrados.filter(r => getStatus(r) === 'pago').reduce((s,r) => s + valorEfetivo(r), 0)
+  const totalPendente = filtrados.filter(r => getStatus(r) === 'pendente').reduce((s,r) => s + valorEfetivo(r), 0)
+  const totalAtrasado = filtrados.filter(r => getStatus(r) === 'atrasado').reduce((s,r) => s + valorEfetivo(r), 0)
+  const countAtrasado = filtrados.filter(r => getStatus(r) === 'atrasado').length
 
   function abrirNovo() {
     setModoEdicao(false)
@@ -174,15 +181,39 @@ export default function RecebimentosPage() {
     setSalvando(false)
   }
 
-  async function marcarPago(r: any) {
+  function abrirModalPagar(r: any) {
+    setPagarSel(r)
+    setFormPagar({
+      data_pagamento: hojeISO,
+      desconto: r.desconto != null ? String(r.desconto) : '',
+      forma_pagamento: r.forma_pagamento || 'pix',
+    })
+    setModalPagar(true)
+  }
+
+  async function confirmarPagamento() {
+    if (!pagarSel) return
+    const desconto = parseFloat(formPagar.desconto) || 0
+    const valorOriginal = Number(pagarSel.valor)
+    if (desconto < 0 || desconto > valorOriginal) {
+      alert('Desconto inválido. Deve ser entre 0 e R$ ' + valorOriginal.toLocaleString('pt-BR',{minimumFractionDigits:2}))
+      return
+    }
+    const valorPago = Math.max(0, valorOriginal - desconto)
+    setSalvandoPagar(true)
     const sb = createClient()
     await sb.from('recebimentos_master').update({
       pago: true,
-      data_pagamento: hojeISO,
-      forma_pagamento: r.forma_pagamento || 'pix',
+      data_pagamento: formPagar.data_pagamento || hojeISO,
+      forma_pagamento: formPagar.forma_pagamento || 'pix',
+      desconto: desconto > 0 ? desconto : null,
+      valor_pago: valorPago,
       updated_at: new Date().toISOString(),
-    }).eq('id', r.id)
+    }).eq('id', pagarSel.id)
     await carregar()
+    setSalvandoPagar(false)
+    setModalPagar(false)
+    setPagarSel(null)
   }
 
   async function desmarcarPago(r: any) {
@@ -190,6 +221,8 @@ export default function RecebimentosPage() {
     await sb.from('recebimentos_master').update({
       pago: false,
       data_pagamento: null,
+      desconto: null,
+      valor_pago: null,
       updated_at: new Date().toISOString(),
     }).eq('id', r.id)
     await carregar()
@@ -296,7 +329,7 @@ export default function RecebimentosPage() {
       const statusLabel = status === 'pago' ? 'Pago' : status === 'atrasado' ? 'Atrasado' : 'Pendente'
       return {
         empresa: empMap[r.empresa_id] || 'Empresa',
-        valor: Number(r.valor),
+        valor: valorEfetivo(r),
         vencimento: r.vencimento,
         status: statusLabel,
         data_pagamento: r.data_pagamento || '',
@@ -324,7 +357,7 @@ export default function RecebimentosPage() {
       d.forma_pagamento ? d.forma_pagamento.replace('_',' ') : '',
       d.observacoes,
     ].map(esc).join(SEP))
-    const total = filtrados.reduce((s,r) => s + Number(r.valor), 0)
+    const total = filtrados.reduce((s,r) => s + valorEfetivo(r), 0)
     linhas.push('')
     linhas.push(['', '', '', '', '', '', ''].map(esc).join(SEP))
     linhas.push(['TOTAL', total.toFixed(2).replace('.',','), '', '', '', '', `${filtrados.length} recebimento(s)`].map(esc).join(SEP))
@@ -339,7 +372,7 @@ export default function RecebimentosPage() {
 
   function exportarPDF() {
     const dados = dadosExportacao()
-    const total = filtrados.reduce((s,r) => s + Number(r.valor), 0)
+    const total = filtrados.reduce((s,r) => s + valorEfetivo(r), 0)
     const statusBadge = (s: string) => {
       const cores: Record<string,{bg:string;color:string}> = {
         'Pago': { bg:'#d1fae5', color:'#065f46' },
@@ -556,15 +589,25 @@ export default function RecebimentosPage() {
                     {r.pago && r.forma_pagamento && (
                       <span style={{ fontSize:'12px', color:'#6b7280', textTransform:'capitalize' }}>{r.forma_pagamento.replace('_',' ')}</span>
                     )}
+                    {r.pago && r.desconto > 0 && (
+                      <span style={{ fontSize:'12px', color:'#d97706' }}>Desconto: R$ {Number(r.desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                    )}
                   </div>
                   {r.observacoes && <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'4px', overflowWrap:'break-word' }}>{r.observacoes}</p>}
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'8px', marginLeft:'auto' }}>
-                  <p style={{ fontSize:'19px', fontWeight:'800', color:'#1a1a2e', whiteSpace:'nowrap' }}>R$ {Number(r.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                  {r.pago && r.desconto > 0 ? (
+                    <>
+                      <p style={{ fontSize:'12px', color:'#9ca3af', textDecoration:'line-through', whiteSpace:'nowrap' }}>R$ {Number(r.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                      <p style={{ fontSize:'19px', fontWeight:'800', color:'#1a1a2e', whiteSpace:'nowrap', marginTop:'-6px' }}>R$ {Number(r.valor_pago ?? r.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                    </>
+                  ) : (
+                    <p style={{ fontSize:'19px', fontWeight:'800', color:'#1a1a2e', whiteSpace:'nowrap' }}>R$ {Number(r.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                  )}
                 </div>
                 <div style={{ display:'flex', gap:'8px', flexWrap:'wrap', width:'100%' }}>
                   {!r.pago ? (
-                    <button onClick={()=>marcarPago(r)} style={{ background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'8px 14px', fontSize:'12px', fontWeight:'600', cursor:'pointer', flex:'1 1 auto', whiteSpace:'nowrap' }}>
+                    <button onClick={()=>abrirModalPagar(r)} style={{ background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'8px 14px', fontSize:'12px', fontWeight:'600', cursor:'pointer', flex:'1 1 auto', whiteSpace:'nowrap' }}>
                       Marcar pago
                     </button>
                   ) : (
@@ -587,6 +630,73 @@ export default function RecebimentosPage() {
           })}
         </div>
       )}
+
+      {/* Modal Marcar pago */}
+      {modalPagar && pagarSel && (() => {
+        const desconto = parseFloat(formPagar.desconto) || 0
+        const valorOriginal = Number(pagarSel.valor)
+        const valorFinal = Math.max(0, valorOriginal - desconto)
+        const descontoInvalido = desconto < 0 || desconto > valorOriginal
+        return (
+          <div onClick={()=>{ setModalPagar(false); setPagarSel(null) }} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'16px', width:'100%', maxWidth:'420px', padding:'24px', boxShadow:'0 20px 60px rgba(0,0,0,0.2)', maxHeight:'90vh', overflowY:'auto' }}>
+              <h3 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'4px' }}>Confirmar pagamento</h3>
+              <p style={{ fontSize:'13px', color:'#6b7280', marginBottom:'18px' }}>{empMap[pagarSel.empresa_id] || 'Empresa'}</p>
+
+              <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+                <div>
+                  <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Data do pagamento</label>
+                  <input type="date" value={formPagar.data_pagamento} onChange={e=>setFormPagar(f=>({...f, data_pagamento:e.target.value}))} style={inp}/>
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Desconto (R$)</label>
+                    <input type="number" min="0" max={valorOriginal} step="0.01" value={formPagar.desconto}
+                      onChange={e=>setFormPagar(f=>({...f, desconto:e.target.value}))} style={inp} placeholder="0,00"/>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'5px' }}>Forma de pagamento</label>
+                    <select value={formPagar.forma_pagamento} onChange={e=>setFormPagar(f=>({...f, forma_pagamento:e.target.value}))} style={{ ...inp, background:'white' }}>
+                      {FORMAS.filter(fp=>fp.value).map(fp => <option key={fp.value} value={fp.value}>{fp.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Resumo do cálculo */}
+                <div style={{ background:'#f9fafb', borderRadius:'10px', padding:'12px 14px', border:'1px solid #e5e7eb' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'4px' }}>
+                    <span style={{ fontSize:'12px', color:'#6b7280' }}>Valor original</span>
+                    <span style={{ fontSize:'13px', color:'#374151' }}>R$ {valorOriginal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                  </div>
+                  {desconto > 0 && !descontoInvalido && (
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'4px' }}>
+                      <span style={{ fontSize:'12px', color:'#d97706' }}>Desconto</span>
+                      <span style={{ fontSize:'13px', color:'#d97706' }}>- R$ {desconto.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                    </div>
+                  )}
+                  <div style={{ display:'flex', justifyContent:'space-between', borderTop:'1px solid #e5e7eb', paddingTop:'6px', marginTop:'2px' }}>
+                    <span style={{ fontSize:'13px', fontWeight:'700', color:'#111827' }}>Valor a receber</span>
+                    <span style={{ fontSize:'17px', fontWeight:'800', color:'#059669' }}>R$ {valorFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                  </div>
+                </div>
+
+                {descontoInvalido && (
+                  <p style={{ fontSize:'13px', color:'#ef4444' }}>Desconto deve ser entre 0 e R$ {valorOriginal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                )}
+
+                <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
+                  <button onClick={()=>{ setModalPagar(false); setPagarSel(null) }} style={{ background:'#f3f4f6', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
+                  <button onClick={confirmarPagamento} disabled={salvandoPagar || descontoInvalido}
+                    style={{ background:(salvandoPagar||descontoInvalido)?'#a5b4fc':'#059669', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'600', cursor:(salvandoPagar||descontoInvalido)?'not-allowed':'pointer' }}>
+                    {salvandoPagar?'Salvando...':'Confirmar pagamento'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Modal Gerar parcelas */}
       {modalGerar && (

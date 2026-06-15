@@ -178,6 +178,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearTimeout(t)
   }, [carregando])
 
+  // Protege as rotas do dashboard: se não estiver autenticado, redireciona para login
+  useEffect(() => {
+    if (carregando) return
+    if (!usuario) {
+      if (typeof window !== 'undefined') window.location.href = '/auth/login'
+    }
+  }, [carregando, usuario])
+
   useEffect(() => {
     function checar() {
       const mob = window.innerWidth < 768
@@ -210,6 +218,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div style={{ width:'40px', height:'40px', border:'3px solid #eef2ff', borderTop:'3px solid #6366f1', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }}/>
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           <p style={{ color:'#9ca3af', fontSize:'14px' }}>Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Não autenticado: não renderiza o conteúdo do dashboard (redirecionamento em andamento)
+  if (!usuario) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#f8f8fc' }}>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ width:'40px', height:'40px', border:'3px solid #eef2ff', borderTop:'3px solid #6366f1', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }}/>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <p style={{ color:'#9ca3af', fontSize:'14px' }}>Redirecionando...</p>
         </div>
       </div>
     )

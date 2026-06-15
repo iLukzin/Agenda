@@ -1106,7 +1106,8 @@ export default function AgendaPage() {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Data">
-                  <input type="date" value={form.dataISO} onChange={e=>setForm(f=>({...f,dataISO:e.target.value,horaInicio:''}))} style={inputStyle}/>
+                  <input type="date" value={form.dataISO} onChange={e=>setForm(f=>({...f,dataISO:e.target.value,horaInicio:''}))}
+                    style={{ ...inputStyle, fontSize:'13px', padding:'9px 6px' }}/>
                 </InputField>
                 <InputField label="Duracao (min)">
                   <select value={form.duracao} onChange={e=>setForm(f=>({...f,duracao:e.target.value}))} style={selectStyle}>

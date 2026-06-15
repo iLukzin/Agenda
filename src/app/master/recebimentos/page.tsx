@@ -41,6 +41,9 @@ export default function RecebimentosPage() {
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<'todos'|'pago'|'pendente'|'atrasado'>('todos')
   const [filtroEmpresa, setFiltroEmpresa] = useState('')
+  const [periodoIni, setPeriodoIni] = useState('')
+  const [periodoFim, setPeriodoFim] = useState('')
+  const [ordem, setOrdem] = useState<'asc'|'desc'>('asc')
   const [modalAberto, setModalAberto] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
   const [selecionado, setSelecionado] = useState<any>(null)
@@ -92,11 +95,18 @@ export default function RecebimentosPage() {
     const status = getStatus(r)
     if (filtroStatus !== 'todos' && status !== filtroStatus) return false
     if (filtroEmpresa && r.empresa_id !== filtroEmpresa) return false
+    if (periodoIni && r.vencimento < periodoIni) return false
+    if (periodoFim && r.vencimento > periodoFim) return false
     if (busca) {
       const nomeEmp = (empMap[r.empresa_id] || '').toLowerCase()
       if (!nomeEmp.includes(busca.toLowerCase())) return false
     }
     return true
+  }).sort((a,b) => {
+    if (a.vencimento === b.vencimento) return 0
+    return ordem === 'asc'
+      ? (a.vencimento < b.vencimento ? -1 : 1)
+      : (a.vencimento > b.vencimento ? -1 : 1)
   })
 
   // Resumo
@@ -280,6 +290,123 @@ export default function RecebimentosPage() {
   }
 
 
+  function dadosExportacao() {
+    return filtrados.map(r => {
+      const status = getStatus(r)
+      const statusLabel = status === 'pago' ? 'Pago' : status === 'atrasado' ? 'Atrasado' : 'Pendente'
+      return {
+        empresa: empMap[r.empresa_id] || 'Empresa',
+        valor: Number(r.valor),
+        vencimento: r.vencimento,
+        status: statusLabel,
+        data_pagamento: r.data_pagamento || '',
+        forma_pagamento: r.forma_pagamento || '',
+        observacoes: r.observacoes || '',
+      }
+    })
+  }
+
+  function exportarCSV() {
+    const BOM = '\uFEFF'
+    const SEP = ';'
+    const NL = '\r\n'
+    const esc = (v: string) => {
+      const s = String(v || '').replace(/\r?\n/g, ' ')
+      return s.includes(SEP) || s.includes('"') ? '"' + s.replace(/"/g,'""') + '"' : s
+    }
+    const header = ['Empresa','Valor','Vencimento','Status','Data Pagamento','Forma Pagamento','Observacoes']
+    const linhas = dadosExportacao().map(d => [
+      d.empresa,
+      d.valor.toFixed(2).replace('.',','),
+      new Date(d.vencimento+'T12:00:00').toLocaleDateString('pt-BR'),
+      d.status,
+      d.data_pagamento ? new Date(d.data_pagamento+'T12:00:00').toLocaleDateString('pt-BR') : '',
+      d.forma_pagamento ? d.forma_pagamento.replace('_',' ') : '',
+      d.observacoes,
+    ].map(esc).join(SEP))
+    const total = filtrados.reduce((s,r) => s + Number(r.valor), 0)
+    linhas.push('')
+    linhas.push(['', '', '', '', '', '', ''].map(esc).join(SEP))
+    linhas.push(['TOTAL', total.toFixed(2).replace('.',','), '', '', '', '', `${filtrados.length} recebimento(s)`].map(esc).join(SEP))
+    const csv = BOM + header.map(esc).join(SEP) + NL + linhas.join(NL)
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const data = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')
+    a.href = url; a.download = `recebimentos_${data}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportarPDF() {
+    const dados = dadosExportacao()
+    const total = filtrados.reduce((s,r) => s + Number(r.valor), 0)
+    const statusBadge = (s: string) => {
+      const cores: Record<string,{bg:string;color:string}> = {
+        'Pago': { bg:'#d1fae5', color:'#065f46' },
+        'Pendente': { bg:'#fef3c7', color:'#92400e' },
+        'Atrasado': { bg:'#fee2e2', color:'#991b1b' },
+      }
+      const c = cores[s] || { bg:'#f3f4f6', color:'#6b7280' }
+      return `<span style="background:${c.bg};color:${c.color};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;">${s}</span>`
+    }
+    const filtroDesc: string[] = []
+    if (filtroStatus !== 'todos') filtroDesc.push(`Status: ${filtroStatus}`)
+    if (filtroEmpresa) filtroDesc.push(`Empresa: ${empMap[filtroEmpresa]}`)
+    if (periodoIni) filtroDesc.push(`De: ${new Date(periodoIni+'T12:00:00').toLocaleDateString('pt-BR')}`)
+    if (periodoFim) filtroDesc.push(`Até: ${new Date(periodoFim+'T12:00:00').toLocaleDateString('pt-BR')}`)
+    if (busca) filtroDesc.push(`Busca: "${busca}"`)
+
+    const linhasHtml = dados.map(d => `
+      <tr>
+        <td>${d.empresa}</td>
+        <td style="text-align:right;font-weight:700;">R$ ${d.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+        <td>${new Date(d.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</td>
+        <td>${statusBadge(d.status)}</td>
+        <td>${d.data_pagamento ? new Date(d.data_pagamento+'T12:00:00').toLocaleDateString('pt-BR') : '-'}</td>
+        <td style="text-transform:capitalize;">${d.forma_pagamento ? d.forma_pagamento.replace('_',' ') : '-'}</td>
+        <td>${d.observacoes || '-'}</td>
+      </tr>
+    `).join('')
+
+    const html = `
+      <!DOCTYPE html>
+      <html><head><meta charset="utf-8"><title>Recebimentos</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; color: #1a1a2e; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .sub { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+        .filtros { font-size: 11px; color: #9ca3af; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #f4f5fb; text-align: left; padding: 8px 10px; font-size: 11px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+        tfoot td { font-weight: 800; border-top: 2px solid #e5e7eb; padding-top: 10px; }
+        @media print { body { padding: 10px; } }
+      </style>
+      </head><body>
+        <h1>Recebimentos - AgendaFortitude</h1>
+        <p class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</p>
+        ${filtroDesc.length > 0 ? `<p class="filtros">Filtros aplicados: ${filtroDesc.join(' · ')}</p>` : ''}
+        <table>
+          <thead><tr>
+            <th>Empresa</th><th style="text-align:right;">Valor</th><th>Vencimento</th><th>Status</th><th>Pago em</th><th>Forma</th><th>Observações</th>
+          </tr></thead>
+          <tbody>${linhasHtml}</tbody>
+          <tfoot><tr>
+            <td>TOTAL (${dados.length} ${dados.length===1?'recebimento':'recebimentos'})</td>
+            <td style="text-align:right;">R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+            <td colspan="5"></td>
+          </tr></tfoot>
+        </table>
+      </body></html>
+    `
+    const win = window.open('', '_blank')
+    if (!win) { alert('Permita pop-ups para exportar o PDF.'); return }
+    win.document.write(html)
+    win.document.close()
+    win.onload = () => { win.print() }
+  }
+
+
   if (carregandoCtx) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh' }}>
@@ -361,7 +488,42 @@ export default function RecebimentosPage() {
             </button>
           ))}
         </div>
+        {/* Filtro de período (vencimento) */}
+        <div style={{ display:'flex', alignItems:'center', gap:'8px', flex:'1 1 280px', minWidth:0 }}>
+          <span style={{ fontSize:'12px', color:'#9ca3af', whiteSpace:'nowrap' }}>Vencimento de</span>
+          <input type="date" value={periodoIni} onChange={e=>setPeriodoIni(e.target.value)} style={{ ...inp, flex:1, minWidth:0 }}/>
+          <span style={{ fontSize:'12px', color:'#9ca3af', whiteSpace:'nowrap' }}>até</span>
+          <input type="date" value={periodoFim} onChange={e=>setPeriodoFim(e.target.value)} style={{ ...inp, flex:1, minWidth:0 }}/>
+          {(periodoIni || periodoFim) && (
+            <button onClick={()=>{ setPeriodoIni(''); setPeriodoFim('') }} title="Limpar período"
+              style={{ background:'#fef2f2', border:'none', borderRadius:'8px', padding:'10px 12px', color:'#ef4444', cursor:'pointer', fontSize:'12px', fontWeight:'600', flexShrink:0 }}>
+              x
+            </button>
+          )}
+        </div>
+        {/* Ordenação por vencimento */}
+        <button onClick={()=>setOrdem(o=>o==='asc'?'desc':'asc')} title="Ordenar por vencimento"
+          style={{ display:'flex', alignItems:'center', gap:'6px', background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', color:'#374151', cursor:'pointer', flexShrink:0, whiteSpace:'nowrap' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            {ordem==='asc' ? <path d="M3 7h13M3 12h9M3 17h5M18 17V7M18 17l-3-3M18 17l3-3"/> : <path d="M3 7h5M3 12h9M3 17h13M18 7v10M18 7l-3 3M18 7l3 3"/>}
+          </svg>
+          Vencimento {ordem==='asc' ? '(mais antigo)' : '(mais recente)'}
+        </button>
+        {/* Exportar */}
+        <div style={{ display:'flex', gap:'8px', flexShrink:0 }}>
+          <button onClick={exportarCSV} title="Exportar para Excel/CSV"
+            style={{ display:'flex', alignItems:'center', gap:'6px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', color:'#059669', cursor:'pointer', whiteSpace:'nowrap' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Excel
+          </button>
+          <button onClick={exportarPDF} title="Exportar para PDF"
+            style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', color:'#ef4444', cursor:'pointer', whiteSpace:'nowrap' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            PDF
+          </button>
+        </div>
       </div>
+
 
       {/* Lista */}
       {carregando ? (

@@ -79,10 +79,10 @@ export default function FinanceiroPage() {
   const [formQuitar, setFormQuitar] = useState({ data_pagamento:'', forma_pagamento:'Dinheiro' })
   const [salvandoQuitar, setSalvandoQuitar] = useState(false)
 
-  const [filtroTipo, setFiltroTipo] = useState<'hoje'|'mes'|'ano'|'periodo'>('mes')
-  const [periodoIni, setPeriodoIni] = useState(inicioMes())
-  const [periodoFim, setPeriodoFim] = useState(fimMes())
-  const [filtroData, setFiltroData] = useState<'vencimento'|'pagamento'>('vencimento')
+  const [filtroTipo, setFiltroTipo] = useState<'hoje'|'mes'|'ano'|'periodo'>('hoje')
+  const [periodoIni, setPeriodoIni] = useState(hojeISO())
+  const [periodoFim, setPeriodoFim] = useState(hojeISO())
+  const [filtroData, setFiltroData] = useState<'vencimento'|'pagamento'>('pagamento')
 
   const [form, setForm] = useState({
     tipo: 'receita' as 'receita'|'despesa',

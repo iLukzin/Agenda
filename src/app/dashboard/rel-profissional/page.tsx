@@ -25,7 +25,7 @@ const FORMAS_CORES: Record<string,{bg:string,cor:string,icon:string}> = {
   plano:       { bg:'#f0fdf4', cor:'#16a34a', icon:'📋' },
   outro:       { bg:'#f8fafc', cor:'#64748b', icon:'💰' },
 }
-const inp = { border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 12px', fontSize:'13px', outline:'none' as const, background:'white' }
+const inp = { border:'1px solid #e5e7eb', borderRadius:'8px', padding:'8px 10px', fontSize:'14px', outline:'none' as const, background:'white', width:'100%', boxSizing:'border-box' as const }
 
 function exportarCSV(nomeArquivo: string, linhas: string[][]) {
   const bom = '\uFEFF'
@@ -196,93 +196,24 @@ export default function RelProfissionalPage() {
   const abaStyle = (a: string) => ({ padding:'8px 16px', borderRadius:'8px', fontSize:'13px', fontWeight:'600' as const, cursor:'pointer' as const, border:'none', background:aba===a?'#6366f1':'transparent', color:aba===a?'white':'#6b7280', transition:'all .15s' })
 
   return (
-    <div style={{ padding:'12px', maxWidth:'960px', margin:'0 auto' }}>
+    <div style={{ padding:'12px', maxWidth:'960px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
       <div style={{ marginBottom:'16px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'8px', marginBottom:'12px' }}>
-          <div>
-            <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Relatórios</h1>
-            <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos e faturamento</p>
-          </div>
-          <div style={{ display:'flex', gap:'8px', flexShrink:0 }}>
-          <button onClick={()=>{
-          const periodo = ini + ' a ' + fim
-          if (aba === 'profissional') {
-            const header = ['Profissional','Finalizados','Abertos','Cancelados','Faturamento (R$)','Ticket Medio (R$)']
-            const linhas = dadosProf.map(p => [p.nome, p.fin, p.aber, p.canc, p.fat.toFixed(2).replace('.',','), (p.fin>0?p.fat/p.fin:0).toFixed(2).replace('.',',')])
-            linhas.push(['TOTAL', dadosProf.reduce((s,p)=>s+p.fin,0), dadosProf.reduce((s,p)=>s+p.aber,0), dadosProf.reduce((s,p)=>s+p.canc,0), totalFat.toFixed(2).replace('.',','), (totalFin>0?totalFat/totalFin:0).toFixed(2).replace('.',',')])
-            exportarCSV('relatorio-profissional-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas])
-          } else if (aba === 'forma_pag') {
-            const header = ['Profissional','Forma de Pagamento','Qtd Pagamentos','Valor (R$)','%']
-            const linhas: string[][] = []
-            formasPorProf.forEach(({ prof, formas, totalValor: tv }) => {
-              formas.forEach(([forma, dados]) => {
-                linhas.push([prof.nome, FORMAS_LABEL[forma]||forma, String(dados.qtd), dados.valor.toFixed(2).replace('.',','), tv>0?(dados.valor/tv*100).toFixed(1)+'%':'0%'])
-              })
-            })
-            exportarCSV('relatorio-pagamentos-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas])
-          } else if (aba === 'mensal') {
-            const header = ['Mes', ...todasFormas.map(f => FORMAS_LABEL[f]||f), 'Total']
-            const linhas = meses.map(mes => {
-              const [ano, m] = mes.split('-')
-              const nomeMes = new Date(Number(ano),Number(m)-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'})
-              const totalMes = Object.values(mesMap[mes]).reduce((s,f)=>s+f.valor,0)
-              return [nomeMes, ...todasFormas.map(f => mesMap[mes][f]?.valor ? mesMap[mes][f].valor.toFixed(2).replace('.',',') : '0,00'), totalMes.toFixed(2).replace('.',',')]
-            })
-            const totRow = ['TOTAL', ...todasFormas.map(f => meses.reduce((s,mes)=>s+(mesMap[mes][f]?.valor||0),0).toFixed(2).replace('.',',')), meses.reduce((s,mes)=>s+Object.values(mesMap[mes]).reduce((ss,f)=>ss+f.valor,0),0).toFixed(2).replace('.',',')]
-            exportarCSV('relatorio-mensal-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas, totRow])
-          } else {
-            const header = ['Data','Hora','Cliente','Profissional','Status','Motivo Cancelamento']
-            const linhas = agendaStatusDados.map(a => [a.dataLabel, a.horaLabel, a.cliente, a.profissional, STATUS_LABEL[a.status]||a.status, a.motivo])
-            exportarCSV('relatorio-agenda-status-' + periodo, [['Periodo: ' + periodo], ['Filtro de status: ' + (filtroStatusAgenda==='todos'?'Todos':STATUS_LABEL[filtroStatusAgenda])], [], header, ...linhas])
-          }
-        }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'8px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-            Excel
-          </button>
-          <button onClick={()=>{
-          const periodo = ini + ' a ' + fim
-          if (aba === 'profissional') {
-            const headers = ['Profissional','Finalizados','Abertos','Cancelados','Faturamento','Ticket Médio']
-            const linhas = dadosProf.map(p => [p.nome, p.fin, p.aber, p.canc, formatMoeda(p.fat), formatMoeda(p.fin>0?p.fat/p.fin:0)])
-            exportarPDFGenerico('Relatório por Profissional', periodo, headers, linhas)
-          } else if (aba === 'forma_pag') {
-            const headers = ['Profissional','Forma de Pagamento','Qtd','Valor','%']
-            const linhas: (string|number)[][] = []
-            formasPorProf.forEach(({ prof, formas, totalValor: tv }) => {
-              formas.forEach(([forma, dados]) => linhas.push([prof.nome, FORMAS_LABEL[forma]||forma, dados.qtd, formatMoeda(dados.valor), tv>0?(dados.valor/tv*100).toFixed(1)+'%':'0%']))
-            })
-            exportarPDFGenerico('Relatório Profissional x Pagamento', periodo, headers, linhas)
-          } else if (aba === 'mensal') {
-            const headers = ['Mês', ...todasFormas.map(f=>FORMAS_LABEL[f]||f), 'Total']
-            const linhas = meses.map(mes => {
-              const [ano,m] = mes.split('-')
-              const nomeMes = new Date(Number(ano),Number(m)-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'})
-              const totalMes = Object.values(mesMap[mes]).reduce((s,f)=>s+f.valor,0)
-              return [nomeMes, ...todasFormas.map(f=>formatMoeda(mesMap[mes][f]?.valor||0)), formatMoeda(totalMes)]
-            })
-            exportarPDFGenerico('Relatório Mensal por Pagamento', periodo, headers, linhas)
-          } else {
-            const headers = ['Data','Hora','Cliente','Profissional','Status','Motivo Cancelamento']
-            const linhas = agendaStatusDados.map(a => [a.dataLabel, a.horaLabel, a.cliente, a.profissional, STATUS_LABEL[a.status]||a.status, a.motivo || '-'])
-            const filtroTxt = 'Filtro de status: ' + (filtroStatusAgenda==='todos'?'Todos':STATUS_LABEL[filtroStatusAgenda]) + ` · ${agendaStatusDados.length} agendamento(s)`
-            exportarPDFGenerico('Relatório Agenda por Status', periodo, headers, linhas, filtroTxt)
-          }
-        }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'8px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-            PDF
-          </button>
-          </div>
+        <div style={{ marginBottom:'12px' }}>
+          <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'2px' }}>Relatórios</h1>
+          <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos e faturamento</p>
         </div>
 
         {/* Abas com scroll horizontal */}
-        <div style={{ display:'flex', gap:'4px', background:'#f8fafc', borderRadius:'10px', padding:'4px', marginBottom:'16px', overflowX:'auto', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>
+        <div style={{ display:'flex', gap:'4px', background:'#f8fafc', borderRadius:'10px', padding:'4px', marginBottom:'14px', overflowX:'auto', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>
           <button onClick={()=>setAba('profissional')} style={{...abaStyle('profissional'), whiteSpace:'nowrap', flexShrink:0}}>Por Profissional</button>
           <button onClick={()=>setAba('forma_pag')} style={{...abaStyle('forma_pag'), whiteSpace:'nowrap', flexShrink:0}}>Prof. × Pagamento</button>
           <button onClick={()=>setAba('mensal')} style={{...abaStyle('mensal'), whiteSpace:'nowrap', flexShrink:0}}>Mensal</button>
-          <button onClick={()=>setAba('agenda_status')} style={{...abaStyle('agenda_status'), whiteSpace:'nowrap', flexShrink:0}}>Agenda por Status</button>
+          <button onClick={()=>setAba('agenda_status')} style={{...abaStyle('agenda_status'), whiteSpace:'nowrap', flexShrink:0}}>Agenda Status</button>
         </div>
 
-        {/* Filtros de data — empilhados no mobile */}
-        <div style={{ background:'#f8fafc', borderRadius:'12px', padding:'14px', marginBottom:'16px' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' }}>
+        {/* Filtros de data — grid 2 colunas + buscar full-width + exportar */}
+        <div style={{ background:'#f8fafc', borderRadius:'12px', padding:'12px', marginBottom:'16px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
             <div>
               <label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', marginBottom:'4px' }}>DE</label>
               <input type="date" value={ini} onChange={e=>setIni(e.target.value)} style={inp}/>
@@ -301,9 +232,59 @@ export default function RelProfissionalPage() {
               </select>
             </div>
           )}
-          <button onClick={buscar} disabled={carregando} style={{ width:'100%', background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'10px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-            {carregando ? 'Buscando...' : '🔍 Buscar'}
-          </button>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px' }}>
+            <button onClick={buscar} disabled={carregando} style={{ gridColumn:'1/-1', background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'10px', fontSize:'13px', fontWeight:'600', cursor:'pointer', marginBottom:'8px' }}>
+              {carregando ? 'Buscando...' : '🔍 Buscar'}
+            </button>
+            <button onClick={()=>{
+              const periodo = ini + ' a ' + fim
+              if (aba === 'profissional') {
+                const header = ['Profissional','Finalizados','Abertos','Cancelados','Faturamento (R$)','Ticket Medio (R$)']
+                const linhas = dadosProf.map(p => [p.nome, p.fin, p.aber, p.canc, p.fat.toFixed(2).replace('.',','), (p.fin>0?p.fat/p.fin:0).toFixed(2).replace('.',',')])
+                linhas.push(['TOTAL', dadosProf.reduce((s,p)=>s+p.fin,0), dadosProf.reduce((s,p)=>s+p.aber,0), dadosProf.reduce((s,p)=>s+p.canc,0), totalFat.toFixed(2).replace('.',','), (totalFin>0?totalFat/totalFin:0).toFixed(2).replace('.',',')])
+                exportarCSV('relatorio-profissional-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas])
+              } else if (aba === 'forma_pag') {
+                const header = ['Profissional','Forma de Pagamento','Qtd Pagamentos','Valor (R$)','%']
+                const linhas: string[][] = []
+                formasPorProf.forEach(({ prof, formas, totalValor: tv }) => { formas.forEach(([forma, dados]) => { linhas.push([prof.nome, FORMAS_LABEL[forma]||forma, String(dados.qtd), dados.valor.toFixed(2).replace('.',','), tv>0?(dados.valor/tv*100).toFixed(1)+'%':'0%']) }) })
+                exportarCSV('relatorio-pagamentos-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas])
+              } else if (aba === 'mensal') {
+                const header = ['Mes', ...todasFormas.map(f => FORMAS_LABEL[f]||f), 'Total']
+                const linhas = meses.map(mes => { const [ano, m] = mes.split('-'); const nomeMes = new Date(Number(ano),Number(m)-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}); const totalMes = Object.values(mesMap[mes]).reduce((s,f)=>s+f.valor,0); return [nomeMes, ...todasFormas.map(f => mesMap[mes][f]?.valor ? mesMap[mes][f].valor.toFixed(2).replace('.',',') : '0,00'), totalMes.toFixed(2).replace('.',',')] })
+                const totRow = ['TOTAL', ...todasFormas.map(f => meses.reduce((s,mes)=>s+(mesMap[mes][f]?.valor||0),0).toFixed(2).replace('.',',')), meses.reduce((s,mes)=>s+Object.values(mesMap[mes]).reduce((ss,f)=>ss+f.valor,0),0).toFixed(2).replace('.',',')]
+                exportarCSV('relatorio-mensal-' + periodo, [['Periodo: ' + periodo], [], header, ...linhas, totRow])
+              } else {
+                const header = ['Data','Hora','Cliente','Profissional','Status','Motivo Cancelamento']
+                const linhas = agendaStatusDados.map(a => [a.dataLabel, a.horaLabel, a.cliente, a.profissional, STATUS_LABEL[a.status]||a.status, a.motivo])
+                exportarCSV('relatorio-agenda-status-' + periodo, [['Periodo: ' + periodo], ['Filtro de status: ' + (filtroStatusAgenda==='todos'?'Todos':STATUS_LABEL[filtroStatusAgenda])], [], header, ...linhas])
+              }
+            }} style={{ background:'#ecfdf5', color:'#059669', border:'1px solid #bbf7d0', borderRadius:'8px', padding:'9px 8px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
+              Excel
+            </button>
+            <button onClick={()=>{
+              const periodo = ini + ' a ' + fim
+              if (aba === 'profissional') {
+                const headers = ['Profissional','Finalizados','Abertos','Cancelados','Faturamento','Ticket Médio']
+                const linhas = dadosProf.map(p => [p.nome, p.fin, p.aber, p.canc, formatMoeda(p.fat), formatMoeda(p.fin>0?p.fat/p.fin:0)])
+                exportarPDFGenerico('Relatório por Profissional', periodo, headers, linhas)
+              } else if (aba === 'forma_pag') {
+                const headers = ['Profissional','Forma de Pagamento','Qtd','Valor','%']
+                const linhas: (string|number)[][] = []
+                formasPorProf.forEach(({ prof, formas, totalValor: tv }) => { formas.forEach(([forma, dados]) => linhas.push([prof.nome, FORMAS_LABEL[forma]||forma, dados.qtd, formatMoeda(dados.valor), tv>0?(dados.valor/tv*100).toFixed(1)+'%':'0%'])) })
+                exportarPDFGenerico('Relatório Profissional x Pagamento', periodo, headers, linhas)
+              } else if (aba === 'mensal') {
+                const headers = ['Mês', ...todasFormas.map(f=>FORMAS_LABEL[f]||f), 'Total']
+                const linhas = meses.map(mes => { const [ano,m] = mes.split('-'); const nomeMes = new Date(Number(ano),Number(m)-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}); const totalMes = Object.values(mesMap[mes]).reduce((s,f)=>s+f.valor,0); return [nomeMes, ...todasFormas.map(f=>formatMoeda(mesMap[mes][f]?.valor||0)), formatMoeda(totalMes)] })
+                exportarPDFGenerico('Relatório Mensal por Pagamento', periodo, headers, linhas)
+              } else {
+                const headers = ['Data','Hora','Cliente','Profissional','Status','Motivo Cancelamento']
+                const linhas = agendaStatusDados.map(a => [a.dataLabel, a.horaLabel, a.cliente, a.profissional, STATUS_LABEL[a.status]||a.status, a.motivo || '-'])
+                exportarPDFGenerico('Relatório Agenda por Status', periodo, headers, linhas, 'Filtro: ' + (filtroStatusAgenda==='todos'?'Todos':STATUS_LABEL[filtroStatusAgenda]))
+              }
+            }} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 8px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
+              PDF
+            </button>
+          </div>
         </div>
       </div>
 

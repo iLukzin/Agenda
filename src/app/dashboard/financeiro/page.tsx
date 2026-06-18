@@ -596,34 +596,34 @@ export default function FinanceiroPage() {
   })
 
   return (
-    <div style={{ padding:'16px 12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'18px', flexWrap:'wrap', gap:'10px' }}>
-        <div>
-          <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
-          <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', width:'100%', maxWidth:'380px' }}>
-          <button onClick={()=>setModalDRE(true)} style={{ background:'#eef2ff', color:'#4338ca', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18.4 8.6 12 15l-3-3-3.6 3.6"/></svg>
-            DRE
-          </button>
-          {podeCriar && (
-            <>
-              <button onClick={()=>abrirModalCategorias('receita')} style={{ background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v10c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/></svg>
-                Categorias
-              </button>
-              <button onClick={()=>abrirNovo('receita')} style={{ background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Receita
-              </button>
-              <button onClick={()=>abrirNovo('despesa')} style={{ background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Despesa
-              </button>
-            </>
-          )}
-        </div>
+    <div style={{ padding:'12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
+      {/* Título */}
+      <div style={{ marginBottom:'14px' }}>
+        <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
+        <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
+      </div>
+
+      {/* Botões de ação - sempre em grid 2 colunas, largura total */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'16px', width:'100%' }}>
+        <button onClick={()=>setModalDRE(true)} style={{ background:'#eef2ff', color:'#4338ca', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18.4 8.6 12 15l-3-3-3.6 3.6"/></svg>
+          DRE
+        </button>
+        {podeCriar ? (
+          <>
+            <button onClick={()=>abrirModalCategorias('receita')} style={{ background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+              Categorias
+            </button>
+            <button onClick={()=>abrirNovo('receita')} style={{ background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              + Receita
+            </button>
+            <button onClick={()=>abrirNovo('despesa')} style={{ background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              + Despesa
+            </button>
+          </>
+        ) : <div/>}
       </div>
 
       <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'16px 18px', marginBottom:'20px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
@@ -660,17 +660,17 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'18px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'16px', width:'100%' }}>
         {[
-          { label:'Receitas recebidas', v:totalReceitas, cor:'#059669', bg:'linear-gradient(135deg,#ecfdf5,#d1fae5)', border:'#a7f3d0' },
-          { label:'Despesas pagas',     v:totalDespesas, cor:'#dc2626', bg:'linear-gradient(135deg,#fef2f2,#fee2e2)', border:'#fecaca' },
-          { label:'Lucro líquido',      v:lucro,          cor:lucro>=0?'#4f46e5':'#dc2626', bg:'linear-gradient(135deg,#eef2ff,#e0e7ff)', border:'#c7d2fe' },
-          { label:'A receber',          v:totalAReceber,  cor:'#d97706', bg:'linear-gradient(135deg,#fffbeb,#fef3c7)', border:'#fde68a' },
-          { label:'A pagar',            v:totalAPagar,    cor:'#ea580c', bg:'linear-gradient(135deg,#fff7ed,#ffedd5)', border:'#fed7aa', full:true },
+          { label:'Receitas recebidas', v:totalReceitas, cor:'#059669', bg:'#ecfdf5', border:'#a7f3d0' },
+          { label:'Despesas pagas',     v:totalDespesas, cor:'#dc2626', bg:'#fef2f2', border:'#fecaca' },
+          { label:'Lucro líquido',      v:lucro,          cor:lucro>=0?'#4f46e5':'#dc2626', bg:'#eef2ff', border:'#c7d2fe' },
+          { label:'A receber',          v:totalAReceber,  cor:'#d97706', bg:'#fffbeb', border:'#fde68a' },
+          { label:'A pagar',            v:totalAPagar,    cor:'#ea580c', bg:'#fff7ed', border:'#fed7aa', full:true },
         ].map(c=>(
-          <div key={c.label} style={{ background:c.bg, borderRadius:'14px', border:`1px solid ${c.border}`, padding:'14px 14px', gridColumn:(c as any).full?'1/-1':'auto' }}>
-            <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:'700', marginBottom:'6px' }}>{c.label}</p>
-            <p style={{ fontSize:'20px', fontWeight:'800', color:c.cor, letterSpacing:'-0.01em' }}>{formatarMoeda(c.v)}</p>
+          <div key={c.label} style={{ background:c.bg, borderRadius:'12px', border:`1px solid ${c.border}`, padding:'12px', gridColumn:(c as any).full?'1/-1':'auto', minWidth:0, overflow:'hidden' }}>
+            <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', fontWeight:'700', marginBottom:'4px' }}>{c.label}</p>
+            <p style={{ fontSize:'18px', fontWeight:'800', color:c.cor, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{formatarMoeda(c.v)}</p>
           </div>
         ))}
       </div>

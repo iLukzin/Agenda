@@ -336,19 +336,19 @@ export default function FinanceiroPage() {
   })
 
   return (
-    <div style={{ padding:'24px 16px', maxWidth:'1180px', margin:'0 auto' }}>
+    <div style={{ padding:'20px 12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'22px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <h1 style={{ fontSize:'23px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
+          <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
+          <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
         </div>
         {podeCriar && (
-          <div style={{ display:'flex', gap:'8px' }}>
-            <button onClick={()=>abrirNovo('receita')} style={{ background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+          <div style={{ display:'flex', gap:'8px', width:'100%', maxWidth:'320px' }}>
+            <button onClick={()=>abrirNovo('receita')} style={{ flex:'1 1 auto', background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Receita
             </button>
-            <button onClick={()=>abrirNovo('despesa')} style={{ background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+            <button onClick={()=>abrirNovo('despesa')} style={{ flex:'1 1 auto', background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Despesa
             </button>
@@ -436,7 +436,7 @@ export default function FinanceiroPage() {
       {aba==='visao_geral' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:'16px' }}>
-            <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'22px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
+            <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'18px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
               <h3 style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e', marginBottom:'16px' }}>Resumo do período</h3>
               {[
                 { label:'Receitas (lançamentos pagos)', v:receitasLanc, cor:'#059669' },
@@ -452,7 +452,7 @@ export default function FinanceiroPage() {
               ))}
             </div>
 
-            <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'22px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
+            <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'18px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
               <h3 style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e', marginBottom:'16px' }}>Pendências</h3>
               <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
                 <div onClick={()=>setAba('receber')} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', borderRadius:'10px', background:'#fffbeb', border:'1px solid #fde68a', cursor:'pointer' }}>
@@ -480,20 +480,21 @@ export default function FinanceiroPage() {
             </div>
           </div>
 
-          <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'22px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
-              <h3 style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e' }}>Atendimentos finalizados (receita automática da agenda)</h3>
+          <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'18px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px', flexWrap:'wrap', gap:'8px' }}>
+              <h3 style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e' }}>Atendimentos finalizados</h3>
               <span style={{ fontSize:'16px', fontWeight:'800', color:'#059669' }}>{formatarMoeda(receitasAgs)}</span>
             </div>
+            <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'-10px', marginBottom:'14px' }}>Receita automática da agenda</p>
             {carregando ? <p style={{ fontSize:'13px', color:'#9ca3af' }}>Carregando...</p> : (
               <div style={{ display:'flex', flexDirection:'column', gap:'6px', maxHeight:'260px', overflowY:'auto' }}>
                 {agsFinalizados.slice(0,8).map(a=>(
-                  <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 10px', borderRadius:'8px', background:'#fafafa' }}>
-                    <div>
-                      <p style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e' }}>{a.cliente}</p>
-                      <p style={{ fontSize:'11px', color:'#9ca3af' }}>{a.servico} · {fmtData(a.data_inicio.slice(0,10))}</p>
+                  <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'10px', padding:'8px 10px', borderRadius:'8px', background:'#fafafa' }}>
+                    <div style={{ minWidth:0 }}>
+                      <p style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e', overflowWrap:'break-word' }}>{a.cliente}</p>
+                      <p style={{ fontSize:'11px', color:'#9ca3af', overflowWrap:'break-word' }}>{a.servico} · {fmtData(a.data_inicio.slice(0,10))}</p>
                     </div>
-                    <p style={{ fontSize:'13px', fontWeight:'700', color:'#059669' }}>+{formatarMoeda(a.valor)}</p>
+                    <p style={{ fontSize:'13px', fontWeight:'700', color:'#059669', flexShrink:0, whiteSpace:'nowrap' }}>+{formatarMoeda(a.valor)}</p>
                   </div>
                 ))}
                 {agsFinalizados.length===0 && <p style={{ fontSize:'13px', color:'#9ca3af', textAlign:'center', padding:'20px' }}>Nenhum atendimento finalizado no período.</p>}
@@ -511,24 +512,26 @@ export default function FinanceiroPage() {
               {filtraBusca(contasReceber).map(l=>{
                 const atrasado = l.data_vencimento < hoje
                 return (
-                  <div key={l.id} style={{ background:'white', borderRadius:'14px', border:`1px solid ${atrasado?'#fed7aa':'#f0f0f8'}`, padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px', flexWrap:'wrap' }}>
-                    <div style={{ width:'40px', height:'40px', borderRadius:'12px', background:'#fffbeb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <div key={l.id} style={{ background:'white', borderRadius:'14px', border:`1px solid ${atrasado?'#fed7aa':'#f0f0f8'}`, padding:'14px 16px', display:'flex', flexDirection:'column', gap:'12px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                      <div style={{ width:'38px', height:'38px', borderRadius:'11px', background:'#fffbeb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e', overflowWrap:'break-word' }}>{l.descricao}</p>
+                        <p style={{ fontSize:'12px', color:'#9ca3af', overflowWrap:'break-word' }}>{l.categoria}{l.cliente_nome?' · '+l.cliente_nome:''}</p>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <p style={{ fontSize:'16px', fontWeight:'800', color:'#d97706', whiteSpace:'nowrap' }}>{formatarMoeda(l.valor)}</p>
+                        <p style={{ fontSize:'11px', color: atrasado ? '#ea580c' : '#9ca3af', fontWeight: atrasado ? '700' : '400', whiteSpace:'nowrap' }}>
+                          {atrasado ? 'Atrasado · ' : 'Vence '}{fmtData(l.data_vencimento)}
+                        </p>
+                      </div>
                     </div>
-                    <div style={{ flex:1, minWidth:'160px' }}>
-                      <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e' }}>{l.descricao}</p>
-                      <p style={{ fontSize:'12px', color:'#9ca3af' }}>{l.categoria}{l.cliente_nome?' · '+l.cliente_nome:''}</p>
-                    </div>
-                    <div style={{ textAlign:'right', minWidth:'100px' }}>
-                      <p style={{ fontSize:'16px', fontWeight:'800', color:'#d97706' }}>{formatarMoeda(l.valor)}</p>
-                      <p style={{ fontSize:'11px', color: atrasado ? '#ea580c' : '#9ca3af', fontWeight: atrasado ? '700' : '400' }}>
-                        {atrasado ? 'Atrasado · ' : 'Vence '}{fmtData(l.data_vencimento)}
-                      </p>
-                    </div>
-                    <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
-                      {podeAlterar && <button onClick={()=>abrirModalQuitar(l)} style={{ background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'7px 14px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}>Receber</button>}
-                      {l.origem!=='agendamento' && podeAlterar && <button onClick={()=>abrirEdicao(l)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>Editar</button>}
-                      {l.origem!=='agendamento' && podeExcluir && <button onClick={()=>excluir(l.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>Excluir</button>}
+                    <div style={{ display:'flex', gap:'6px', paddingLeft:'50px' }}>
+                      {podeAlterar && <button onClick={()=>abrirModalQuitar(l)} style={{ flex:'1 1 auto', background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', whiteSpace:'nowrap' }}>Receber</button>}
+                      {l.origem!=='agendamento' && podeAlterar && <button onClick={()=>abrirEdicao(l)} style={{ flex:'1 1 auto', background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>Editar</button>}
+                      {l.origem!=='agendamento' && podeExcluir && <button onClick={()=>excluir(l.id)} style={{ flex:'1 1 auto', background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>Excluir</button>}
                     </div>
                   </div>
                 )
@@ -546,24 +549,26 @@ export default function FinanceiroPage() {
               {filtraBusca(contasPagar).map(l=>{
                 const atrasado = l.data_vencimento < hoje
                 return (
-                  <div key={l.id} style={{ background:'white', borderRadius:'14px', border:`1px solid ${atrasado?'#fecaca':'#f0f0f8'}`, padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px', flexWrap:'wrap' }}>
-                    <div style={{ width:'40px', height:'40px', borderRadius:'12px', background:'#fff7ed', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <div key={l.id} style={{ background:'white', borderRadius:'14px', border:`1px solid ${atrasado?'#fecaca':'#f0f0f8'}`, padding:'14px 16px', display:'flex', flexDirection:'column', gap:'12px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                      <div style={{ width:'38px', height:'38px', borderRadius:'11px', background:'#fff7ed', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e', overflowWrap:'break-word' }}>{l.descricao}</p>
+                        <p style={{ fontSize:'12px', color:'#9ca3af', overflowWrap:'break-word' }}>{l.categoria}</p>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <p style={{ fontSize:'16px', fontWeight:'800', color:'#ea580c', whiteSpace:'nowrap' }}>{formatarMoeda(l.valor)}</p>
+                        <p style={{ fontSize:'11px', color: atrasado ? '#dc2626' : '#9ca3af', fontWeight: atrasado ? '700' : '400', whiteSpace:'nowrap' }}>
+                          {atrasado ? 'Atrasado · ' : 'Vence '}{fmtData(l.data_vencimento)}
+                        </p>
+                      </div>
                     </div>
-                    <div style={{ flex:1, minWidth:'160px' }}>
-                      <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e' }}>{l.descricao}</p>
-                      <p style={{ fontSize:'12px', color:'#9ca3af' }}>{l.categoria}</p>
-                    </div>
-                    <div style={{ textAlign:'right', minWidth:'100px' }}>
-                      <p style={{ fontSize:'16px', fontWeight:'800', color:'#ea580c' }}>{formatarMoeda(l.valor)}</p>
-                      <p style={{ fontSize:'11px', color: atrasado ? '#dc2626' : '#9ca3af', fontWeight: atrasado ? '700' : '400' }}>
-                        {atrasado ? 'Atrasado · ' : 'Vence '}{fmtData(l.data_vencimento)}
-                      </p>
-                    </div>
-                    <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
-                      {podeAlterar && <button onClick={()=>abrirModalQuitar(l)} style={{ background:'#ea580c', color:'white', border:'none', borderRadius:'8px', padding:'7px 14px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}>Pagar</button>}
-                      {podeAlterar && <button onClick={()=>abrirEdicao(l)} style={{ background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>Editar</button>}
-                      {podeExcluir && <button onClick={()=>excluir(l.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>Excluir</button>}
+                    <div style={{ display:'flex', gap:'6px', paddingLeft:'50px' }}>
+                      {podeAlterar && <button onClick={()=>abrirModalQuitar(l)} style={{ flex:'1 1 auto', background:'#ea580c', color:'white', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', whiteSpace:'nowrap' }}>Pagar</button>}
+                      {podeAlterar && <button onClick={()=>abrirEdicao(l)} style={{ flex:'1 1 auto', background:'#eef2ff', color:'#6366f1', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>Editar</button>}
+                      {podeExcluir && <button onClick={()=>excluir(l.id)} style={{ flex:'1 1 auto', background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>Excluir</button>}
                     </div>
                   </div>
                 )
@@ -579,25 +584,31 @@ export default function FinanceiroPage() {
           {carregando ? <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af' }}>Carregando...</div> : (
             <>
               {filtraBusca(contasPagasLista).map(l=>(
-                <div key={l.id} style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'16px 18px', display:'flex', alignItems:'center', gap:'14px', flexWrap:'wrap' }}>
-                  <div style={{ width:'40px', height:'40px', borderRadius:'12px', background:l.tipo==='receita'?'#ecfdf5':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={l.tipo==='receita'?'#059669':'#dc2626'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <div key={l.id} style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'14px 16px', display:'flex', flexDirection:'column', gap:'12px' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'38px', height:'38px', borderRadius:'11px', background:l.tipo==='receita'?'#ecfdf5':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={l.tipo==='receita'?'#059669':'#dc2626'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                        <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e', overflowWrap:'break-word' }}>{l.descricao}</p>
+                        <span style={{ fontSize:'10px', fontWeight:'700', padding:'2px 8px', borderRadius:'99px', background:'#d1fae5', color:'#065f46', whiteSpace:'nowrap' }}>Quitado</span>
+                      </div>
+                      <p style={{ fontSize:'12px', color:'#9ca3af', overflowWrap:'break-word' }}>
+                        {l.categoria}{l.cliente_nome?' · '+l.cliente_nome:''}{l.forma_pagamento?' · '+l.forma_pagamento:''}{l.origem==='agendamento'?' · agenda':''}
+                      </p>
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <p style={{ fontSize:'16px', fontWeight:'800', color:l.tipo==='receita'?'#059669':'#dc2626', whiteSpace:'nowrap' }}>{l.tipo==='receita'?'+':'-'}{formatarMoeda(l.valor)}</p>
+                      <p style={{ fontSize:'11px', color:'#9ca3af', whiteSpace:'nowrap' }}>Pago em {l.data_pagamento?fmtData(l.data_pagamento):'-'}</p>
+                    </div>
                   </div>
-                  <div style={{ flex:1, minWidth:'160px' }}>
-                    <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e' }}>{l.descricao}</p>
-                    <p style={{ fontSize:'12px', color:'#9ca3af' }}>
-                      {l.categoria}{l.cliente_nome?' · '+l.cliente_nome:''}{l.forma_pagamento?' · '+l.forma_pagamento:''}{l.origem==='agendamento'?' · agenda':''}
-                    </p>
-                  </div>
-                  <div style={{ textAlign:'right', minWidth:'100px' }}>
-                    <p style={{ fontSize:'16px', fontWeight:'800', color:l.tipo==='receita'?'#059669':'#dc2626' }}>{l.tipo==='receita'?'+':'-'}{formatarMoeda(l.valor)}</p>
-                    <p style={{ fontSize:'11px', color:'#9ca3af' }}>Pago em {l.data_pagamento?fmtData(l.data_pagamento):'-'}</p>
-                  </div>
-                  <span style={{ fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'99px', background:'#d1fae5', color:'#065f46' }}>Quitado</span>
-                  <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
-                    {l.origem!=='agendamento' && podeAlterar && <button onClick={()=>reabrirConta(l)} style={{ background:'#f3f4f6', color:'#6b7280', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>Reabrir</button>}
-                    {l.origem!=='agendamento' && podeExcluir && <button onClick={()=>excluir(l.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'8px', padding:'7px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>Excluir</button>}
-                  </div>
+                  {(l.origem!=='agendamento' && (podeAlterar || podeExcluir)) && (
+                    <div style={{ display:'flex', gap:'6px', paddingLeft:'50px' }}>
+                      {podeAlterar && <button onClick={()=>reabrirConta(l)} style={{ flex:'1 1 auto', background:'#f3f4f6', color:'#6b7280', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>Reabrir</button>}
+                      {podeExcluir && <button onClick={()=>excluir(l.id)} style={{ flex:'1 1 auto', background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>Excluir</button>}
+                    </div>
+                  )}
                 </div>
               ))}
               {filtraBusca(contasPagasLista).length===0 && <div style={{ textAlign:'center', padding:'40px', color:'#9ca3af', fontSize:'14px' }}>Nenhuma conta paga no período.</div>}
@@ -608,7 +619,7 @@ export default function FinanceiroPage() {
 
       {aba==='relatorio' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
-          <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'24px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
+          <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'20px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
             <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#1a1a2e', marginBottom:'20px' }}>Resumo financeiro - {labelPeriodo}</h2>
             <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
               {[
@@ -641,7 +652,7 @@ export default function FinanceiroPage() {
 
       {modalAberto && (
         <div onClick={fecharModal} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'480px', borderRadius:'18px', padding:'24px', maxHeight:'92vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'480px', borderRadius:'18px', padding:'20px', maxHeight:'92vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
               <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#1a1a2e' }}>{modoEdicao?'Editar lançamento':'Novo lançamento'}</h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px', color:'#6b7280' }}>×</button>
@@ -732,7 +743,7 @@ export default function FinanceiroPage() {
 
       {modalQuitar && quitarSel && (
         <div onClick={()=>{ setModalQuitar(false); setQuitarSel(null) }} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'18px', width:'100%', maxWidth:'400px', padding:'24px', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'18px', width:'100%', maxWidth:'400px', padding:'20px', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
             <h3 style={{ fontSize:'16px', fontWeight:'700', marginBottom:'4px' }}>
               {quitarSel.tipo==='receita' ? 'Confirmar recebimento' : 'Confirmar pagamento'}
             </h3>

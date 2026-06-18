@@ -404,12 +404,12 @@ export default function FinanceiroPage() {
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:'10px', paddingTop:'12px', borderTop:'1.5px solid #f3f4f6', flexWrap:'wrap' }}>
-          <span style={{ fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em' }}>Filtrar por</span>
-          <div style={{ display:'flex', gap:'4px', background:'#f4f5fb', borderRadius:'99px', padding:'3px', flexWrap:'wrap' }}>
-            <button onClick={()=>setFiltroData('vencimento')} style={{ padding:'6px 13px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='vencimento'?'#6366f1':'transparent', color:filtroData==='vencimento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
+          <span style={{ fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', flexShrink:0 }}>Filtrar por</span>
+          <div style={{ display:'flex', gap:'4px', background:'#f4f5fb', borderRadius:'99px', padding:'4px', flexWrap:'wrap' }}>
+            <button onClick={()=>setFiltroData('vencimento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='vencimento'?'#6366f1':'transparent', color:filtroData==='vencimento'?'white':'#6b7280', whiteSpace:'nowrap', flexShrink:0 }}>
               Data lançamento
             </button>
-            <button onClick={()=>setFiltroData('pagamento')} style={{ padding:'6px 13px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='pagamento'?'#6366f1':'transparent', color:filtroData==='pagamento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
+            <button onClick={()=>setFiltroData('pagamento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='pagamento'?'#6366f1':'transparent', color:filtroData==='pagamento'?'white':'#6b7280', whiteSpace:'nowrap', flexShrink:0 }}>
               Data pagamento
             </button>
           </div>

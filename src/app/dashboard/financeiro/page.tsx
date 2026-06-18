@@ -17,10 +17,13 @@ type Lancamento = {
 type AgFinalizado = {
   id: string; data_inicio: string; valor: number; valor_bruto: number; desconto: number; cliente: string; servico: string
 }
+type Categoria = {
+  id: string; tipo: 'receita'|'despesa'; nome: string; ativo: boolean; ordem: number
+}
 
 const inputStyle = { width:'100%', border:'1.5px solid #e5e7eb', borderRadius:'10px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const, background:'white' }
-const CATEGORIAS_REC = ['Consultas','Avaliações','Planos','Sessões','Outros']
-const CATEGORIAS_DES = ['Aluguel','Salários','Material','Software','Marketing','Impostos','Manutenção','Outros']
+const CATEGORIAS_REC_PADRAO = ['Consultas','Avaliações','Planos','Sessões','Outros']
+const CATEGORIAS_DES_PADRAO = ['Aluguel','Salários','Material','Software','Marketing','Impostos','Manutenção','Outros']
 const FORMAS = ['','Dinheiro','PIX','Cartão de crédito','Cartão de débito','Transferência','Boleto','Plano']
 
 function padISO(n: number) { return String(n).padStart(2,'0') }
@@ -65,6 +68,7 @@ export default function FinanceiroPage() {
   const [lancamentos, setLancamentos]   = useState<Lancamento[]>([])
   const [agsFinalizados, setAgsFinalizados] = useState<AgFinalizado[]>([])
   const [clientes, setClientes]         = useState<{id:string;nome:string}[]>([])
+  const [categorias, setCategorias]     = useState<Categoria[]>([])
   const [carregando, setCarregando]     = useState(false)
   const [salvando, setSalvando]         = useState(false)
   const [aba, setAba] = useState<'visao_geral'|'receber'|'pagar'|'pagas'|'relatorio'>('visao_geral')
@@ -78,6 +82,13 @@ export default function FinanceiroPage() {
   const [quitarSel, setQuitarSel] = useState<Lancamento|null>(null)
   const [formQuitar, setFormQuitar] = useState({ data_pagamento:'', forma_pagamento:'Dinheiro' })
   const [salvandoQuitar, setSalvandoQuitar] = useState(false)
+
+  const [modalCategorias, setModalCategorias] = useState(false)
+  const [tipoCategoriaModal, setTipoCategoriaModal] = useState<'receita'|'despesa'>('receita')
+  const [novaCategoria, setNovaCategoria] = useState('')
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false)
+  const [editandoCategoriaId, setEditandoCategoriaId] = useState('')
+  const [editandoCategoriaNome, setEditandoCategoriaNome] = useState('')
 
   const [filtroTipo, setFiltroTipo] = useState<'hoje'|'mes'|'ano'|'periodo'>('hoje')
   const [periodoIni, setPeriodoIni] = useState(hojeISO())
@@ -104,7 +115,7 @@ export default function FinanceiroPage() {
 
     // Busca lançamentos cujo vencimento OU pagamento caia no período,
     // e filtra no cliente conforme o critério escolhido (filtroData)
-    const [{ data: lansVenc }, { data: lansPag }, { data: ags }, { data: cls }] = await Promise.all([
+    const [{ data: lansVenc }, { data: lansPag }, { data: ags }, { data: cls }, { data: cats }] = await Promise.all([
       sb.from('lancamentos')
         .select('id,tipo,descricao,valor,data_vencimento,data_pagamento,status,categoria,forma_pagamento,cliente_id,origem,observacoes')
         .eq('empresa_id', empresaAtiva.id)
@@ -123,7 +134,10 @@ export default function FinanceiroPage() {
         .lte('data_inicio', periodoFim+'T23:59:59')
         .order('data_inicio', { ascending:false }),
       sb.from('clientes').select('id,nome').eq('empresa_id', empresaAtiva.id).order('nome'),
+      sb.from('categorias_financeiro').select('id,tipo,nome,ativo,ordem').eq('empresa_id', empresaAtiva.id).order('ordem'),
     ])
+
+    setCategorias((cats||[]) as Categoria[])
 
     const cliMap:  Record<string,string> = {}
     const servMap: Record<string,string> = {}
@@ -236,7 +250,9 @@ export default function FinanceiroPage() {
 
   function abrirNovo(tipoInicial?: 'receita'|'despesa') {
     setModoEdicao(false); setSelecionado(null); setErro('')
-    setForm({ tipo:tipoInicial||'receita', descricao:'', valor:'', categoria:tipoInicial==='despesa'?'Aluguel':'Consultas', data_vencimento:hojeISO(), data_pagamento:'', status:'pendente', forma_pagamento:'', cliente_id:'', observacoes:'' })
+    const t = tipoInicial||'receita'
+    const catPadrao = (t==='receita' ? opcoesCategoriaReceita : opcoesCategoriaDespesa)[0] || ''
+    setForm({ tipo:t, descricao:'', valor:'', categoria:catPadrao, data_vencimento:hojeISO(), data_pagamento:'', status:'pendente', forma_pagamento:'', cliente_id:'', observacoes:'' })
     setModalAberto(true)
   }
   function abrirEdicao(l: Lancamento) {
@@ -294,6 +310,74 @@ export default function FinanceiroPage() {
     await sb.from('lancamentos').update({ status:'pendente', data_pagamento:null }).eq('id', l.id)
     await carregar()
   }
+
+  // ────────────────────────────────────────────────────────────
+  // Categorias por empresa
+  // ────────────────────────────────────────────────────────────
+  function abrirModalCategorias(tipo: 'receita'|'despesa') {
+    setTipoCategoriaModal(tipo)
+    setNovaCategoria('')
+    setEditandoCategoriaId('')
+    setEditandoCategoriaNome('')
+    setModalCategorias(true)
+  }
+
+  async function criarCategoria() {
+    const nome = novaCategoria.trim()
+    if (!nome) return
+    if (!empresaAtiva?.id) return
+    const jaExiste = categorias.some(c => c.tipo===tipoCategoriaModal && c.nome.toLowerCase()===nome.toLowerCase())
+    if (jaExiste) { alert('Essa categoria já existe.'); return }
+    setSalvandoCategoria(true)
+    const sb = createClient()
+    const maiorOrdem = categorias.filter(c=>c.tipo===tipoCategoriaModal).reduce((m,c)=>Math.max(m,c.ordem||0),0)
+    const { error } = await sb.from('categorias_financeiro').insert({
+      empresa_id: empresaAtiva.id, tipo: tipoCategoriaModal, nome, ativo: true, ordem: maiorOrdem + 1,
+    })
+    if (error) { alert('Erro ao criar categoria: ' + error.message); setSalvandoCategoria(false); return }
+    setNovaCategoria('')
+    await carregar()
+    setSalvandoCategoria(false)
+  }
+
+  function iniciarEdicaoCategoria(c: Categoria) {
+    setEditandoCategoriaId(c.id)
+    setEditandoCategoriaNome(c.nome)
+  }
+
+  async function salvarEdicaoCategoria() {
+    const nome = editandoCategoriaNome.trim()
+    if (!nome || !editandoCategoriaId) { setEditandoCategoriaId(''); return }
+    const sb = createClient()
+    await sb.from('categorias_financeiro').update({ nome }).eq('id', editandoCategoriaId)
+    setEditandoCategoriaId('')
+    await carregar()
+  }
+
+  async function alternarAtivoCategoria(c: Categoria) {
+    const sb = createClient()
+    await sb.from('categorias_financeiro').update({ ativo: !c.ativo }).eq('id', c.id)
+    await carregar()
+  }
+
+  async function excluirCategoria(c: Categoria) {
+    const emUso = lancamentos.some(l => l.categoria === c.nome)
+    if (emUso) {
+      if (!confirm(`A categoria "${c.nome}" já foi usada em lançamentos. Excluir só impede novos lançamentos com ela — os existentes não são afetados. Deseja continuar?`)) return
+    } else {
+      if (!confirm(`Excluir a categoria "${c.nome}"?`)) return
+    }
+    const sb = createClient()
+    await sb.from('categorias_financeiro').delete().eq('id', c.id)
+    await carregar()
+  }
+
+  // Lista efetiva: categorias cadastradas pela empresa (ativas), com fallback
+  // para a lista padrão caso a empresa ainda não tenha cadastrado nenhuma
+  const categoriasReceitaAtivas = categorias.filter(c=>c.tipo==='receita' && c.ativo).map(c=>c.nome)
+  const categoriasDespesaAtivas = categorias.filter(c=>c.tipo==='despesa' && c.ativo).map(c=>c.nome)
+  const opcoesCategoriaReceita = categoriasReceitaAtivas.length > 0 ? categoriasReceitaAtivas : CATEGORIAS_REC_PADRAO
+  const opcoesCategoriaDespesa = categoriasDespesaAtivas.length > 0 ? categoriasDespesaAtivas : CATEGORIAS_DES_PADRAO
 
   function exportarExcel(lista: Lancamento[], nome: string) {
     const rows = [
@@ -374,7 +458,11 @@ export default function FinanceiroPage() {
           <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
         </div>
         {podeCriar && (
-          <div style={{ display:'flex', gap:'8px', width:'100%', maxWidth:'320px' }}>
+          <div style={{ display:'flex', gap:'8px', width:'100%', maxWidth:'360px', flexWrap:'wrap' }}>
+            <button onClick={()=>abrirModalCategorias('receita')} style={{ flex:'1 1 auto', background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px 12px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v10c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/></svg>
+              Categorias
+            </button>
             <button onClick={()=>abrirNovo('receita')} style={{ flex:'1 1 auto', background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Receita
@@ -711,7 +799,7 @@ export default function FinanceiroPage() {
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'16px' }}>
               {(['receita','despesa'] as const).map(t=>(
-                <div key={t} onClick={()=>setForm(p=>({...p,tipo:t,categoria:t==='receita'?'Consultas':'Aluguel'}))}
+                <div key={t} onClick={()=>setForm(p=>({...p,tipo:t,categoria:(t==='receita'?opcoesCategoriaReceita:opcoesCategoriaDespesa)[0]||''}))}
                   style={{ padding:'12px', borderRadius:'10px', textAlign:'center', cursor:'pointer', border:`2px solid ${form.tipo===t?(t==='receita'?'#10b981':'#ef4444'):'#e5e7eb'}`, background:form.tipo===t?(t==='receita'?'#ecfdf5':'#fef2f2'):'white' }}>
                   <p style={{ fontSize:'13px', fontWeight:'700', color:form.tipo===t?(t==='receita'?'#10b981':'#ef4444'):'#6b7280' }}>{t==='receita'?'Receita':'Despesa'}</p>
                 </div>
@@ -729,9 +817,12 @@ export default function FinanceiroPage() {
                   <input type="number" min="0" step="0.01" value={form.valor} onChange={f('valor')} style={inputStyle} placeholder="0,00"/>
                 </div>
                 <div>
-                  <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Categoria</label>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'6px' }}>
+                    <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>Categoria</label>
+                    <button type="button" onClick={()=>abrirModalCategorias(form.tipo)} style={{ background:'none', border:'none', color:'#6366f1', fontSize:'11.5px', fontWeight:'600', cursor:'pointer', padding:0 }}>Gerenciar</button>
+                  </div>
                   <select value={form.categoria} onChange={f('categoria')} style={inputStyle}>
-                    {(form.tipo==='receita'?CATEGORIAS_REC:CATEGORIAS_DES).map(c=><option key={c}>{c}</option>)}
+                    {(form.tipo==='receita'?opcoesCategoriaReceita:opcoesCategoriaDespesa).map(c=><option key={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
@@ -825,6 +916,63 @@ export default function FinanceiroPage() {
                 {salvandoQuitar?'Salvando...':'Confirmar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {modalCategorias && (
+        <div onClick={()=>setModalCategorias(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:210, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'18px', width:'100%', maxWidth:'440px', padding:'20px', maxHeight:'88vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+              <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#1a1a2e' }}>Categorias</h2>
+              <button onClick={()=>setModalCategorias(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px', color:'#6b7280' }}>×</button>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'16px' }}>
+              {(['receita','despesa'] as const).map(t=>(
+                <button key={t} onClick={()=>setTipoCategoriaModal(t)}
+                  style={{ padding:'10px', borderRadius:'10px', textAlign:'center', cursor:'pointer', border:`2px solid ${tipoCategoriaModal===t?(t==='receita'?'#10b981':'#ef4444'):'#e5e7eb'}`, background:tipoCategoriaModal===t?(t==='receita'?'#ecfdf5':'#fef2f2'):'white' }}>
+                  <span style={{ fontSize:'13px', fontWeight:'700', color:tipoCategoriaModal===t?(t==='receita'?'#10b981':'#ef4444'):'#6b7280' }}>{t==='receita'?'Receita':'Despesa'}</span>
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display:'flex', gap:'8px', marginBottom:'16px' }}>
+              <input value={novaCategoria} onChange={e=>setNovaCategoria(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') criarCategoria() }} placeholder="Nova categoria..." style={{ ...inputStyle, flex:1 }}/>
+              <button onClick={criarCategoria} disabled={salvandoCategoria || !novaCategoria.trim()} style={{ background:salvandoCategoria||!novaCategoria.trim()?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'10px', padding:'0 18px', fontSize:'14px', fontWeight:'600', cursor:salvandoCategoria||!novaCategoria.trim()?'not-allowed':'pointer', whiteSpace:'nowrap' }}>
+                + Adicionar
+              </button>
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+              {categorias.filter(c=>c.tipo===tipoCategoriaModal).length === 0 && (
+                <p style={{ fontSize:'12.5px', color:'#9ca3af', textAlign:'center', padding:'16px' }}>
+                  Nenhuma categoria cadastrada ainda. Por enquanto está usando a lista padrão do sistema — cadastre acima para personalizar.
+                </p>
+              )}
+              {categorias.filter(c=>c.tipo===tipoCategoriaModal).map(c=>(
+                <div key={c.id} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 12px', borderRadius:'10px', background: c.ativo ? '#fafafa' : '#f3f4f6', opacity: c.ativo ? 1 : 0.6 }}>
+                  {editandoCategoriaId === c.id ? (
+                    <input value={editandoCategoriaNome} onChange={e=>setEditandoCategoriaNome(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==='Enter') salvarEdicaoCategoria(); if(e.key==='Escape') setEditandoCategoriaId('') }}
+                      onBlur={salvarEdicaoCategoria} autoFocus
+                      style={{ flex:1, border:'1.5px solid #6366f1', borderRadius:'7px', padding:'5px 8px', fontSize:'13px', outline:'none' }}/>
+                  ) : (
+                    <span onClick={()=>podeAlterar && iniciarEdicaoCategoria(c)} style={{ flex:1, fontSize:'13.5px', color:'#1a1a2e', cursor:podeAlterar?'pointer':'default', textDecoration: c.ativo ? 'none' : 'line-through' }}>{c.nome}</span>
+                  )}
+                  {podeAlterar && (
+                    <button onClick={()=>alternarAtivoCategoria(c)} title={c.ativo?'Desativar':'Ativar'} style={{ background:'none', border:'none', cursor:'pointer', color:c.ativo?'#059669':'#9ca3af', fontSize:'11px', fontWeight:'600', padding:'4px 6px' }}>
+                      {c.ativo?'Ativa':'Inativa'}
+                    </button>
+                  )}
+                  {podeExcluir && (
+                    <button onClick={()=>excluirCategoria(c)} title="Excluir" style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:'15px', padding:'4px 6px' }}>×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'14px' }}>Categorias inativas não aparecem para escolher em novos lançamentos, mas continuam visíveis nos lançamentos já existentes.</p>
           </div>
         </div>
       )}

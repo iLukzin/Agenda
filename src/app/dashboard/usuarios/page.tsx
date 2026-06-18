@@ -168,7 +168,7 @@ export default function UsuariosPage() {
   const inativos = usuarios.filter(u => u.status==='inativo').length
 
   return (
-    <div style={{ padding:'24px 16px' }}>
+    <div style={{ padding:'16px 12px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Usuários do sistema</h1>
@@ -217,29 +217,28 @@ export default function UsuariosPage() {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
           {filtrados.map(u => (
-            <div key={u.id} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'14px 18px', display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap', opacity:u.status==='inativo'?0.65:1 }}>
+            <div key={u.id} style={{ background:'white', borderRadius:'12px', border:'1px solid #f0f0f8', padding:'14px 14px', display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap', opacity:u.status==='inativo'?0.65:1 }}>
               <div style={{ width:'40px', height:'40px', borderRadius:'50%', flexShrink:0, background:nivelBg[u.nivel_acesso], border:`1.5px solid ${nivelCor[u.nivel_acesso]}30`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:'700', color:nivelCor[u.nivel_acesso] }}>
                 {u.nome.split(' ').slice(0,2).map(n=>n[0]).join('')}
               </div>
-              <div style={{ flex:1, minWidth:'150px' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'2px' }}>
+              <div style={{ flex:1, minWidth:'120px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'2px', flexWrap:'wrap' }}>
                   <p style={{ fontSize:'14px', fontWeight:'600', color:'#1a1a2e' }}>{u.nome}</p>
                   {u.id === usuarioLogado?.id && <span style={{ fontSize:'10px', background:'#fffbeb', color:'#f59e0b', padding:'1px 6px', borderRadius:'99px', fontWeight:'600' }}>você</span>}
                 </div>
-                <p style={{ fontSize:'12px', color:'#9ca3af' }}>{u.email}</p>
+                <p style={{ fontSize:'12px', color:'#9ca3af', wordBreak:'break-all' }}>{u.email}</p>
+                <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginTop:'4px' }}>
+                  <span style={{ fontSize:'11px', fontWeight:'600', padding:'2px 8px', borderRadius:'99px', background:nivelBg[u.nivel_acesso], color:nivelCor[u.nivel_acesso] }}>{nivelLabel[u.nivel_acesso]}</span>
+                  <span style={{ fontSize:'11px', fontWeight:'600', padding:'2px 8px', borderRadius:'99px', background:u.status==='ativo'?'#ecfdf5':'#f9fafb', color:u.status==='ativo'?'#10b981':'#9ca3af' }}>{u.status==='ativo'?'Ativo':'Inativo'}</span>
+                  {u.cargo && <span style={{ fontSize:'11px', color:'#9ca3af' }}>{u.cargo}</span>}
+                </div>
               </div>
-              <div style={{ minWidth:'90px' }}>
-                <p style={{ fontSize:'10px', color:'#9ca3af', marginBottom:'2px' }}>Cargo</p>
-                <p style={{ fontSize:'13px', color:'#374151' }}>{u.cargo||'?'}</p>
-              </div>
-              <span style={{ fontSize:'11px', fontWeight:'600', padding:'3px 10px', borderRadius:'99px', background:nivelBg[u.nivel_acesso], color:nivelCor[u.nivel_acesso] }}>{nivelLabel[u.nivel_acesso]}</span>
-              <span style={{ fontSize:'11px', fontWeight:'600', padding:'3px 10px', borderRadius:'99px', background:u.status==='ativo'?'#ecfdf5':'#f9fafb', color:u.status==='ativo'?'#10b981':'#9ca3af' }}>{u.status==='ativo'?'Ativo':'Inativo'}</span>
-              <div style={{ display:'flex', gap:'6px' }}>
-                <button onClick={()=>abrirEdicao(u)} style={{ background:'white', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#4f46e5', display:'inline-flex', alignItems:'center', gap:'6px', transition:'all .15s', boxShadow:'0 1px 3px rgba(99,102,241,0.15)' }} onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background='#eef2ff';el.style.boxShadow='0 3px 8px rgba(99,102,241,0.25)';el.style.transform='translateY(-1px)'}} onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background='white';el.style.boxShadow='0 1px 3px rgba(99,102,241,0.15)';el.style.transform='translateY(0)'}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>
+              <div style={{ display:'flex', gap:'6px', flexShrink:0, flexWrap:'wrap' }}>
+                <button onClick={()=>abrirEdicao(u)} style={{ background:'white', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'7px 12px', cursor:'pointer', fontSize:'12px', fontWeight:'600', color:'#4f46e5', display:'inline-flex', alignItems:'center', gap:'6px' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>
                 {u.status==='ativo'
-                  ? <button onClick={()=>setModalConfirm({tipo:'inativar',id:u.id})} style={{ background:'#fffbeb', color:'#f59e0b', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title="Inativar">Inativar</button>
-                  : <button onClick={()=>reativar(u.id)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }} title="Reativar">Ativar</button>}
-                <button onClick={()=>setModalConfirm({tipo:'excluir',id:u.id})} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>🗑</button>
+                  ? <button onClick={()=>setModalConfirm({tipo:'inativar',id:u.id})} style={{ background:'#fffbeb', color:'#f59e0b', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>Inativar</button>
+                  : <button onClick={()=>reativar(u.id)} style={{ background:'#ecfdf5', color:'#10b981', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>Ativar</button>}
+                <button onClick={()=>setModalConfirm({tipo:'excluir',id:u.id})} style={{ background:'#fef2f2', color:'#ef4444', border:'none', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer' }}>Excluir</button>
               </div>
             </div>
           ))}

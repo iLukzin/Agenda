@@ -380,7 +380,7 @@ export default function ClientesPage() {
       {carregando ? (
         <div style={{ textAlign:'center', padding:'60px', color:'#9ca3af' }}>Carregando...</div>
       ) : (
-        <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', overflow:'auto' }}>
+        <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', minWidth:'600px' }}>
             <thead>
               <tr style={{ background:'#fafafa', borderBottom:'1px solid #f3f4f6' }}>

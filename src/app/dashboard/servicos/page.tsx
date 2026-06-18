@@ -124,7 +124,7 @@ export default function ServicosPage() {
   }
 
   return (
-    <div style={{ padding:'24px 16px' }}>
+    <div style={{ padding:'16px 12px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Serviços</h1>

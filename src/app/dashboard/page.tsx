@@ -202,7 +202,7 @@ export default function DashboardPage() {
   const hoje = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'America/Sao_Paulo' })
 
   return (
-    <div style={{ padding:'24px 16px' }}>
+    <div style={{ padding:'16px 12px' }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Dashboard</h1>
@@ -261,7 +261,7 @@ export default function DashboardPage() {
             <CardMetrica label="Clientes ativos" valor={String(metricas.clientes)} sublabel="cadastrados" corBg="#f0f9ff" corText="#0284c7"/>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'20px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:'16px', marginBottom:'20px' }}>
             {/* Grafico */}
             <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f8', padding:'20px' }}>
               <h2 style={{ fontSize:'15px', fontWeight:'600', color:'#1a1a2e', marginBottom:'4px' }}>Agendamentos no periodo</h2>

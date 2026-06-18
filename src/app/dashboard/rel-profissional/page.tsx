@@ -300,7 +300,7 @@ export default function RelProfissionalPage() {
           )}
           {dadosProf.length===0&&!carregando&&<div style={{ textAlign:'center', padding:'40px', color:'#9ca3af' }}>Nenhum dado no período</div>}
           {dadosProf.length>0 && (
-            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f0', overflow:'auto' }}>
+            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f0', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px' }}>
                 <thead><tr style={{ background:'#f8fafc' }}>
                   {['Profissional','Finalizados','Abertos','Cancelados','Faturamento','Ticket Médio'].map(h=><th key={h} style={{ padding:'12px 14px', textAlign:'left', fontWeight:'600', color:'#374151', fontSize:'12px', textTransform:'uppercase', letterSpacing:'0.03em', borderBottom:'2px solid #e5e7eb' }}>{h}</th>)}
@@ -407,7 +407,7 @@ export default function RelProfissionalPage() {
                 <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.7)' }}>{meses.reduce((s,mes)=>s+Object.values(mesMap[mes]).reduce((ss,f)=>ss+f.qtd,0),0)} pagamentos</p>
               </div>
             </div>
-            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #e5e7eb', overflow:'auto' }}>
+            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #e5e7eb', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px', minWidth:'500px' }}>
                 <thead><tr style={{ background:'#f8fafc' }}>
                   <th style={{ padding:'12px 14px', textAlign:'left', fontWeight:'600', color:'#374151', fontSize:'12px', textTransform:'uppercase', letterSpacing:'0.03em', borderBottom:'2px solid #e5e7eb' }}>Mês</th>
@@ -482,7 +482,7 @@ export default function RelProfissionalPage() {
           )}
 
           {agendaStatusDados.length>0 && (
-            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f0', overflow:'auto' }}>
+            <div style={{ background:'white', borderRadius:'14px', border:'1px solid #f0f0f0', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px', minWidth:'620px' }}>
                 <thead><tr style={{ background:'#f8fafc' }}>
                   {['Data','Hora','Cliente','Profissional','Status','Motivo do Cancelamento'].map(h=>

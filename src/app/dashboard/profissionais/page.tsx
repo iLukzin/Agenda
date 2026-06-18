@@ -191,7 +191,7 @@ export default function ProfissionaisPage() {
       setForm(p => ({...p, [k]: e.target.value}))
 
   return (
-    <div style={{ padding:'24px 16px' }}>
+    <div style={{ padding:'16px 12px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Profissionais</h1>
@@ -297,7 +297,7 @@ export default function ProfissionaisPage() {
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nome completo *</label>
                   <input value={form.nome} onChange={f('nome')} style={inputStyle} placeholder="Nome do profissional"/>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:'12px' }}>
                   <div>
                     <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>E-mail</label>
                     <input type="email" value={form.email} onChange={f('email')} style={inputStyle} placeholder="email@empresa.com"/>

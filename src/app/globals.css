@@ -334,3 +334,166 @@ html, body {
 .status-aberto    { background:#dbeafe; color:#1d4ed8; }
 .status-fechado   { background:#d1fae5; color:#065f46; }
 .status-cancelado { background:#ffe4e6; color:#be123c; }
+
+/* ============================================================
+   RESPONSIVIDADE MOBILE — Regras globais para todas as telas
+   ============================================================ */
+
+/* Impede overflow horizontal em toda a aplicação */
+html, body { overflow-x: hidden; }
+* { box-sizing: border-box; }
+
+/* Inputs de data nativos — tamanho adequado em iOS/Android */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 40px;
+  font-size: 14px !important;
+  padding: 8px 10px !important;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Tabelas com scroll horizontal em telas pequenas */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 14px;
+}
+
+/* Página principal — padding menor no mobile */
+@media (max-width: 640px) {
+  /* Padding das páginas */
+  .page-wrapper { padding: 12px !important; }
+
+  /* Headers de página */
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .page-header > div:last-child {
+    width: 100% !important;
+  }
+
+  /* Grids de 2 colunas viram 1 coluna */
+  .grid-2col { grid-template-columns: 1fr !important; }
+
+  /* Botões full-width no mobile */
+  .btn-group-mobile {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  .btn-group-mobile button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Cards de resumo — 2 colunas fixas */
+  .cards-resumo {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Modal sheet — padding menor */
+  .modal-sheet { padding: 20px 16px !important; }
+
+  /* Filtros — empilham verticalmente */
+  .filtros-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .filtros-row > * { width: 100% !important; max-width: 100% !important; }
+
+  /* Tabelas — scroll horizontal */
+  .table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+  /* Ocultar colunas secundárias de tabela em mobile */
+  .col-hide-mobile { display: none !important; }
+
+  /* Agenda — calendário */
+  .agenda-cal-header { font-size: 10px !important; }
+  .agenda-dia-numero { font-size: 11px !important; }
+
+  /* Campos de formulário — fonte mínima 16px para evitar zoom automático iOS */
+  input:not([type="date"]):not([type="time"]):not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Data/hora — não deve forçar zoom */
+  input[type="date"],
+  input[type="time"] {
+    font-size: 14px !important;
+  }
+
+  /* Botões de ação em lista — sempre full-width lado a lado */
+  .action-btns {
+    display: flex !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+  .action-btns button { flex: 1 1 auto !important; }
+}
+
+/* Tablet — 640px a 1024px */
+@media (min-width: 641px) and (max-width: 1024px) {
+  input:not([type="date"]):not([type="time"]):not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 15px !important;
+  }
+}
+
+/* Agenda — campo de data no modal (problema reportado) */
+.agenda-date-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  font-size: 14px !important;
+  padding: 8px 10px !important;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  background: white;
+}
+
+/* Abas horizontais com scroll */
+.tabs-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs-scroll::-webkit-scrollbar { display: none; }
+
+/* Dashboard — cards top */
+@media (max-width: 480px) {
+  .dashboard-cards {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .dashboard-card-value { font-size: 18px !important; }
+}
+
+/* Evitar que inputs de data extrapolam em grids */
+@media (max-width: 640px) {
+  .date-grid { grid-template-columns: 1fr !important; }
+  .date-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .date-row input[type="date"] { width: 100% !important; }
+}
+
+/* Layout do dashboard lateral — menu colapsado no mobile */
+@media (max-width: 768px) {
+  .sidebar-collapsed { width: 0 !important; overflow: hidden !important; }
+  .main-content-full { margin-left: 0 !important; width: 100% !important; }
+}
+

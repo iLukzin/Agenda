@@ -196,14 +196,15 @@ export default function RelProfissionalPage() {
   const abaStyle = (a: string) => ({ padding:'8px 16px', borderRadius:'8px', fontSize:'13px', fontWeight:'600' as const, cursor:'pointer' as const, border:'none', background:aba===a?'#6366f1':'transparent', color:aba===a?'white':'#6b7280', transition:'all .15s' })
 
   return (
-    <div style={{ padding:'16px', maxWidth:'960px', margin:'0 auto' }}>
-      <div style={{ marginBottom:'20px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'10px' }}>
-        <div>
-          <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Relatórios</h1>
-          <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos, faturamento e formas de pagamento</p>
-        </div>
-        <div style={{ display:'flex', gap:'8px' }}>
-        <button onClick={()=>{
+    <div style={{ padding:'12px', maxWidth:'960px', margin:'0 auto' }}>
+      <div style={{ marginBottom:'16px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'8px', marginBottom:'12px' }}>
+          <div>
+            <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'4px' }}>Relatórios</h1>
+            <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos e faturamento</p>
+          </div>
+          <div style={{ display:'flex', gap:'8px', flexShrink:0 }}>
+          <button onClick={()=>{
           const periodo = ini + ' a ' + fim
           if (aba === 'profissional') {
             const header = ['Profissional','Finalizados','Abertos','Cancelados','Faturamento (R$)','Ticket Medio (R$)']
@@ -234,11 +235,10 @@ export default function RelProfissionalPage() {
             const linhas = agendaStatusDados.map(a => [a.dataLabel, a.horaLabel, a.cliente, a.profissional, STATUS_LABEL[a.status]||a.status, a.motivo])
             exportarCSV('relatorio-agenda-status-' + periodo, [['Periodo: ' + periodo], ['Filtro de status: ' + (filtroStatusAgenda==='todos'?'Todos':STATUS_LABEL[filtroStatusAgenda])], [], header, ...linhas])
           }
-        }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Excel
-        </button>
-        <button onClick={()=>{
+        }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'#059669', color:'white', border:'none', borderRadius:'8px', padding:'8px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+            Excel
+          </button>
+          <button onClick={()=>{
           const periodo = ini + ' a ' + fim
           if (aba === 'profissional') {
             const headers = ['Profissional','Finalizados','Abertos','Cancelados','Faturamento','Ticket Médio']
@@ -266,30 +266,52 @@ export default function RelProfissionalPage() {
             const filtroTxt = 'Filtro de status: ' + (filtroStatusAgenda==='todos'?'Todos':STATUS_LABEL[filtroStatusAgenda]) + ` · ${agendaStatusDados.length} agendamento(s)`
             exportarPDFGenerico('Relatório Agenda por Status', periodo, headers, linhas, filtroTxt)
           }
-        }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'8px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          PDF
-        </button>
+        }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'8px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+            PDF
+          </button>
+          </div>
         </div>
-      </div>
-      <div style={{ display:'flex', gap:'4px', background:'#f8fafc', borderRadius:'10px', padding:'4px', marginBottom:'20px', flexWrap:'wrap' }}>
-        <button onClick={()=>setAba('profissional')} style={abaStyle('profissional')}>Por Profissional</button>
-        <button onClick={()=>setAba('forma_pag')} style={abaStyle('forma_pag')}>Profissional × Pagamento</button>
-        <button onClick={()=>setAba('mensal')} style={abaStyle('mensal')}>Mensal por Pagamento</button>
-        <button onClick={()=>setAba('agenda_status')} style={abaStyle('agenda_status')}>Agenda por Status</button>
-      </div>
-      <div style={{ display:'flex', gap:'12px', alignItems:'flex-end', marginBottom:'20px', flexWrap:'wrap', background:'#f8fafc', borderRadius:'12px', padding:'14px' }}>
-        <div><label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', marginBottom:'4px' }}>DE</label><input type="date" value={ini} onChange={e=>setIni(e.target.value)} style={inp}/></div>
-        <div><label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', marginBottom:'4px' }}>ATÉ</label><input type="date" value={fim} onChange={e=>setFim(e.target.value)} style={inp}/></div>
-        {aba==='forma_pag' && <div><label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', marginBottom:'4px' }}>PROFISSIONAL</label><select value={profFiltro} onChange={e=>setProfFiltro(e.target.value)} style={inp}><option value="todos">Todos</option>{profissionais.map((p: any)=><option key={p.id} value={p.id}>{p.nome}</option>)}</select></div>}
-        <button onClick={buscar} disabled={carregando} style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>{carregando?'Buscando...':'🔍 Buscar'}</button>
+
+        {/* Abas com scroll horizontal */}
+        <div style={{ display:'flex', gap:'4px', background:'#f8fafc', borderRadius:'10px', padding:'4px', marginBottom:'16px', overflowX:'auto', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>
+          <button onClick={()=>setAba('profissional')} style={{...abaStyle('profissional'), whiteSpace:'nowrap', flexShrink:0}}>Por Profissional</button>
+          <button onClick={()=>setAba('forma_pag')} style={{...abaStyle('forma_pag'), whiteSpace:'nowrap', flexShrink:0}}>Prof. × Pagamento</button>
+          <button onClick={()=>setAba('mensal')} style={{...abaStyle('mensal'), whiteSpace:'nowrap', flexShrink:0}}>Mensal</button>
+          <button onClick={()=>setAba('agenda_status')} style={{...abaStyle('agenda_status'), whiteSpace:'nowrap', flexShrink:0}}>Agenda por Status</button>
+        </div>
+
+        {/* Filtros de data — empilhados no mobile */}
+        <div style={{ background:'#f8fafc', borderRadius:'12px', padding:'14px', marginBottom:'16px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' }}>
+            <div>
+              <label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', marginBottom:'4px' }}>DE</label>
+              <input type="date" value={ini} onChange={e=>setIni(e.target.value)} style={inp}/>
+            </div>
+            <div>
+              <label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', marginBottom:'4px' }}>ATÉ</label>
+              <input type="date" value={fim} onChange={e=>setFim(e.target.value)} style={inp}/>
+            </div>
+          </div>
+          {aba==='forma_pag' && (
+            <div style={{ marginBottom:'10px' }}>
+              <label style={{ display:'block', fontSize:'11px', fontWeight:'600', color:'#6b7280', marginBottom:'4px' }}>PROFISSIONAL</label>
+              <select value={profFiltro} onChange={e=>setProfFiltro(e.target.value)} style={inp}>
+                <option value="todos">Todos</option>
+                {profissionais.map((p: any)=><option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+          )}
+          <button onClick={buscar} disabled={carregando} style={{ width:'100%', background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'10px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+            {carregando ? 'Buscando...' : '🔍 Buscar'}
+          </button>
+        </div>
       </div>
 
       {/* ABA 1 */}
       {aba==='profissional' && (
         <div>
           {dadosProf.length>0 && (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:'10px', marginBottom:'20px' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'16px' }}>
               {[{label:'Faturamento',valor:formatMoeda(totalFat),cor:'#059669',bg:'#ecfdf5'},{label:'Atendimentos',valor:totalFin+' finalizados',cor:'#6366f1',bg:'#eef2ff'},{label:'Profissionais',valor:dadosProf.length+' ativos',cor:'#2563eb',bg:'#eff6ff'},{label:'Ticket Médio',valor:formatMoeda(totalFin>0?totalFat/totalFin:0),cor:'#d97706',bg:'#fffbeb'}].map((c,i)=>(
                 <div key={i} style={{ background:c.bg, borderRadius:'12px', padding:'14px 16px', border:`1px solid ${c.cor}22` }}>
                   <p style={{ fontSize:'11px', color:'#6b7280', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'6px' }}>{c.label}</p>
@@ -443,7 +465,7 @@ export default function RelProfissionalPage() {
       {aba==='agenda_status' && (
         <div>
           {/* Cards de resumo */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:'10px', marginBottom:'16px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'16px' }}>
             <div style={{ background:'#eff6ff', borderRadius:'12px', padding:'14px 16px', border:'1px solid #2563eb22' }}>
               <p style={{ fontSize:'11px', color:'#6b7280', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'6px' }}>Em aberto</p>
               <p style={{ fontSize:'18px', fontWeight:'800', color:'#2563eb' }}>{contAberto}</p>

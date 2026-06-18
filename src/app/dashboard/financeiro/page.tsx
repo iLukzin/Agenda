@@ -596,28 +596,28 @@ export default function FinanceiroPage() {
   })
 
   return (
-    <div style={{ padding:'20px 12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'22px', flexWrap:'wrap', gap:'12px' }}>
+    <div style={{ padding:'16px 12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'18px', flexWrap:'wrap', gap:'10px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
           <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
         </div>
-        <div style={{ display:'flex', gap:'8px', width:'100%', maxWidth:podeCriar?'460px':'140px', flexWrap:'wrap' }}>
-          <button onClick={()=>setModalDRE(true)} style={{ flex:'1 1 auto', background:'#eef2ff', color:'#4338ca', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'10px 12px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', width:'100%', maxWidth:'380px' }}>
+          <button onClick={()=>setModalDRE(true)} style={{ background:'#eef2ff', color:'#4338ca', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18.4 8.6 12 15l-3-3-3.6 3.6"/></svg>
             DRE
           </button>
           {podeCriar && (
             <>
-              <button onClick={()=>abrirModalCategorias('receita')} style={{ flex:'1 1 auto', background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px 12px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+              <button onClick={()=>abrirModalCategorias('receita')} style={{ background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v10c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/></svg>
                 Categorias
               </button>
-              <button onClick={()=>abrirNovo('receita')} style={{ flex:'1 1 auto', background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+              <button onClick={()=>abrirNovo('receita')} style={{ background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Receita
               </button>
-              <button onClick={()=>abrirNovo('despesa')} style={{ flex:'1 1 auto', background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+              <button onClick={()=>abrirNovo('despesa')} style={{ background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px 10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', whiteSpace:'nowrap' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Despesa
               </button>
@@ -655,22 +655,22 @@ export default function FinanceiroPage() {
         </div>
       </div>
       {filtroData==='pagamento' && (
-        <div style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'10px', padding:'10px 14px', marginBottom:'18px', fontSize:'12.5px', color:'#4338ca' }}>
-          Mostrando o que foi efetivamente pago/recebido dentro do período selecionado. Contas a receber e a pagar continuam mostrando os vencimentos do período, independente deste filtro.
+        <div style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'10px', padding:'10px 14px', marginBottom:'18px', fontSize:'12px', color:'#4338ca', lineHeight:'1.5', wordBreak:'break-word' }}>
+          Mostrando o que foi pago/recebido dentro do período. Contas a receber e a pagar continuam mostrando os vencimentos do período.
         </div>
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:'14px', marginBottom:'22px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'18px' }}>
         {[
           { label:'Receitas recebidas', v:totalReceitas, cor:'#059669', bg:'linear-gradient(135deg,#ecfdf5,#d1fae5)', border:'#a7f3d0' },
           { label:'Despesas pagas',     v:totalDespesas, cor:'#dc2626', bg:'linear-gradient(135deg,#fef2f2,#fee2e2)', border:'#fecaca' },
           { label:'Lucro líquido',      v:lucro,          cor:lucro>=0?'#4f46e5':'#dc2626', bg:'linear-gradient(135deg,#eef2ff,#e0e7ff)', border:'#c7d2fe' },
           { label:'A receber',          v:totalAReceber,  cor:'#d97706', bg:'linear-gradient(135deg,#fffbeb,#fef3c7)', border:'#fde68a' },
-          { label:'A pagar',            v:totalAPagar,    cor:'#ea580c', bg:'linear-gradient(135deg,#fff7ed,#ffedd5)', border:'#fed7aa' },
+          { label:'A pagar',            v:totalAPagar,    cor:'#ea580c', bg:'linear-gradient(135deg,#fff7ed,#ffedd5)', border:'#fed7aa', full:true },
         ].map(c=>(
-          <div key={c.label} style={{ background:c.bg, borderRadius:'14px', border:`1px solid ${c.border}`, padding:'18px 20px' }}>
-            <p style={{ fontSize:'11px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:'700', marginBottom:'8px' }}>{c.label}</p>
-            <p style={{ fontSize:'22px', fontWeight:'800', color:c.cor, letterSpacing:'-0.01em' }}>{formatarMoeda(c.v)}</p>
+          <div key={c.label} style={{ background:c.bg, borderRadius:'14px', border:`1px solid ${c.border}`, padding:'14px 14px', gridColumn:(c as any).full?'1/-1':'auto' }}>
+            <p style={{ fontSize:'10px', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', fontWeight:'700', marginBottom:'6px' }}>{c.label}</p>
+            <p style={{ fontSize:'20px', fontWeight:'800', color:c.cor, letterSpacing:'-0.01em' }}>{formatarMoeda(c.v)}</p>
           </div>
         ))}
       </div>

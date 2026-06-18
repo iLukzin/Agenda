@@ -52,44 +52,16 @@ export default function FinanceiroPage() {
   const { empresaAtiva, isMaster } = useEmpresa()
 
   const moduloHabilitado = isMaster || empresaAtiva?.financeiro_habilitado === true
-
-  if (!perm.carregando && moduloHabilitado && !perm.visualizar) {
-    return (
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:'12px' }}>
-        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </div>
-        <p style={{ fontSize:'16px', fontWeight:'700', color:'#374151' }}>Acesso não permitido</p>
-        <p style={{ fontSize:'13px', color:'#9ca3af', textAlign:'center', maxWidth:'320px' }}>Você não tem permissão para acessar o módulo financeiro. Fale com o administrador da sua empresa.</p>
-      </div>
-    )
-  }
-
-  if (!perm.carregando && !moduloHabilitado) {
-    return (
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:'12px', padding:'24px' }}>
-        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#f5f3ff', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
-        <p style={{ fontSize:'16px', fontWeight:'700', color:'#374151' }}>Módulo Financeiro não habilitado</p>
-        <p style={{ fontSize:'13px', color:'#9ca3af', textAlign:'center', maxWidth:'340px' }}>Este recurso ainda não foi liberado para a sua empresa. Solicite a ativação ao administrador do sistema.</p>
-      </div>
-    )
-  }
-
-  if (perm.carregando) {
-    return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh' }}>
-        <div style={{ width:'36px', height:'36px', border:'3px solid #eef2ff', borderTop:'3px solid #6366f1', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    )
-  }
+  const temAcesso = moduloHabilitado && perm.visualizar
 
   const podeCriar = isMaster || perm.criar
   const podeAlterar = isMaster || perm.alterar
   const podeExcluir = isMaster || perm.excluir
 
+  // ────────────────────────────────────────────────────────────
+  // TODOS os hooks ficam aqui, antes de qualquer return condicional,
+  // para nunca violar a regra de hooks do React (erro #310)
+  // ────────────────────────────────────────────────────────────
   const [lancamentos, setLancamentos]   = useState<Lancamento[]>([])
   const [agsFinalizados, setAgsFinalizados] = useState<AgFinalizado[]>([])
   const [clientes, setClientes]         = useState<{id:string;nome:string}[]>([])
@@ -125,7 +97,7 @@ export default function FinanceiroPage() {
   }, [filtroTipo])
 
   const carregar = useCallback(async () => {
-    if (!empresaAtiva?.id) return
+    if (!empresaAtiva?.id || !temAcesso) return
     setCarregando(true)
     const sb = createClient()
 
@@ -167,10 +139,46 @@ export default function FinanceiroPage() {
       cliente:cliMap[a.cliente_id]||'--', servico:servMap[a.servico_id]||'--',
     })))
     setCarregando(false)
-  }, [empresaAtiva?.id, periodoIni, periodoFim])
+  }, [empresaAtiva?.id, periodoIni, periodoFim, temAcesso])
 
   useEffect(() => { carregar() }, [carregar])
   useVisibilityRefresh(carregar)
+
+  // ────────────────────────────────────────────────────────────
+  // Guards de acesso — agora depois de todos os hooks
+  // ────────────────────────────────────────────────────────────
+  if (!perm.carregando && moduloHabilitado && !perm.visualizar) {
+    return (
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:'12px' }}>
+        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <p style={{ fontSize:'16px', fontWeight:'700', color:'#374151' }}>Acesso não permitido</p>
+        <p style={{ fontSize:'13px', color:'#9ca3af', textAlign:'center', maxWidth:'320px' }}>Você não tem permissão para acessar o módulo financeiro. Fale com o administrador da sua empresa.</p>
+      </div>
+    )
+  }
+
+  if (!perm.carregando && !moduloHabilitado) {
+    return (
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:'12px', padding:'24px' }}>
+        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'#f5f3ff', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <p style={{ fontSize:'16px', fontWeight:'700', color:'#374151' }}>Módulo Financeiro não habilitado</p>
+        <p style={{ fontSize:'13px', color:'#9ca3af', textAlign:'center', maxWidth:'340px' }}>Este recurso ainda não foi liberado para a sua empresa. Solicite a ativação ao administrador do sistema.</p>
+      </div>
+    )
+  }
+
+  if (perm.carregando) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh' }}>
+        <div style={{ width:'36px', height:'36px', border:'3px solid #eef2ff', borderTop:'3px solid #6366f1', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    )
+  }
 
   const receitasLanc  = lancamentos.filter(l=>l.tipo==='receita' && l.status==='pago').reduce((s,l)=>s+l.valor,0)
   const receitasAgs   = agsFinalizados.reduce((s,a)=>s+a.valor,0)

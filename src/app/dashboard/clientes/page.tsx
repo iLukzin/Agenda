@@ -59,9 +59,12 @@ export default function ClientesPage() {
   const perm = usePermissao('clientes')
   const [clientes, setClientes]     = useState<Cliente[]>([])
   const [planos, setPlanos]         = useState<{id:string;nome:string}[]>([])
+  const [profissionais, setProfissionais] = useState<{id:string;nome:string}[]>([])
+  const [servicos, setServicos]     = useState<{id:string;nome:string}[]>([])
   const [busca, setBusca]           = useState('')
   const [filtroStatus, setFiltroStatus] = useState('todos')
   const [modalAberto, setModalAberto]   = useState(false)
+  const [abaModal, setAbaModal]     = useState<'dados'|'autoagenda'>('dados')
   const [modoEdicao, setModoEdicao]     = useState(false)
   const [selecionado, setSelecionado]   = useState<Cliente | null>(null)
   const [form, setForm]             = useState(formVazio)
@@ -75,34 +78,41 @@ export default function ClientesPage() {
   const [histFiltroIni, setHistFiltroIni] = useState('')
   const [histFiltroFim, setHistFiltroFim] = useState('')
 
+  // AutoAgenda
+  const [autoAgendas, setAutoAgendas]   = useState<any[]>([])
+  const [aaCarregando, setAaCarregando] = useState(false)
+  const [aaSalvando, setAaSalvando]     = useState(false)
+  const [aaForm, setAaForm] = useState({
+    dia_semana: '1',
+    horario: '09:00',
+    profissional_id: '',
+    servico_id: '',
+  })
+
+  const autoAgendaHabilitado = isMaster || empresaAtiva?.auto_agenda_habilitado === true
+
+  const DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
+
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id) return
     setCarregando(true)
     const sb = createClient()
 
-    // Busca clientes
-    const { data: cls, error: errCls } = await sb
-      .from('clientes')
-      .select('id, nome, cpf, telefone, whatsapp, email, endereco, data_nascimento, observacoes, plano_id, status, created_at')
-      .eq('empresa_id', empresaAtiva.id)
-      .order('nome')
+    const [{ data: cls, error: errCls }, { data: pls }, { data: profs }, { data: srvs }] = await Promise.all([
+      sb.from('clientes').select('id, nome, cpf, telefone, whatsapp, email, endereco, data_nascimento, observacoes, plano_id, status, created_at').eq('empresa_id', empresaAtiva.id).order('nome'),
+      sb.from('planos').select('id, nome').eq('empresa_id', empresaAtiva.id),
+      sb.from('profissionais').select('id, nome').eq('empresa_id', empresaAtiva.id).eq('status','ativo').order('nome'),
+      sb.from('servicos').select('id, nome').eq('empresa_id', empresaAtiva.id).eq('status','ativo').order('nome'),
+    ])
 
-    if (errCls) {
-      console.error('Erro ao buscar clientes:', errCls)
-      setCarregando(false)
-      return
-    }
-
-    // Busca planos para fazer join manual
-    const { data: pls } = await sb
-      .from('planos')
-      .select('id, nome')
-      .eq('empresa_id', empresaAtiva.id)
+    if (errCls) { setCarregando(false); return }
 
     const planosMap: Record<string, string> = {}
     if (pls) pls.forEach((p: any) => { planosMap[p.id] = p.nome })
 
     setPlanos(pls || [])
+    setProfissionais(profs || [])
+    setServicos(srvs || [])
     setClientes((cls || []).map((c: any) => ({
       ...c,
       cpf:            c.cpf || '',
@@ -169,23 +179,72 @@ export default function ClientesPage() {
 
   function fecharHistorico() { setModalHistorico(false); setClienteHistorico(null); setHistorico([]); setHistFiltroIni(''); setHistFiltroFim('') }
 
+  async function carregarAutoAgendas(clienteId: string) {
+    if (!empresaAtiva?.id) return
+    setAaCarregando(true)
+    const sb = createClient()
+    const { data } = await sb.from('auto_agenda').select('*').eq('empresa_id', empresaAtiva.id).eq('cliente_id', clienteId).order('dia_semana').order('horario')
+    setAutoAgendas(data || [])
+    setAaCarregando(false)
+  }
+
+  async function adicionarAutoAgenda() {
+    if (!selecionado?.id || !empresaAtiva?.id) return
+    if (!aaForm.horario) return
+    setAaSalvando(true)
+    const sb = createClient()
+    const { error } = await sb.from('auto_agenda').insert({
+      empresa_id: empresaAtiva.id,
+      cliente_id: selecionado.id,
+      dia_semana: parseInt(aaForm.dia_semana),
+      horario: aaForm.horario + ':00',
+      profissional_id: aaForm.profissional_id || null,
+      servico_id: aaForm.servico_id || null,
+      ativo: true,
+    })
+    if (error) {
+      if (error.code === '23505') alert('Já existe um AutoAgenda para este dia/horário.')
+      else alert('Erro ao adicionar: ' + error.message)
+    } else {
+      setAaForm({ dia_semana:'1', horario:'09:00', profissional_id:'', servico_id:'' })
+      await carregarAutoAgendas(selecionado.id)
+    }
+    setAaSalvando(false)
+  }
+
+  async function alternarAutoAgenda(id: string, ativo: boolean) {
+    const sb = createClient()
+    await sb.from('auto_agenda').update({ ativo: !ativo }).eq('id', id)
+    if (selecionado?.id) await carregarAutoAgendas(selecionado.id)
+  }
+
+  async function excluirAutoAgenda(id: string) {
+    if (!confirm('Remover este AutoAgenda? Os agendamentos já criados não serão afetados.')) return
+    const sb = createClient()
+    await sb.from('auto_agenda').delete().eq('id', id)
+    if (selecionado?.id) await carregarAutoAgendas(selecionado.id)
+  }
+
   function abrirNovo() {
-    setModoEdicao(false); setSelecionado(null); setErro('')
-    setForm(formVazio); setModalAberto(true)
+    setModoEdicao(false); setSelecionado(null); setErro(''); setAbaModal('dados')
+    setForm(formVazio); setAutoAgendas([])
+    setModalAberto(true)
   }
 
   function abrirEdicao(c: Cliente) {
-    setModoEdicao(true); setSelecionado(c); setErro('')
+    setModoEdicao(true); setSelecionado(c); setErro(''); setAbaModal('dados')
     setForm({
       nome: c.nome, cpf: c.cpf, telefone: c.telefone, whatsapp: c.whatsapp,
       email: c.email, data_nascimento: c.data_nascimento, endereco: c.endereco,
       plano_id: c.plano_id, observacoes: c.observacoes, status: c.status,
     })
+    carregarAutoAgendas(c.id)
     setModalAberto(true)
   }
 
   function fecharModal() {
-    setModalAberto(false); setSelecionado(null); setErro('')
+    setModalAberto(false); setSelecionado(null); setErro(''); setAbaModal('dados')
+    setAutoAgendas([])
   }
 
   async function salvar() {
@@ -245,7 +304,7 @@ export default function ClientesPage() {
     fecharModal()
   }
 
-  const f = (k: keyof typeof form) => (e: any) => { const v = e.target.value; const mascarados = ['telefone','whatsapp']; setForm(p => ({ ...p, [k]: mascarados.includes(k) ? mascaraTel(v) : v })) }
+  const f = (k: keyof typeof form) => (e: any) => { const v = e.target.value; const mascarados = ['telefone','whatsapp']; setForm(p => ({ ...p, [k]: mascarados.includes(String(k)) ? mascaraTel(v) : v })) }
 
   const ehLucas = usuario?.email === 'lucas@fortitude.com'
 
@@ -390,76 +449,184 @@ export default function ClientesPage() {
         <div onClick={fecharModal} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:100, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
           <div onClick={e => e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'560px', borderRadius:'20px 20px 0 0', padding:'24px 20px', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 18px' }}/>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px' }}>
-              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao ? 'edit Editar cliente' : '+ Novo cliente'}</h2>
-              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+              <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>{modoEdicao ? 'Editar cliente' : '+ Novo cliente'}</h2>
+              <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px', color:'#6b7280' }}>×</button>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
-              <div style={{ gridColumn:'1/-1' }}>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nome completo *</label>
-                <input value={form.nome} onChange={f('nome')} style={inputStyle} placeholder="Nome do cliente"/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>CPF</label>
-                <input value={form.cpf} onChange={f('cpf')} style={inputStyle} placeholder="000.000.000-00"/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Data de nascimento</label>
-                <input type="date" value={form.data_nascimento} onChange={f('data_nascimento')} style={inputStyle}/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Telefone</label>
-                <input value={form.telefone} onChange={f('telefone')} style={inputStyle} placeholder="(11) 99999-0000"/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>WhatsApp</label>
-                <input value={form.whatsapp} onChange={f('whatsapp')} style={inputStyle} placeholder="(11) 99999-0000"/>
-              </div>
-              <div style={{ gridColumn:'1/-1' }}>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>E-mail</label>
-                <input type="email" value={form.email} onChange={f('email')} style={inputStyle} placeholder="email@exemplo.com"/>
-              </div>
-              <div style={{ gridColumn:'1/-1' }}>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereço</label>
-                <input value={form.endereco} onChange={f('endereco')} style={inputStyle} placeholder="Rua, número, bairro"/>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Plano</label>
-                <select value={form.plano_id} onChange={f('plano_id')} style={{ ...inputStyle, padding:'9px 12px' }}>
-                  <option value="">Sem plano (avulso)</option>
-                  {planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Status</label>
-                <select value={form.status} onChange={f('status')} style={{ ...inputStyle, padding:'9px 12px' }}>
-                  <option value="ativo">Ativo</option>
-                  <option value="inativo">Inativo</option>
-                </select>
-              </div>
-              <div style={{ gridColumn:'1/-1' }}>
-                <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Observações</label>
-                <textarea rows={3} value={form.observacoes} onChange={f('observacoes')} style={{ ...inputStyle, resize:'none' }} placeholder="Informações adicionais..."/>
-              </div>
-            </div>
-            {erro && (
-              <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 14px', marginTop:'12px', fontSize:'13px', color:'#dc2626' }}>
-                {erro}
-              </div>
-            )}
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px' }}>
-              {modoEdicao && selecionado
-                ? <button onClick={() => excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>🗑 Excluir</button>
-                : <div/>}
-              <div style={{ display:'flex', gap:'10px' }}>
-                <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
-                {(modoEdicao ? perm.alterar : perm.criar) && (
-            <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
-                  {salvando ? 'Salvando...' : modoEdicao ? 'Salvar alterações' : 'Salvar cliente'}
+
+            {/* Abas */}
+            <div style={{ display:'flex', gap:'0', marginBottom:'20px', borderBottom:'2px solid #f3f4f6' }}>
+              <button onClick={()=>setAbaModal('dados')} style={{ padding:'9px 18px', border:'none', background:'none', cursor:'pointer', fontSize:'13px', fontWeight:abaModal==='dados'?'700':'500', color:abaModal==='dados'?'#6366f1':'#9ca3af', borderBottom:abaModal==='dados'?'2.5px solid #6366f1':'2.5px solid transparent', marginBottom:'-2px' }}>
+                Dados
+              </button>
+              {modoEdicao && autoAgendaHabilitado && (
+                <button onClick={()=>setAbaModal('autoagenda')} style={{ padding:'9px 18px', border:'none', background:'none', cursor:'pointer', fontSize:'13px', fontWeight:abaModal==='autoagenda'?'700':'500', color:abaModal==='autoagenda'?'#0891b2':'#9ca3af', borderBottom:abaModal==='autoagenda'?'2.5px solid #0891b2':'2.5px solid transparent', marginBottom:'-2px', display:'flex', alignItems:'center', gap:'6px' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
+                  AutoAgenda {autoAgendas.filter(a=>a.ativo).length > 0 && <span style={{ background:'#0891b2', color:'white', borderRadius:'99px', padding:'1px 7px', fontSize:'10px', fontWeight:'700' }}>{autoAgendas.filter(a=>a.ativo).length}</span>}
                 </button>
-            )}
-              </div>
+              )}
             </div>
+
+            {/* Aba Dados */}
+            {abaModal === 'dados' && (
+              <>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px' }}>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Nome completo *</label>
+                    <input value={form.nome} onChange={f('nome')} style={inputStyle} placeholder="Nome do cliente"/>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>CPF</label>
+                    <input value={form.cpf} onChange={f('cpf')} style={inputStyle} placeholder="000.000.000-00"/>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Data de nascimento</label>
+                    <input type="date" value={form.data_nascimento} onChange={f('data_nascimento')} style={inputStyle}/>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Telefone</label>
+                    <input value={form.telefone} onChange={f('telefone')} style={inputStyle} placeholder="(11) 99999-0000"/>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>WhatsApp</label>
+                    <input value={form.whatsapp} onChange={f('whatsapp')} style={inputStyle} placeholder="(11) 99999-0000"/>
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>E-mail</label>
+                    <input type="email" value={form.email} onChange={f('email')} style={inputStyle} placeholder="email@exemplo.com"/>
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereço</label>
+                    <input value={form.endereco} onChange={f('endereco')} style={inputStyle} placeholder="Rua, número, bairro"/>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Plano</label>
+                    <select value={form.plano_id} onChange={f('plano_id')} style={{ ...inputStyle, padding:'9px 12px' }}>
+                      <option value="">Sem plano (avulso)</option>
+                      {planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Status</label>
+                    <select value={form.status} onChange={f('status')} style={{ ...inputStyle, padding:'9px 12px' }}>
+                      <option value="ativo">Ativo</option>
+                      <option value="inativo">Inativo</option>
+                    </select>
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Observações</label>
+                    <textarea rows={3} value={form.observacoes} onChange={f('observacoes')} style={{ ...inputStyle, resize:'none' }} placeholder="Informações adicionais..."/>
+                  </div>
+                </div>
+                {erro && (
+                  <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'10px 14px', marginTop:'12px', fontSize:'13px', color:'#dc2626' }}>
+                    {erro}
+                  </div>
+                )}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'20px' }}>
+                  {modoEdicao && selecionado
+                    ? <button onClick={() => excluir(selecionado.id)} style={{ background:'#fef2f2', color:'#ef4444', border:'1px solid #fecaca', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Excluir</button>
+                    : <div/>}
+                  <div style={{ display:'flex', gap:'10px' }}>
+                    <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 16px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
+                    {(modoEdicao ? perm.alterar : perm.criar) && (
+                      <button onClick={salvar} disabled={salvando} style={{ background:salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', fontWeight:'500', cursor:salvando?'not-allowed':'pointer' }}>
+                        {salvando ? 'Salvando...' : modoEdicao ? 'Salvar alterações' : 'Salvar cliente'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Aba AutoAgenda */}
+            {abaModal === 'autoagenda' && (
+              <div>
+                <div style={{ background:'#ecfeff', border:'1px solid #a5f3fc', borderRadius:'12px', padding:'12px 14px', marginBottom:'18px', fontSize:'13px', color:'#0e7490' }}>
+                  <b>Como funciona:</b> cadastre o dia da semana, horário, profissional e serviço. O sistema agendará automaticamente toda semana, inclusive com 1 dia de antecedência para não perder o horário.
+                </div>
+
+                {/* Formulário de novo AutoAgenda */}
+                {perm.alterar && (
+                  <div style={{ background:'#f8fafc', borderRadius:'14px', padding:'16px', marginBottom:'18px', border:'1px solid #f0f0f8' }}>
+                    <p style={{ fontSize:'13px', fontWeight:'700', color:'#374151', marginBottom:'12px' }}>Adicionar horário fixo</p>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' }}>
+                      <div>
+                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Dia da semana</label>
+                        <select value={aaForm.dia_semana} onChange={e=>setAaForm(p=>({...p,dia_semana:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
+                          {DIAS_SEMANA.map((d,i)=><option key={i} value={String(i)}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Horário</label>
+                        <input type="time" value={aaForm.horario} onChange={e=>setAaForm(p=>({...p,horario:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}/>
+                      </div>
+                      <div>
+                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Profissional</label>
+                        <select value={aaForm.profissional_id} onChange={e=>setAaForm(p=>({...p,profissional_id:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
+                          <option value="">Qualquer</option>
+                          {profissionais.map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Serviço</label>
+                        <select value={aaForm.servico_id} onChange={e=>setAaForm(p=>({...p,servico_id:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
+                          <option value="">Nenhum</option>
+                          {servicos.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <button onClick={adicionarAutoAgenda} disabled={aaSalvando || !aaForm.horario} style={{ width:'100%', background:aaSalvando?'#a5b4fc':'#0891b2', color:'white', border:'none', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:aaSalvando?'not-allowed':'pointer' }}>
+                      {aaSalvando ? 'Salvando...' : '+ Adicionar horário'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Lista de AutoAgendas do cliente */}
+                {aaCarregando ? (
+                  <p style={{ textAlign:'center', color:'#9ca3af', padding:'20px', fontSize:'13px' }}>Carregando...</p>
+                ) : autoAgendas.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'32px', color:'#9ca3af' }}>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#e5e7eb" strokeWidth="1.5" style={{ display:'block', margin:'0 auto 10px' }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <p style={{ fontSize:'14px' }}>Nenhum horário automático cadastrado.</p>
+                    <p style={{ fontSize:'12px', marginTop:'4px' }}>Adicione um horário fixo acima.</p>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                    {autoAgendas.map((aa: any) => {
+                      const profNome = profissionais.find(p=>p.id===aa.profissional_id)?.nome || 'Qualquer'
+                      const srvNome  = servicos.find(s=>s.id===aa.servico_id)?.nome || 'Nenhum'
+                      const hora = (aa.horario||'').slice(0,5)
+                      return (
+                        <div key={aa.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'12px', background: aa.ativo ? 'white' : '#f9fafb', border:`1px solid ${aa.ativo ? '#e0e7ff' : '#f0f0f0'}`, opacity: aa.ativo ? 1 : 0.7 }}>
+                          <div style={{ width:'42px', height:'42px', borderRadius:'10px', background: aa.ativo ? '#ecfeff' : '#f3f4f6', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <span style={{ fontSize:'10px', fontWeight:'700', color: aa.ativo ? '#0891b2' : '#9ca3af', textTransform:'uppercase' }}>{DIAS_SEMANA[aa.dia_semana]?.slice(0,3)}</span>
+                            <span style={{ fontSize:'12px', fontWeight:'800', color: aa.ativo ? '#0e7490' : '#9ca3af' }}>{hora}</span>
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <p style={{ fontSize:'13px', fontWeight:'600', color:'#1a1a2e', overflowWrap:'break-word' }}>{DIAS_SEMANA[aa.dia_semana]} às {hora}</p>
+                            <p style={{ fontSize:'11.5px', color:'#6b7280' }}>{srvNome} · {profNome}</p>
+                          </div>
+                          {!aa.ativo && <span style={{ fontSize:'10px', fontWeight:'700', background:'#f3f4f6', color:'#9ca3af', borderRadius:'99px', padding:'2px 8px', whiteSpace:'nowrap' }}>Inativo</span>}
+                          {perm.alterar && (
+                            <button onClick={()=>alternarAutoAgenda(aa.id, aa.ativo)} title={aa.ativo?'Desativar':'Ativar'} style={{ background: aa.ativo ? '#ecfdf5' : '#f3f4f6', border:'none', borderRadius:'8px', padding:'6px 10px', cursor:'pointer', fontSize:'11px', fontWeight:'600', color: aa.ativo ? '#059669' : '#9ca3af', whiteSpace:'nowrap' }}>
+                              {aa.ativo ? 'Ativo' : 'Inativo'}
+                            </button>
+                          )}
+                          {perm.alterar && (
+                            <button onClick={()=>excluirAutoAgenda(aa.id)} title="Remover" style={{ background:'#fef2f2', border:'none', borderRadius:'8px', padding:'6px 8px', cursor:'pointer', color:'#ef4444', fontSize:'14px', flexShrink:0 }}>×</button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <div style={{ marginTop:'20px', display:'flex', justifyContent:'flex-end' }}>
+                  <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

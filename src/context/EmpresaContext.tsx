@@ -14,6 +14,7 @@ export type EmpresaResumo = {
   motivo_bloqueio?: string
   tipo_agenda: string  // 'grade' | 'calendario'
   whatsapp_habilitado?: boolean
+  financeiro_habilitado?: boolean
 }
 
 export type UsuarioLogado = {
@@ -83,7 +84,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         })
         // Tenta carregar empresas mesmo assim
         const { data: emps } = await sb
-          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado').order('nome')
+          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado').order('nome')
         const lista: EmpresaResumo[] = emps || []
         setEmpresas(lista)
         setEmpresaAtiva(lista[0] || null)
@@ -111,7 +112,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Master: carrega todas as empresas
         const { data: lista } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado')
           .order('nome')
 
         const l: EmpresaResumo[] = lista || []
@@ -130,7 +131,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setEmpresaAtiva(empresaRestaurada || l[0] || null)
 
       } else {
-        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado'
+        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado'
 
         // Buscar empresa principal do cadastro do usuário
         const idsSet = new Set<string>()

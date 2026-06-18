@@ -7,7 +7,7 @@ import { useEmpresa } from '@/context/EmpresaContext'
 const inp = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'10px 13px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const, minHeight:'42px' }
 const planoCor: any = { basico:'#6b7280', profissional:'#6366f1', enterprise:'#f59e0b' }
 const planoBg: any  = { basico:'#f3f4f6', profissional:'#eef2ff', enterprise:'#fffbeb' }
-function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada: false, motivo_bloqueio:'', whatsapp_habilitado: false, valor_mensal:'', dia_vencimento:'' } }
+function formVazio() { return { nome:'', cnpj:'', email:'', telefone:'', endereco:'', plano:'profissional', status:'ativo', vencimento:'', bloqueada: false, motivo_bloqueio:'', whatsapp_habilitado: false, financeiro_habilitado: false, valor_mensal:'', dia_vencimento:'' } }
 
 export default function EmpresasPage() {
   const router = useRouter()
@@ -30,8 +30,8 @@ export default function EmpresasPage() {
   const carregar = useCallback(async function() {
     setCarregando(true)
     const sb = createClient()
-    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado,valor_mensal,dia_vencimento').order('nome')
-    setEmpresas((data || []).map(function(e: any) { return { id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false, valor_mensal:e.valor_mensal||null, dia_vencimento:e.dia_vencimento||null, } }))
+    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado,financeiro_habilitado,valor_mensal,dia_vencimento').order('nome')
+    setEmpresas((data || []).map(function(e: any) { return { id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false, financeiro_habilitado:e.financeiro_habilitado||false, valor_mensal:e.valor_mensal||null, dia_vencimento:e.dia_vencimento||null, } }))
     setCarregando(false)
   }, [])
 
@@ -47,7 +47,7 @@ export default function EmpresasPage() {
   })
 
   function abrirNova() { setModoEdicao(false); setSelecionada(null); setErro(''); setForm(formVazio()); setAbaModal('dados'); setModalAberto(true) }
-  function abrirEdicao(e: any) { setModoEdicao(true); setSelecionada(e); setErro(''); setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:e.whatsapp_habilitado||false, valor_mensal:e.valor_mensal!=null?String(e.valor_mensal):'', dia_vencimento:e.dia_vencimento!=null?String(e.dia_vencimento):'' }); setAbaModal('dados'); setModalAberto(true) }
+  function abrirEdicao(e: any) { setModoEdicao(true); setSelecionada(e); setErro(''); setForm({ nome:e.nome, cnpj:e.cnpj, email:e.email, telefone:e.telefone, endereco:e.endereco, plano:e.plano, status:e.status, vencimento:e.vencimento, bloqueada:e.bloqueada, motivo_bloqueio:e.motivo_bloqueio, whatsapp_habilitado:e.whatsapp_habilitado||false, financeiro_habilitado:e.financeiro_habilitado||false, valor_mensal:e.valor_mensal!=null?String(e.valor_mensal):'', dia_vencimento:e.dia_vencimento!=null?String(e.dia_vencimento):'' }); setAbaModal('dados'); setModalAberto(true) }
   function fecharModal() { setModalAberto(false); setSelecionada(null); setErro(''); setAbaModal('dados'); setTodosUsuarios([]); setUsuariosVinculados([]) }
 
   async function carregarUsuariosEmpresa(empresaId: any) {
@@ -88,7 +88,7 @@ export default function EmpresasPage() {
     if (!form.nome.trim()) { setErro('Nome e obrigatorio.'); return }
     setSalvando(true); setErro('')
     const sb = createClient()
-    const payload = { nome:form.nome.trim(), cnpj:form.cnpj||null, email:form.email||null, telefone:form.telefone||null, endereco:form.endereco||null, plano:form.plano, status:form.status, vencimento:form.vencimento||null, bloqueada:form.bloqueada, motivo_bloqueio:form.bloqueada?(form.motivo_bloqueio||'Falta de pagamento'):null, whatsapp_habilitado:form.whatsapp_habilitado, valor_mensal:form.valor_mensal?parseFloat(form.valor_mensal):null, dia_vencimento:form.dia_vencimento?parseInt(form.dia_vencimento):null }
+    const payload = { nome:form.nome.trim(), cnpj:form.cnpj||null, email:form.email||null, telefone:form.telefone||null, endereco:form.endereco||null, plano:form.plano, status:form.status, vencimento:form.vencimento||null, bloqueada:form.bloqueada, motivo_bloqueio:form.bloqueada?(form.motivo_bloqueio||'Falta de pagamento'):null, whatsapp_habilitado:form.whatsapp_habilitado, financeiro_habilitado:form.financeiro_habilitado, valor_mensal:form.valor_mensal?parseFloat(form.valor_mensal):null, dia_vencimento:form.dia_vencimento?parseInt(form.dia_vencimento):null }
     let error: any
     if (modoEdicao && selecionada) {
       const r = await sb.from('empresas').update(payload).eq('id', selecionada.id)
@@ -165,6 +165,7 @@ export default function EmpresasPage() {
                     <p style={{ fontSize:'14px', fontWeight:'700', color:'#0f172a' }}>{e.nome}</p>
                     {e.bloqueada && <span style={{ fontSize:'10px', fontWeight:'700', color:'#dc2626', background:'#fef2f2', borderRadius:'4px', padding:'1px 6px' }}>BLOQ</span>}
                     {e.whatsapp_habilitado && <span style={{ fontSize:'10px', fontWeight:'700', color:'#16a34a', background:'#f0fdf4', borderRadius:'4px', padding:'1px 6px' }}>WPP</span>}
+                    {e.financeiro_habilitado && <span style={{ fontSize:'10px', fontWeight:'700', color:'#7c3aed', background:'#f5f3ff', borderRadius:'4px', padding:'1px 6px' }}>FIN</span>}
                     <span style={{ fontSize:'11px', fontWeight:'500', padding:'2px 8px', borderRadius:'99px', background:planoBg[e.plano]||'#f3f4f6', color:planoCor[e.plano]||'#6b7280', textTransform:'capitalize' as const }}>{e.plano}</span>
                   </div>
                   <p style={{ fontSize:'12px', color:'#6b7280' }}>{e.cnpj||'–'} · {e.email||'–'}</p>
@@ -258,6 +259,15 @@ export default function EmpresasPage() {
                 </div>
                 <div onClick={function() { setForm(function(p) { return { ...p, whatsapp_habilitado: !p.whatsapp_habilitado } }) }} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.whatsapp_habilitado?'#22c55e':'#e5e7eb', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
                   <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.whatsapp_habilitado?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+                </div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', background:'#f5f3ff', borderRadius:'10px', border:'1px solid #ddd6fe' }}>
+                <div>
+                  <p style={{ fontSize:'13px', fontWeight:'600', color:'#5b21b6' }}>Habilitar módulo Financeiro</p>
+                  <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'1px' }}>Permite a empresa lançar receitas, despesas e acompanhar contas a pagar/receber</p>
+                </div>
+                <div onClick={function() { setForm(function(p) { return { ...p, financeiro_habilitado: !p.financeiro_habilitado } }) }} style={{ width:'44px', height:'24px', borderRadius:'99px', cursor:'pointer', background:form.financeiro_habilitado?'#7c3aed':'#e5e7eb', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+                  <div style={{ position:'absolute', top:'2px', width:'20px', height:'20px', borderRadius:'50%', background:'white', left:form.financeiro_habilitado?'22px':'2px', boxShadow:'0 1px 4px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
                 </div>
               </div>
               {erro && <div style={{ padding:'10px 13px', borderRadius:'8px', fontSize:'13px', color:'#dc2626', border:'1px solid #fecaca' }}>{erro}</div>}

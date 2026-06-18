@@ -346,6 +346,7 @@ function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogo
       <nav style={{ flex:1, padding:'8px 8px', display:'flex', flexDirection:'column', gap:'2px', overflowY:'auto' }}>
         {navItems.filter(item => {
           if (item.href === '/dashboard/mensagens' && !empresaAtiva?.whatsapp_habilitado) return false
+          if (item.href === '/dashboard/financeiro' && !empresaAtiva?.financeiro_habilitado && !isMaster) return false
           return true
         }).map(item => {
           const ativo = pathname === item.href

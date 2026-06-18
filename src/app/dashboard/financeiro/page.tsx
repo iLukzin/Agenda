@@ -387,29 +387,29 @@ export default function FinanceiroPage() {
         )}
       </div>
 
-      <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'16px 18px', marginBottom:'20px', display:'flex', flexDirection:'column', gap:'14px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'14px', flexWrap:'wrap' }}>
-          <span style={{ fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em' }}>Período</span>
+      <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'16px 18px', marginBottom:'20px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
+        <div style={{ marginBottom:'12px' }}>
+          <span style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'8px' }}>Período</span>
           <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
             {[['hoje','Hoje'],['mes','Este mês'],['ano','Este ano'],['periodo','Personalizado']].map(([v,l])=>(
               <button key={v} onClick={()=>setFiltroTipo(v as any)} style={{ padding:'7px 14px', borderRadius:'99px', fontSize:'13px', fontWeight:'600', cursor:'pointer', border:filtroTipo===v?'1.5px solid #6366f1':'1px solid #e5e7eb', background:filtroTipo===v?'#eef2ff':'white', color:filtroTipo===v?'#6366f1':'#6b7280' }}>{l}</button>
             ))}
           </div>
           {filtroTipo==='periodo' && (
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
-              <input type="date" value={periodoIni} onChange={e=>setPeriodoIni(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'7px 10px', fontSize:'13px', outline:'none' }}/>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginTop:'10px' }}>
+              <input type="date" value={periodoIni} onChange={e=>setPeriodoIni(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'7px 10px', fontSize:'13px', outline:'none', maxWidth:'160px', boxSizing:'border-box' as const }}/>
               <span style={{ fontSize:'13px', color:'#9ca3af' }}>até</span>
-              <input type="date" value={periodoFim} onChange={e=>setPeriodoFim(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'7px 10px', fontSize:'13px', outline:'none' }}/>
+              <input type="date" value={periodoFim} onChange={e=>setPeriodoFim(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'7px 10px', fontSize:'13px', outline:'none', maxWidth:'160px', boxSizing:'border-box' as const }}/>
             </div>
           )}
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:'10px', paddingTop:'12px', borderTop:'1.5px solid #f3f4f6', flexWrap:'wrap' }}>
-          <span style={{ fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', flexShrink:0 }}>Filtrar por</span>
-          <div style={{ display:'flex', gap:'4px', background:'#f4f5fb', borderRadius:'99px', padding:'4px', flexWrap:'wrap' }}>
-            <button onClick={()=>setFiltroData('vencimento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='vencimento'?'#6366f1':'transparent', color:filtroData==='vencimento'?'white':'#6b7280', whiteSpace:'nowrap', flexShrink:0 }}>
+        <div style={{ paddingTop:'12px', borderTop:'1.5px solid #f3f4f6' }}>
+          <span style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'8px' }}>Filtrar por</span>
+          <div style={{ display:'flex', gap:'4px', background:'#f4f5fb', borderRadius:'99px', padding:'4px', width:'fit-content', flexWrap:'wrap' }}>
+            <button onClick={()=>setFiltroData('vencimento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='vencimento'?'#6366f1':'transparent', color:filtroData==='vencimento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
               Data lançamento
             </button>
-            <button onClick={()=>setFiltroData('pagamento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='pagamento'?'#6366f1':'transparent', color:filtroData==='pagamento'?'white':'#6b7280', whiteSpace:'nowrap', flexShrink:0 }}>
+            <button onClick={()=>setFiltroData('pagamento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='pagamento'?'#6366f1':'transparent', color:filtroData==='pagamento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
               Data pagamento
             </button>
           </div>

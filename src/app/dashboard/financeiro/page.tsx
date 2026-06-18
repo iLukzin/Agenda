@@ -90,6 +90,13 @@ export default function FinanceiroPage() {
   const [editandoCategoriaId, setEditandoCategoriaId] = useState('')
   const [editandoCategoriaNome, setEditandoCategoriaNome] = useState('')
 
+  const [modalDRE, setModalDRE] = useState(false)
+  const [gerandoDRE, setGerandoDRE] = useState(false)
+  const [dreFiltroTipo, setDreFiltroTipo] = useState<'hoje'|'mes'|'ano'|'periodo'>('mes')
+  const [dreIni, setDreIni] = useState(inicioMes())
+  const [dreFim, setDreFim] = useState(fimMes())
+  const [dreCriterio, setDreCriterio] = useState<'vencimento'|'pagamento'>('pagamento')
+
   const [filtroTipo, setFiltroTipo] = useState<'hoje'|'mes'|'ano'|'periodo'>('hoje')
   const [periodoIni, setPeriodoIni] = useState(hojeISO())
   const [periodoFim, setPeriodoFim] = useState(hojeISO())
@@ -107,6 +114,12 @@ export default function FinanceiroPage() {
     if (filtroTipo==='mes')    { setPeriodoIni(inicioMes()); setPeriodoFim(fimMes()) }
     if (filtroTipo==='ano')    { setPeriodoIni(inicioAno()); setPeriodoFim(fimAno()) }
   }, [filtroTipo])
+
+  useEffect(() => {
+    if (dreFiltroTipo==='hoje')   { setDreIni(hojeISO());   setDreFim(hojeISO()) }
+    if (dreFiltroTipo==='mes')    { setDreIni(inicioMes()); setDreFim(fimMes()) }
+    if (dreFiltroTipo==='ano')    { setDreIni(inicioAno()); setDreFim(fimAno()) }
+  }, [dreFiltroTipo])
 
   const carregar = useCallback(async () => {
     if (!empresaAtiva?.id || !temAcesso) return
@@ -440,6 +453,138 @@ export default function FinanceiroPage() {
   const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) =>
     setForm(p => ({...p, [k]: e.target.value}))
 
+  // ────────────────────────────────────────────────────────────
+  // DRE — Demonstrativo de Resultado do Exercício
+  // ────────────────────────────────────────────────────────────
+  async function gerarDRE() {
+    if (!empresaAtiva?.id) return
+    setGerandoDRE(true)
+    const sb = createClient()
+    const campoData = dreCriterio === 'pagamento' ? 'data_pagamento' : 'data_vencimento'
+
+    const [{ data: lans }, { data: ags }, { data: cls }] = await Promise.all([
+      sb.from('lancamentos')
+        .select('id,tipo,descricao,valor,data_vencimento,data_pagamento,status,categoria,cliente_id')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('status', 'pago')
+        .gte(campoData, dreIni)
+        .lte(campoData, dreFim),
+      sb.from('agendamentos')
+        .select('id,data_inicio,valor,valor_bruto,desconto,status,cliente_id,servico_id')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('status', 'fechado')
+        .gte('data_inicio', dreIni+'T00:00:00')
+        .lte('data_inicio', dreFim+'T23:59:59'),
+      sb.from('clientes').select('id,nome').eq('empresa_id', empresaAtiva.id),
+    ])
+
+    const cliMap: Record<string,string> = {}
+    ;(cls||[]).forEach((c:any) => { cliMap[c.id] = c.nome })
+
+    const lansPagos = (lans||[]) as any[]
+    const agsFechados = (ags||[]) as any[]
+
+    // Agrupar receitas de lançamentos por categoria
+    const receitasPorCategoria: Record<string, number> = {}
+    let totalReceitasLanc = 0
+    lansPagos.filter(l=>l.tipo==='receita').forEach(l => {
+      const cat = l.categoria || 'Sem categoria'
+      receitasPorCategoria[cat] = (receitasPorCategoria[cat]||0) + Number(l.valor)
+      totalReceitasLanc += Number(l.valor)
+    })
+
+    // Agrupar despesas por categoria
+    const despesasPorCategoria: Record<string, number> = {}
+    let totalDespesas = 0
+    lansPagos.filter(l=>l.tipo==='despesa').forEach(l => {
+      const cat = l.categoria || 'Sem categoria'
+      despesasPorCategoria[cat] = (despesasPorCategoria[cat]||0) + Number(l.valor)
+      totalDespesas += Number(l.valor)
+    })
+
+    // Receita de atendimentos da agenda (sempre por data do atendimento, já que não tem "vencimento/pagamento" separado)
+    const totalReceitaAgendamentos = agsFechados.reduce((s,a)=>s + Number(a.valor||0), 0)
+    const qtdAgendamentos = agsFechados.length
+
+    const totalReceitas = totalReceitasLanc + totalReceitaAgendamentos
+    const resultado = totalReceitas - totalDespesas
+    const margem = totalReceitas > 0 ? (resultado/totalReceitas*100) : 0
+
+    const linhasReceita = Object.entries(receitasPorCategoria).sort((a,b)=>b[1]-a[1])
+    const linhasDespesa = Object.entries(despesasPorCategoria).sort((a,b)=>b[1]-a[1])
+
+    const label = dreFiltroTipo==='hoje'?'Hoje':dreFiltroTipo==='mes'?'Este mês':dreFiltroTipo==='ano'?'Este ano':`${fmtData(dreIni)} a ${fmtData(dreFim)}`
+    const criterioLabel = dreCriterio === 'pagamento' ? 'Data de pagamento' : 'Data de lançamento (vencimento)'
+
+    const linhaHtml = (nome: string, valor: number, totalRef: number, cor: string) => `
+      <tr>
+        <td style="padding-left:24px">${nome}</td>
+        <td style="text-align:right;font-weight:600;color:${cor}">R$ ${valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+        <td style="text-align:right;color:#9ca3af;font-size:11px">${totalRef>0?(valor/totalRef*100).toFixed(1):'0,0'}%</td>
+      </tr>`
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>DRE - ${empresaAtiva?.nome||''}</title>
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:32px;color:#1a1a2e;max-width:820px;margin:0 auto}
+      h1{font-size:22px;margin-bottom:2px}
+      h2{font-size:14px;font-weight:700;margin:0;padding:10px 14px;border-radius:8px 8px 0 0}
+      .sub{color:#9ca3af;font-size:12.5px;margin-bottom:24px}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;border:1px solid #f0f0f0;border-radius:0 0 8px 8px;overflow:hidden}
+      td{padding:9px 14px;border-bottom:1px solid #f5f5f5}
+      .totalrow td{font-weight:800;border-top:2px solid #e5e7eb;border-bottom:none;font-size:14px}
+      .secrec h2{background:#ecfdf5;color:#065f46}
+      .secdes h2{background:#fef2f2;color:#991b1b}
+      .resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+      .card{border-radius:10px;padding:14px 16px}
+      .card p:first-child{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+      .card p:last-child{font-size:19px;font-weight:800;margin:0}
+      @media print{.no-print{display:none}}
+    </style></head><body>
+    <h1>Demonstrativo de Resultado (DRE)</h1>
+    <p class="sub">${empresaAtiva?.nome||''} · Período: ${label} (${fmtData(dreIni)} a ${fmtData(dreFim)}) · Critério: ${criterioLabel} · Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</p>
+
+    <div class="resumo">
+      <div class="card" style="background:#ecfdf5"><p>Receita total</p><p style="color:#059669">R$ ${totalReceitas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</p></div>
+      <div class="card" style="background:#fef2f2"><p>Despesa total</p><p style="color:#dc2626">R$ ${totalDespesas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</p></div>
+      <div class="card" style="background:${resultado>=0?'#eef2ff':'#fef2f2'}"><p>Resultado (lucro/prejuízo)</p><p style="color:${resultado>=0?'#4f46e5':'#dc2626'}">R$ ${resultado.toLocaleString('pt-BR',{minimumFractionDigits:2})}</p></div>
+    </div>
+
+    <div class="secrec">
+      <h2>Receitas</h2>
+      <table>
+        <tr><td style="padding-left:24px;font-weight:600">Atendimentos da agenda (${qtdAgendamentos})</td><td style="text-align:right;font-weight:600;color:#059669">R$ ${totalReceitaAgendamentos.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td style="text-align:right;color:#9ca3af;font-size:11px">${totalReceitas>0?(totalReceitaAgendamentos/totalReceitas*100).toFixed(1):'0,0'}%</td></tr>
+        ${linhasReceita.map(([cat,v])=>linhaHtml(cat, v, totalReceitas, '#059669')).join('')}
+        <tr class="totalrow"><td>Total de receitas</td><td style="text-align:right;color:#059669">R$ ${totalReceitas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td></td></tr>
+      </table>
+    </div>
+
+    <div class="secdes">
+      <h2>Despesas</h2>
+      <table>
+        ${linhasDespesa.length>0 ? linhasDespesa.map(([cat,v])=>linhaHtml(cat, v, totalDespesas, '#dc2626')).join('') : '<tr><td style="padding-left:24px;color:#9ca3af">Nenhuma despesa no período</td><td></td><td></td></tr>'}
+        <tr class="totalrow"><td>Total de despesas</td><td style="text-align:right;color:#dc2626">R$ ${totalDespesas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td></td></tr>
+      </table>
+    </div>
+
+    <table>
+      <tr class="totalrow" style="background:${resultado>=0?'#eef2ff':'#fef2f2'}">
+        <td style="border-radius:8px 0 0 8px">Resultado do período</td>
+        <td style="text-align:right;color:${resultado>=0?'#4f46e5':'#dc2626'}">R$ ${resultado.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+        <td style="text-align:right;font-size:12px;color:#9ca3af;border-radius:0 8px 8px 0">margem ${margem.toFixed(1)}%</td>
+      </tr>
+    </table>
+
+    <br><button class="no-print" onclick="window.print()" style="padding:10px 20px;background:#6366f1;color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer">Imprimir / Salvar PDF</button>
+    </body></html>`
+
+    const win = window.open('','_blank','width=900,height=700')
+    if (!win) { alert('Permita pop-ups para visualizar o DRE.'); setGerandoDRE(false); return }
+    win.document.write(html)
+    win.document.close()
+    setGerandoDRE(false)
+    setModalDRE(false)
+  }
+
   const labelPeriodo = filtroTipo==='hoje'?'Hoje':filtroTipo==='mes'?'Este mês':filtroTipo==='ano'?`Ano ${new Date().getFullYear()}`:`${fmtData(periodoIni)} - ${fmtData(periodoFim)}`
 
   const abaBtnStyle = (a: string) => ({
@@ -457,22 +602,28 @@ export default function FinanceiroPage() {
           <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
           <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
         </div>
-        {podeCriar && (
-          <div style={{ display:'flex', gap:'8px', width:'100%', maxWidth:'360px', flexWrap:'wrap' }}>
-            <button onClick={()=>abrirModalCategorias('receita')} style={{ flex:'1 1 auto', background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px 12px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v10c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/></svg>
-              Categorias
-            </button>
-            <button onClick={()=>abrirNovo('receita')} style={{ flex:'1 1 auto', background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Receita
-            </button>
-            <button onClick={()=>abrirNovo('despesa')} style={{ flex:'1 1 auto', background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Despesa
-            </button>
-          </div>
-        )}
+        <div style={{ display:'flex', gap:'8px', width:'100%', maxWidth:podeCriar?'460px':'140px', flexWrap:'wrap' }}>
+          <button onClick={()=>setModalDRE(true)} style={{ flex:'1 1 auto', background:'#eef2ff', color:'#4338ca', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'10px 12px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18.4 8.6 12 15l-3-3-3.6 3.6"/></svg>
+            DRE
+          </button>
+          {podeCriar && (
+            <>
+              <button onClick={()=>abrirModalCategorias('receita')} style={{ flex:'1 1 auto', background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px 12px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v10c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/></svg>
+                Categorias
+              </button>
+              <button onClick={()=>abrirNovo('receita')} style={{ flex:'1 1 auto', background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Receita
+              </button>
+              <button onClick={()=>abrirNovo('despesa')} style={{ flex:'1 1 auto', background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', whiteSpace:'nowrap' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Despesa
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'16px 18px', marginBottom:'20px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
@@ -973,6 +1124,59 @@ export default function FinanceiroPage() {
             </div>
 
             <p style={{ fontSize:'11px', color:'#9ca3af', marginTop:'14px' }}>Categorias inativas não aparecem para escolher em novos lançamentos, mas continuam visíveis nos lançamentos já existentes.</p>
+          </div>
+        </div>
+      )}
+
+      {modalDRE && (
+        <div onClick={()=>setModalDRE(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:210, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', borderRadius:'18px', width:'100%', maxWidth:'440px', padding:'20px', maxHeight:'88vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px' }}>
+              <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#1a1a2e' }}>DRE — Demonstrativo de Resultado</h2>
+              <button onClick={()=>setModalDRE(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px', color:'#6b7280', flexShrink:0 }}>×</button>
+            </div>
+            <p style={{ fontSize:'12.5px', color:'#9ca3af', marginBottom:'18px' }}>Escolha o período e o critério de data para gerar o relatório.</p>
+
+            <div style={{ marginBottom:'16px' }}>
+              <span style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'8px' }}>Período</span>
+              <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                {[['hoje','Hoje'],['mes','Este mês'],['ano','Este ano'],['periodo','Personalizado']].map(([v,l])=>(
+                  <button key={v} onClick={()=>setDreFiltroTipo(v as any)} style={{ padding:'7px 14px', borderRadius:'99px', fontSize:'13px', fontWeight:'600', cursor:'pointer', border:dreFiltroTipo===v?'1.5px solid #6366f1':'1px solid #e5e7eb', background:dreFiltroTipo===v?'#eef2ff':'white', color:dreFiltroTipo===v?'#6366f1':'#6b7280' }}>{l}</button>
+                ))}
+              </div>
+              {dreFiltroTipo==='periodo' && (
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginTop:'10px' }}>
+                  <input type="date" value={dreIni} onChange={e=>setDreIni(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'7px 10px', fontSize:'13px', outline:'none', maxWidth:'160px', boxSizing:'border-box' as const }}/>
+                  <span style={{ fontSize:'13px', color:'#9ca3af' }}>até</span>
+                  <input type="date" value={dreFim} onChange={e=>setDreFim(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'7px 10px', fontSize:'13px', outline:'none', maxWidth:'160px', boxSizing:'border-box' as const }}/>
+                </div>
+              )}
+            </div>
+
+            <div style={{ paddingTop:'14px', borderTop:'1.5px solid #f3f4f6', marginBottom:'8px' }}>
+              <span style={{ display:'block', fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'8px' }}>Considerar</span>
+              <div style={{ display:'flex', gap:'4px', background:'#f4f5fb', borderRadius:'99px', padding:'4px', width:'fit-content', flexWrap:'wrap' }}>
+                <button onClick={()=>setDreCriterio('vencimento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:dreCriterio==='vencimento'?'#6366f1':'transparent', color:dreCriterio==='vencimento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
+                  Data lançamento
+                </button>
+                <button onClick={()=>setDreCriterio('pagamento')} style={{ padding:'7px 15px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:dreCriterio==='pagamento'?'#6366f1':'transparent', color:dreCriterio==='pagamento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
+                  Data pagamento
+                </button>
+              </div>
+              <p style={{ fontSize:'11.5px', color:'#9ca3af', marginTop:'8px' }}>
+                {dreCriterio==='pagamento'
+                  ? 'Considera lançamentos efetivamente pagos/recebidos dentro do período.'
+                  : 'Considera lançamentos pagos cujo vencimento caiu dentro do período.'}
+              </p>
+            </div>
+
+            <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end', marginTop:'20px' }}>
+              <button onClick={()=>setModalDRE(false)} style={{ background:'#f3f4f6', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', cursor:'pointer' }}>Cancelar</button>
+              <button onClick={gerarDRE} disabled={gerandoDRE}
+                style={{ background: gerandoDRE ? '#a5b4fc' : '#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 22px', fontSize:'14px', fontWeight:'700', cursor:gerandoDRE?'not-allowed':'pointer' }}>
+                {gerandoDRE?'Gerando...':'Gerar / Visualizar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

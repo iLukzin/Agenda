@@ -82,6 +82,7 @@ export default function FinanceiroPage() {
   const [filtroTipo, setFiltroTipo] = useState<'hoje'|'mes'|'ano'|'periodo'>('mes')
   const [periodoIni, setPeriodoIni] = useState(inicioMes())
   const [periodoFim, setPeriodoFim] = useState(fimMes())
+  const [filtroData, setFiltroData] = useState<'vencimento'|'pagamento'>('vencimento')
 
   const [form, setForm] = useState({
     tipo: 'receita' as 'receita'|'despesa',
@@ -101,13 +102,19 @@ export default function FinanceiroPage() {
     setCarregando(true)
     const sb = createClient()
 
-    const [{ data: lans }, { data: ags }, { data: cls }] = await Promise.all([
+    // Busca lançamentos cujo vencimento OU pagamento caia no período,
+    // e filtra no cliente conforme o critério escolhido (filtroData)
+    const [{ data: lansVenc }, { data: lansPag }, { data: ags }, { data: cls }] = await Promise.all([
       sb.from('lancamentos')
         .select('id,tipo,descricao,valor,data_vencimento,data_pagamento,status,categoria,forma_pagamento,cliente_id,origem,observacoes')
         .eq('empresa_id', empresaAtiva.id)
         .gte('data_vencimento', periodoIni)
-        .lte('data_vencimento', periodoFim)
-        .order('data_vencimento', { ascending:false }),
+        .lte('data_vencimento', periodoFim),
+      sb.from('lancamentos')
+        .select('id,tipo,descricao,valor,data_vencimento,data_pagamento,status,categoria,forma_pagamento,cliente_id,origem,observacoes')
+        .eq('empresa_id', empresaAtiva.id)
+        .gte('data_pagamento', periodoIni)
+        .lte('data_pagamento', periodoFim),
       sb.from('agendamentos')
         .select('id,data_inicio,valor,valor_bruto,desconto,status,cliente_id,servico_id')
         .eq('empresa_id', empresaAtiva.id)
@@ -131,9 +138,16 @@ export default function FinanceiroPage() {
       }
     }
 
-    setLancamentos((lans||[]).map((l:any) => ({
+    // Une os dois conjuntos sem duplicar, mantendo todos os lançamentos que
+    // tocam o período por qualquer um dos dois critérios
+    const todosMap: Record<string,any> = {}
+    ;(lansVenc||[]).forEach((l:any) => { todosMap[l.id] = l })
+    ;(lansPag||[]).forEach((l:any) => { todosMap[l.id] = l })
+    const todosLans = Object.values(todosMap)
+
+    setLancamentos(todosLans.map((l:any) => ({
       ...l, cliente_nome: l.cliente_id?(cliMap[l.cliente_id]||''):'', origem:l.origem||'manual', observacoes: l.observacoes || '',
-    })))
+    })) as Lancamento[])
     setAgsFinalizados((ags||[]).map((a:any) => ({
       id:a.id, data_inicio:a.data_inicio, valor:a.valor||0, desconto:a.desconto||0, valor_bruto:a.valor_bruto||a.valor||0,
       cliente:cliMap[a.cliente_id]||'--', servico:servMap[a.servico_id]||'--',
@@ -180,15 +194,32 @@ export default function FinanceiroPage() {
     )
   }
 
-  const receitasLanc  = lancamentos.filter(l=>l.tipo==='receita' && l.status==='pago').reduce((s,l)=>s+l.valor,0)
+  // Aplica o critério de período escolhido: vencimento ou pagamento.
+  // A busca já trouxe tudo que toca o período por qualquer um dos dois critérios,
+  // aqui filtramos de fato pelo que o usuário escolheu ver.
+  const lancamentosNoPeriodo = lancamentos.filter(l => {
+    if (filtroData === 'pagamento') {
+      // Só considera o que foi efetivamente pago/recebido dentro do período
+      return !!l.data_pagamento && l.data_pagamento >= periodoIni && l.data_pagamento <= periodoFim
+    }
+    return l.data_vencimento >= periodoIni && l.data_vencimento <= periodoFim
+  })
+
+  const receitasLanc  = lancamentosNoPeriodo.filter(l=>l.tipo==='receita' && l.status==='pago').reduce((s,l)=>s+l.valor,0)
   const receitasAgs   = agsFinalizados.reduce((s,a)=>s+a.valor,0)
   const totalReceitas = receitasLanc + receitasAgs
-  const totalDespesas = lancamentos.filter(l=>l.tipo==='despesa' && l.status==='pago').reduce((s,l)=>s+l.valor,0)
+  const totalDespesas = lancamentosNoPeriodo.filter(l=>l.tipo==='despesa' && l.status==='pago').reduce((s,l)=>s+l.valor,0)
   const lucro          = totalReceitas - totalDespesas
 
-  const contasReceber = lancamentos.filter(l=>l.tipo==='receita' && l.status==='pendente')
-  const contasPagar   = lancamentos.filter(l=>l.tipo==='despesa' && l.status==='pendente')
-  const contasPagasLista = lancamentos.filter(l=>l.status==='pago').sort((a,b)=>(b.data_pagamento||'').localeCompare(a.data_pagamento||''))
+  // Contas pendentes (a receber/pagar) sempre seguem o vencimento, mesmo se o
+  // filtro estiver em "pagamento" — não fariam sentido filtradas por uma data que não existe ainda
+  const lancamentosPendentesPeriodo = filtroData === 'pagamento'
+    ? lancamentos.filter(l => l.data_vencimento >= periodoIni && l.data_vencimento <= periodoFim)
+    : lancamentosNoPeriodo
+
+  const contasReceber = lancamentosPendentesPeriodo.filter(l=>l.tipo==='receita' && l.status==='pendente')
+  const contasPagar   = lancamentosPendentesPeriodo.filter(l=>l.tipo==='despesa' && l.status==='pendente')
+  const contasPagasLista = lancamentosNoPeriodo.filter(l=>l.status==='pago').sort((a,b)=>(b.data_pagamento||'').localeCompare(a.data_pagamento||''))
 
   const totalAReceber = contasReceber.reduce((s,l)=>s+l.valor,0)
   const totalAPagar   = contasPagar.reduce((s,l)=>s+l.valor,0)
@@ -370,7 +401,23 @@ export default function FinanceiroPage() {
             <input type="date" value={periodoFim} onChange={e=>setPeriodoFim(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'7px 10px', fontSize:'13px', outline:'none' }}/>
           </div>
         )}
+        <div style={{ display:'flex', alignItems:'center', gap:'8px', marginLeft:'auto', paddingLeft:'10px', borderLeft:'1.5px solid #f0f0f0', flexWrap:'wrap' }}>
+          <span style={{ fontSize:'12px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em' }}>Filtrar por</span>
+          <div style={{ display:'flex', gap:'4px', background:'#f4f5fb', borderRadius:'99px', padding:'3px' }}>
+            <button onClick={()=>setFiltroData('vencimento')} style={{ padding:'6px 13px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='vencimento'?'#6366f1':'transparent', color:filtroData==='vencimento'?'white':'#6b7280' }}>
+              Data lançamento
+            </button>
+            <button onClick={()=>setFiltroData('pagamento')} style={{ padding:'6px 13px', borderRadius:'99px', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='pagamento'?'#6366f1':'transparent', color:filtroData==='pagamento'?'white':'#6b7280' }}>
+              Data pagamento
+            </button>
+          </div>
+        </div>
       </div>
+      {filtroData==='pagamento' && (
+        <div style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'10px', padding:'10px 14px', marginBottom:'18px', fontSize:'12.5px', color:'#4338ca' }}>
+          Mostrando o que foi efetivamente pago/recebido dentro do período selecionado. Contas a receber e a pagar continuam mostrando os vencimentos do período, independente deste filtro.
+        </div>
+      )}
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:'14px', marginBottom:'22px' }}>
         {[
@@ -437,7 +484,8 @@ export default function FinanceiroPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:'16px' }}>
             <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'18px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
-              <h3 style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e', marginBottom:'16px' }}>Resumo do período</h3>
+              <h3 style={{ fontSize:'14px', fontWeight:'700', color:'#1a1a2e', marginBottom:'2px' }}>Resumo do período</h3>
+              <p style={{ fontSize:'11px', color:'#9ca3af', marginBottom:'14px' }}>Por {filtroData==='vencimento'?'data de lançamento':'data de pagamento'}</p>
               {[
                 { label:'Receitas (lançamentos pagos)', v:receitasLanc, cor:'#059669' },
                 { label:'Receitas (atendimentos finalizados)', v:receitasAgs, cor:'#059669' },
@@ -620,7 +668,8 @@ export default function FinanceiroPage() {
       {aba==='relatorio' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'18px' }}>
           <div style={{ background:'white', borderRadius:'16px', border:'1px solid #f0f0f8', padding:'20px', boxShadow:'0 1px 2px rgba(15,23,42,0.03)' }}>
-            <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#1a1a2e', marginBottom:'20px' }}>Resumo financeiro - {labelPeriodo}</h2>
+            <h2 style={{ fontSize:'16px', fontWeight:'700', color:'#1a1a2e', marginBottom:'4px' }}>Resumo financeiro - {labelPeriodo}</h2>
+            <p style={{ fontSize:'12px', color:'#9ca3af', marginBottom:'18px' }}>Filtrado por {filtroData==='vencimento'?'data de lançamento':'data de pagamento'}</p>
             <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
               {[
                 { label:'Receitas de lançamentos (pagos)',   v:receitasLanc,   cor:'#059669', bold:false },
@@ -640,10 +689,10 @@ export default function FinanceiroPage() {
           </div>
 
           <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
-            <button onClick={()=>exportarExcel(lancamentos, 'relatorio-financeiro')} style={{ background:'#f0fdf4', color:'#059669', border:'1px solid #bbf7d0', borderRadius:'9px', padding:'10px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+            <button onClick={()=>exportarExcel(lancamentosNoPeriodo, 'relatorio-financeiro')} style={{ background:'#f0fdf4', color:'#059669', border:'1px solid #bbf7d0', borderRadius:'9px', padding:'10px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
               Exportar Excel
             </button>
-            <button onClick={()=>exportarPDF(lancamentos, 'Relatório Financeiro')} style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:'9px', padding:'10px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+            <button onClick={()=>exportarPDF(lancamentosNoPeriodo, 'Relatório Financeiro')} style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:'9px', padding:'10px 18px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
               Exportar PDF
             </button>
           </div>

@@ -193,6 +193,30 @@ export default function ClientesPage() {
     if (!aaForm.horario) return
     setAaSalvando(true)
     const sb = createClient()
+
+    // Verificar conflito: mesmo profissional, mesmo dia da semana e mesmo horário na empresa
+    if (aaForm.profissional_id) {
+      const { data: conflito } = await sb
+        .from('auto_agenda')
+        .select('id, cliente_id, clientes!inner(nome)')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('profissional_id', aaForm.profissional_id)
+        .eq('dia_semana', parseInt(aaForm.dia_semana))
+        .eq('horario', aaForm.horario + ':00')
+        .eq('ativo', true)
+        .neq('cliente_id', selecionado.id) // ignora o próprio cliente
+        .maybeSingle()
+
+      if (conflito) {
+        const nomeCliente = (conflito as any).clientes?.nome || 'outro cliente'
+        const profNome = profissionais.find(p => p.id === aaForm.profissional_id)?.nome || 'este profissional'
+        const diaNome = DIAS_SEMANA[parseInt(aaForm.dia_semana)]
+        alert(`⚠️ Conflito de horário!\n\n${profNome} já está reservado para ${nomeCliente} às ${aaForm.horario} toda ${diaNome}.\n\nEscolha outro horário ou outro profissional.`)
+        setAaSalvando(false)
+        return
+      }
+    }
+
     const { error } = await sb.from('auto_agenda').insert({
       empresa_id: empresaAtiva.id,
       cliente_id: selecionado.id,
@@ -203,7 +227,7 @@ export default function ClientesPage() {
       ativo: true,
     })
     if (error) {
-      if (error.code === '23505') alert('Já existe um AutoAgenda para este dia/horário.')
+      if (error.code === '23505') alert('Já existe um AutoAgenda para este cliente neste dia/horário.')
       else alert('Erro ao adicionar: ' + error.message)
     } else {
       setAaForm({ dia_semana:'1', horario:'09:00', profissional_id:'', servico_id:'' })

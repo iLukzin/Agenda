@@ -622,7 +622,22 @@ export default function ClientesPage() {
                   </div>
                 )}
 
-                <div style={{ marginTop:'20px', display:'flex', justifyContent:'flex-end' }}>
+                <div style={{ marginTop:'20px', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'8px' }}>
+                  {(isMaster || empresaAtiva?.auto_agenda_habilitado) && (
+                    <button onClick={async () => {
+                      if (!confirm('Executar AutoAgenda agora? O sistema criará os agendamentos desta semana para este e todos os clientes com AutoAgenda ativo.')) return
+                      try {
+                        const res = await fetch('/api/cron/auto-agenda')
+                        const json = await res.json()
+                        alert(`✅ ${json.message}\n\nHoje (BRT): ${json.hoje_brt} (dia ${json.hoje_diasemana})\nAmanhã (BRT): ${json.amanha_brt}\nConfigs ativas: ${json.configs_ativas}\n\n${json.detalhes?.slice(0,5).join('\n') || ''}`)
+                        if (selecionado?.id) await carregarAutoAgendas(selecionado.id)
+                      } catch (e) {
+                        alert('Erro ao executar: ' + String(e))
+                      }
+                    }} style={{ background:'#ecfeff', color:'#0891b2', border:'1px solid #a5f3fc', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                      ▶ Executar agora
+                    </button>
+                  )}
                   <button onClick={fecharModal} style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 20px', fontSize:'14px', cursor:'pointer' }}>Fechar</button>
                 </div>
               </div>

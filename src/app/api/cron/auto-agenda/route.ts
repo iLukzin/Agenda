@@ -146,7 +146,6 @@ export async function GET(req: NextRequest) {
           data_inicio:     dataInicioBRT.toISOString(),
           data_fim:        dataFimComDuracao.toISOString(),
           status:          'aberto',
-          origem:          'auto_agenda',
           observacoes:     'Agendado automaticamente (AutoAgenda)',
           tipo_cobranca:   'avulso',
           valor:           null,

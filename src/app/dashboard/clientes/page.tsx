@@ -235,9 +235,9 @@ export default function ClientesPage() {
       }
     }
 
-    // Verificar conflito com outro cliente no mesmo profissional/dia/horário
+    // Verificar conflito com outro cliente no mesmo profissional/dia/horário (AutoAgenda)
     if (aaForm.profissional_id) {
-      const { data: conflito } = await sb
+      const { data: conflitoAA } = await sb
         .from('auto_agenda')
         .select('id, cliente_id, clientes!inner(nome)')
         .eq('empresa_id', empresaAtiva.id)
@@ -248,12 +248,54 @@ export default function ClientesPage() {
         .neq('cliente_id', selecionado.id)
         .maybeSingle()
 
-      if (conflito) {
-        const nomeCliente = (conflito as any).clientes?.nome || 'outro cliente'
+      if (conflitoAA) {
+        const nomeCliente = (conflitoAA as any).clientes?.nome || 'outro cliente'
         const diaNome = DIAS_SEMANA[diaSelecionado]
-        alert(`⚠️ Conflito de horário!\n\n${profNome} já está reservado para ${nomeCliente} às ${aaForm.horario} toda ${diaNome}.\n\nEscolha outro horário ou outro profissional.`)
+        alert(`⚠️ Conflito de AutoAgenda!\n\n${profNome} já tem AutoAgenda configurado para "${nomeCliente}" às ${aaForm.horario} toda ${diaNome}.\n\nEscolha outro horário ou outro profissional.`)
         setAaSalvando(false)
         return
+      }
+
+      // Verificar também agendamentos reais já marcados na agenda
+      // para este profissional no mesmo dia da semana e horário (próximas 8 semanas)
+      const horaSel = aaForm.horario // HH:MM
+      const [hh, mm] = horaSel.split(':').map(Number)
+      const minSel = hh * 60 + mm
+
+      // Monta janela de busca: hoje até 8 semanas à frente
+      const agoraBRT = new Date(Date.now() - 3 * 60 * 60 * 1000)
+      const fim8sem  = new Date(agoraBRT.getTime() + 56 * 24 * 60 * 60 * 1000)
+      const dataIniStr = agoraBRT.toISOString().slice(0, 10)
+      const dataFimStr = fim8sem.toISOString().slice(0, 10)
+
+      const { data: agsExistentes } = await sb
+        .from('agendamentos')
+        .select('id, cliente_id, data_inicio, clientes!inner(nome)')
+        .eq('empresa_id', empresaAtiva.id)
+        .eq('prof_id', aaForm.profissional_id)
+        .neq('status', 'cancelado')
+        .gte('data_inicio', dataIniStr + 'T00:00:00')
+        .lte('data_inicio', dataFimStr + 'T23:59:59')
+
+      if (agsExistentes && agsExistentes.length > 0) {
+        for (const ag of agsExistentes) {
+          const agData = new Date(ag.data_inicio)
+          // Converter para BRT para verificar dia da semana e horário corretos
+          const agBRT = new Date(agData.getTime() - 3 * 60 * 60 * 1000)
+          const agDiaSemana = agBRT.getUTCDay()
+          const agMin = agBRT.getUTCHours() * 60 + agBRT.getUTCMinutes()
+
+          // Mesmo dia da semana e mesma hora (±5 min de tolerância)?
+          // Mas ignora se for do próprio cliente que está sendo editado
+          if (agDiaSemana === diaSelecionado && Math.abs(agMin - minSel) <= 5 && ag.cliente_id !== selecionado.id) {
+            const nomeCliente = (ag as any).clientes?.nome || 'outro cliente'
+            const diaNome = DIAS_SEMANA[diaSelecionado]
+            const dataFormatada = agBRT.toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' })
+            alert(`⚠️ Agenda já ocupada!\n\n${profNome} já tem um agendamento marcado para "${nomeCliente}" às ${horaSel} na ${diaNome} (ex: ${dataFormatada}).\n\nEste horário está ocupado neste dia da semana. Escolha outro horário ou outro profissional.`)
+            setAaSalvando(false)
+            return
+          }
+        }
       }
     }
 

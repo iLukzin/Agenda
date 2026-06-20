@@ -154,16 +154,20 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // Buscar duração do serviço
+      // Buscar valor e duração do serviço
       let duracaoMin = 60
+      let valorServico: number | null = null
       if (cfg.servico_id) {
         const { data: srv } = await sb
           .from('servicos')
-          .select('duracao')
+          .select('duracao_min, valor')
           .eq('id', cfg.servico_id)
           .maybeSingle()
-        if (srv?.duracao && Number(srv.duracao) > 0) {
-          duracaoMin = Number(srv.duracao)
+        if (srv?.duracao_min && Number(srv.duracao_min) > 0) {
+          duracaoMin = Number(srv.duracao_min)
+        }
+        if (srv?.valor && Number(srv.valor) > 0) {
+          valorServico = Number(srv.valor)
         }
       }
       const dataFimComDuracao = new Date(dataInicioBRT.getTime() + duracaoMin * 60 * 1000)
@@ -182,7 +186,8 @@ export async function GET(req: NextRequest) {
           status:          'aberto',
           observacoes:     'Agendado automaticamente (AutoAgenda)',
           tipo_cobranca:   'avulso',
-          valor:           null,
+          valor:           valorServico,
+          valor_bruto:     valorServico,
         })
         .select('id')
         .single()

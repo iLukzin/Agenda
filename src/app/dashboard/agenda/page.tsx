@@ -225,6 +225,15 @@ function useVisibilityRefresh(fn: () => void) {
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
   const bloquearValor = (usuario as any)?.bloquear_edicao_valor !== false // padrão: bloqueado
+
+  // Regra especial: se empresa tem "finalizar sem pagamento" ativo E usuário tem
+  // "permitir desconto" ativo, libera edição do valor no modo edição
+  const podeEditarValorDireto = modoEdicao
+    && empresaAtiva?.finalizar_sem_pagamento === true
+    && (usuario as any)?.permitir_desconto === true
+
+  // Valor efetivamente bloqueado: considera a regra especial acima
+  const valorEfBloqueado = podeEditarValorDireto ? false : bloquearValor
   const hoje = useMemo(() => hojeNoBrasil(), [])
 
   const [agendamentos, setAgendamentos] = useState<AgendamentoLocal[]>([])
@@ -1190,22 +1199,25 @@ export default function AgendaPage() {
                 <div>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'6px' }}>
                     <label style={{ fontSize:'13px', fontWeight:'500', color:'#374151' }}>
-                      {bloquearValor ? 'Valor (R$)' : 'Valor (R$)'}
+                      {podeEditarValorDireto ? 'Valor (R$) — editável' : 'Valor (R$)'}
                     </label>
-                    {!bloquearValor && form.valor && parseFloat(form.valor) > 0 && (usuario as any)?.permitir_desconto === true && (
+                    {!valorEfBloqueado && form.valor && parseFloat(form.valor) > 0 && (usuario as any)?.permitir_desconto === true && (
                       <button type="button" onClick={()=>{ setValorOriginal(form.valor); setModalDesconto(true) }}
                         style={{ fontSize:'11px', fontWeight:'600', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'2px 8px', cursor:'pointer' }}>
                         % Desconto
                       </button>
                     )}
                   </div>
-                  <input type="number" value={form.valor} onChange={e=>{ if(!bloquearValor) setForm(f=>({...f,valor:e.target.value})) }} readOnly={bloquearValor}
-                    style={{ opacity:bloquearValor?0.6:1, cursor:bloquearValor?'not-allowed':'text', ...inputStyle }} placeholder="0,00"/>
+                  <input type="number" value={form.valor} onChange={e=>{ if(!valorEfBloqueado) setForm(f=>({...f,valor:e.target.value})) }} readOnly={valorEfBloqueado}
+                    style={{ opacity:valorEfBloqueado?0.6:1, cursor:valorEfBloqueado?'not-allowed':'text', ...inputStyle }} placeholder="0,00"/>
                   {parseFloat(desconto) > 0 && (
                     <div style={{ display:'flex', justifyContent:'space-between', marginTop:'4px' }}>
                       <span style={{ fontSize:'11px', color:'#6b7280' }}>Desc: R$ {parseFloat(desconto).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
                       <span style={{ fontSize:'12px', fontWeight:'700', color:'#059669' }}>Total: R$ {Math.max(0,(parseFloat(form.valor)||0)-parseFloat(desconto)).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
                     </div>
+                  )}
+                  {podeEditarValorDireto && (
+                    <p style={{ fontSize:'11px', color:'#059669', marginTop:'4px' }}>Edite o valor e clique em Salvar para aplicar.</p>
                   )}
                 </div>
               )}

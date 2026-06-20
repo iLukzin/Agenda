@@ -225,15 +225,6 @@ function useVisibilityRefresh(fn: () => void) {
 export default function AgendaPage() {
   const { empresaAtiva, usuario } = useEmpresa()
   const bloquearValor = (usuario as any)?.bloquear_edicao_valor !== false // padrão: bloqueado
-
-  // Regra especial: se empresa tem "finalizar sem pagamento" ativo E usuário tem
-  // "permitir desconto" ativo, libera edição do valor no modo edição
-  const podeEditarValorDireto = modoEdicao
-    && empresaAtiva?.finalizar_sem_pagamento === true
-    && (usuario as any)?.permitir_desconto === true
-
-  // Valor efetivamente bloqueado: considera a regra especial acima
-  const valorEfBloqueado = podeEditarValorDireto ? false : bloquearValor
   const hoje = useMemo(() => hojeNoBrasil(), [])
 
   const [agendamentos, setAgendamentos] = useState<AgendamentoLocal[]>([])
@@ -844,6 +835,15 @@ export default function AgendaPage() {
   }
 
   const isBloqEdicao = modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado')
+
+  // Regra especial: se empresa tem "finalizar sem pagamento" ativo E usuário tem
+  // "permitir desconto" ativo, libera edição do valor somente no modo edição
+  const podeEditarValorDireto = modoEdicao
+    && empresaAtiva?.finalizar_sem_pagamento === true
+    && (usuario as any)?.permitir_desconto === true
+
+  // Valor efetivamente bloqueado: considera a regra especial acima
+  const valorEfBloqueado = podeEditarValorDireto ? false : bloquearValor
 
   const getLabelPeriodo = () => {
     if (!periodoInicio || !periodoFim) return 'Periodo'

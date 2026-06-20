@@ -836,13 +836,13 @@ export default function AgendaPage() {
 
   const isBloqEdicao = modoEdicao && (selecionado?.status === 'fechado' || selecionado?.status === 'cancelado')
 
-  // Regra especial: se empresa tem "finalizar sem pagamento" ativo E usuário tem
-  // "permitir desconto" ativo, libera edição do valor somente no modo edição
+  // Regra: empresa com "finalizar sem pagamento" ativo E usuário com
+  // "bloquear edição de valor" DESMARCADO (false) → pode editar o valor no modo edição
   const podeEditarValorDireto = modoEdicao
     && empresaAtiva?.finalizar_sem_pagamento === true
-    && (usuario as any)?.permitir_desconto === true
+    && (usuario as any)?.bloquear_edicao_valor === false
 
-  // Valor efetivamente bloqueado: considera a regra especial acima
+  // Valor efetivamente bloqueado: considera a regra acima
   const valorEfBloqueado = podeEditarValorDireto ? false : bloquearValor
 
   const getLabelPeriodo = () => {

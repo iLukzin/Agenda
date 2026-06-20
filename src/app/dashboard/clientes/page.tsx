@@ -59,7 +59,7 @@ export default function ClientesPage() {
   const perm = usePermissao('clientes')
   const [clientes, setClientes]     = useState<Cliente[]>([])
   const [planos, setPlanos]         = useState<{id:string;nome:string}[]>([])
-  const [profissionais, setProfissionais] = useState<{id:string;nome:string}[]>([])
+  const [profissionais, setProfissionais] = useState<{id:string;nome:string;servicos:string[]}[]>([])
   const [servicos, setServicos]     = useState<{id:string;nome:string}[]>([])
   const [busca, setBusca]           = useState('')
   const [filtroStatus, setFiltroStatus] = useState('todos')
@@ -101,7 +101,7 @@ export default function ClientesPage() {
     const [{ data: cls, error: errCls }, { data: pls }, { data: profs }, { data: srvs }] = await Promise.all([
       sb.from('clientes').select('id, nome, cpf, telefone, whatsapp, email, endereco, data_nascimento, observacoes, plano_id, status, created_at').eq('empresa_id', empresaAtiva.id).order('nome'),
       sb.from('planos').select('id, nome').eq('empresa_id', empresaAtiva.id),
-      sb.from('profissionais').select('id, nome').eq('empresa_id', empresaAtiva.id).eq('status','ativo').order('nome'),
+      sb.from('profissionais').select('id, nome, servicos').eq('empresa_id', empresaAtiva.id).eq('status','ativo').order('nome'),
       sb.from('servicos').select('id, nome').eq('empresa_id', empresaAtiva.id).eq('status','ativo').order('nome'),
     ])
 
@@ -111,7 +111,7 @@ export default function ClientesPage() {
     if (pls) pls.forEach((p: any) => { planosMap[p.id] = p.nome })
 
     setPlanos(pls || [])
-    setProfissionais(profs || [])
+    setProfissionais((profs || []).map((p: any) => ({ id: p.id, nome: p.nome, servicos: p.servicos || [] })))
     setServicos(srvs || [])
     setClientes((cls || []).map((c: any) => ({
       ...c,
@@ -587,18 +587,35 @@ export default function ClientesPage() {
                       </div>
                       <div>
                         <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Profissional</label>
-                        <select value={aaForm.profissional_id} onChange={e=>setAaForm(p=>({...p,profissional_id:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
-                          <option value="">Qualquer</option>
+                        <select value={aaForm.profissional_id} onChange={e=>setAaForm(p=>({...p, profissional_id:e.target.value, servico_id:''}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
+                          <option value="">Selecionar profissional</option>
                           {profissionais.map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}
                         </select>
                       </div>
-                      <div>
-                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Serviço</label>
-                        <select value={aaForm.servico_id} onChange={e=>setAaForm(p=>({...p,servico_id:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
-                          <option value="">Nenhum</option>
-                          {servicos.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}
-                        </select>
-                      </div>
+                      {/* Serviço só aparece após selecionar profissional */}
+                      {aaForm.profissional_id && (() => {
+                        const profSel = profissionais.find(p => p.id === aaForm.profissional_id)
+                        const servicosDoProf = profSel?.servicos?.length
+                          ? servicos.filter(s => profSel.servicos.includes(s.nome))
+                          : servicos
+                        return (
+                          <div style={{ gridColumn:'1/-1' }}>
+                            <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>
+                              Serviço {profSel?.servicos?.length ? `(${profSel.nome})` : ''}
+                            </label>
+                            {servicosDoProf.length === 0 ? (
+                              <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'8px', padding:'9px 12px', fontSize:'13px', color:'#92400e' }}>
+                                Nenhum serviço vinculado a este profissional.
+                              </div>
+                            ) : (
+                              <select value={aaForm.servico_id} onChange={e=>setAaForm(p=>({...p,servico_id:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
+                                <option value="">Nenhum</option>
+                                {servicosDoProf.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}
+                              </select>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                     <button onClick={adicionarAutoAgenda} disabled={aaSalvando || !aaForm.horario} style={{ width:'100%', background:aaSalvando?'#a5b4fc':'#0891b2', color:'white', border:'none', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:aaSalvando?'not-allowed':'pointer' }}>
                       {aaSalvando ? 'Salvando...' : '+ Adicionar horário'}

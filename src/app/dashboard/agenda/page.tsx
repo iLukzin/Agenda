@@ -691,12 +691,28 @@ export default function AgendaPage() {
     if (!confirm('Finalizar este atendimento?')) return
     setFinalizando(true)
     const sb2 = createClient()
-    const valorBase = agRapido ? agRapido.valor : (parseFloat(form.valor) || 0)
+
+    // Busca o agendamento atual para garantir que o valor/valor_bruto/desconto
+    // sejam preservados exatamente como estão — não depende do form (pode estar zerado)
+    const { data: agAtual } = await sb2
+      .from('agendamentos')
+      .select('valor, valor_bruto, desconto')
+      .eq('id', id)
+      .single()
+
+    // Se agRapido tiver valor, usa ele (já veio da lista com o valor correto)
+    // Caso contrário, usa o que está no banco
+    const valorFinal    = agRapido?.valor ?? agAtual?.valor ?? null
+    const valorBruto    = agAtual?.valor_bruto ?? valorFinal
+    const descontoFinal = agAtual?.desconto ?? null
+
     const { error } = await sb2.from('agendamentos').update({
-      status: 'fechado',
-      valor: valorBase || null,
-      valor_bruto: valorBase || null,
+      status:      'fechado',
+      valor:       valorFinal,
+      valor_bruto: valorBruto,
+      desconto:    descontoFinal,
     }).eq('id', id)
+
     if (error) alert('Erro: ' + error.message)
     else {
       await carregar()

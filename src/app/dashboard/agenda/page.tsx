@@ -686,6 +686,26 @@ export default function AgendaPage() {
     setEnviandoWpp(false)
   }
 
+  // Finaliza sem exigir forma de pagamento (quando flag empresaAtiva.finalizar_sem_pagamento = true)
+  async function finalizarDireto(id: string) {
+    if (!confirm('Finalizar este atendimento?')) return
+    setFinalizando(true)
+    const sb2 = createClient()
+    const valorBase = agRapido ? agRapido.valor : (parseFloat(form.valor) || 0)
+    const { error } = await sb2.from('agendamentos').update({
+      status: 'fechado',
+      valor: valorBase || null,
+      valor_bruto: valorBase || null,
+    }).eq('id', id)
+    if (error) alert('Erro: ' + error.message)
+    else {
+      await carregar()
+      setModalFinalizar(false); setAgRapido(null)
+      if (!agRapido) fecharModal()
+    }
+    setFinalizando(false)
+  }
+
   async function finalizar(id: string) {
     // Se veio do botão rápido, usar o valor do agRapido
     const valorBase = agRapido ? agRapido.valor : (parseFloat(form.valor) || 0)
@@ -820,7 +840,11 @@ export default function AgendaPage() {
             setAgRapido(ag); setMotivoCancelamento(''); setModalCancelar(true)
           } : undefined}
           onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => {
-            setAgRapido(ag); setPagamentos([]); setDescontoFin(''); setErroForm([]); setModalFinalizar(true)
+            if (empresaAtiva?.finalizar_sem_pagamento) {
+              setAgRapido(ag); finalizarDireto(ag.id)
+            } else {
+              setAgRapido(ag); setPagamentos([]); setDescontoFin(''); setErroForm([]); setModalFinalizar(true)
+            }
           } : undefined}
           onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false ? (ag) => { setAgVerPag(ag); setVerPagamentos(true) } : undefined}
           onEnviarWpp={wppConectado && (usuario as any)?.permitir_enviar_wpp !== false ? async (ag) => {
@@ -1241,7 +1265,13 @@ export default function AgendaPage() {
                     )}
                     {enviandoWpp ? 'Enviando...' : statusWpp === 'ok' ? 'Enviado!' : 'Confirmar Wpp'}
                   </button>}
-                  {(usuario as any)?.permitir_finalizar !== false && <button onClick={()=>{ setPagamentos([]); setDescontoFin(''); setModalFinalizar(true) }} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Finalizar</button>}
+                  {(usuario as any)?.permitir_finalizar !== false && <button onClick={()=>{
+                    if (empresaAtiva?.finalizar_sem_pagamento) {
+                      finalizarDireto(selecionado!.id)
+                    } else {
+                      setPagamentos([]); setDescontoFin(''); setModalFinalizar(true)
+                    }
+                  }} style={{ background:'#ecfdf5', color:'#10b981', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'9px 14px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>Finalizar</button>}
                 </div>
               ) : <div/>}
               <div style={{ display:'flex', flexDirection:'column', gap:'8px', flex:1, minWidth:'160px' }}>

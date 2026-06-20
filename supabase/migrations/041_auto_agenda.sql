@@ -40,3 +40,6 @@ CREATE INDEX IF NOT EXISTS idx_auto_agenda_log_data ON auto_agenda_log(data_agen
 ALTER TABLE auto_agenda_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS auto_agenda_log_auth ON auto_agenda_log;
 CREATE POLICY auto_agenda_log_auth ON auto_agenda_log FOR ALL USING (true) WITH CHECK (true);
+
+-- Flag para finalizar agendamento sem exigir forma de pagamento
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS finalizar_sem_pagamento BOOLEAN DEFAULT FALSE;

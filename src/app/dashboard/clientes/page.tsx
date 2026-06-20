@@ -61,6 +61,7 @@ export default function ClientesPage() {
   const [planos, setPlanos]         = useState<{id:string;nome:string}[]>([])
   const [profissionais, setProfissionais] = useState<{id:string;nome:string;servicos:string[]}[]>([])
   const [servicos, setServicos]     = useState<{id:string;nome:string}[]>([])
+  const [horariosProfissional, setHorariosProfissional] = useState<{dia_semana:number;hora_inicio:string;hora_fim:string;ativo:boolean}[]>([])
   const [busca, setBusca]           = useState('')
   const [filtroStatus, setFiltroStatus] = useState('todos')
   const [modalAberto, setModalAberto]   = useState(false)
@@ -188,29 +189,68 @@ export default function ClientesPage() {
     setAaCarregando(false)
   }
 
+  async function carregarHorariosProfissional(profId: string) {
+    if (!profId) { setHorariosProfissional([]); return }
+    const sb = createClient()
+    const { data } = await sb
+      .from('horarios_prof')
+      .select('dia_semana, hora_inicio, hora_fim, ativo')
+      .eq('profissional_id', profId)
+    setHorariosProfissional(data || [])
+  }
+
   async function adicionarAutoAgenda() {
     if (!selecionado?.id || !empresaAtiva?.id) return
     if (!aaForm.horario) return
+    if (!aaForm.profissional_id) { alert('Selecione um profissional para continuar.'); return }
     setAaSalvando(true)
     const sb = createClient()
 
-    // Verificar conflito: mesmo profissional, mesmo dia da semana e mesmo horário na empresa
+    const diaSelecionado = parseInt(aaForm.dia_semana)
+    const profNome = profissionais.find(p => p.id === aaForm.profissional_id)?.nome || 'o profissional'
+
+    // Verificar se o profissional trabalha no dia selecionado
+    if (horariosProfissional.length > 0) {
+      const horarioDia = horariosProfissional.find(h => h.dia_semana === diaSelecionado)
+      const diaNome = DIAS_SEMANA[diaSelecionado]
+
+      if (!horarioDia || !horarioDia.ativo) {
+        alert(`⛔ Dia de descanso!\n\n${profNome} não trabalha na ${diaNome}.\n\nEscolha outro dia da semana.`)
+        setAaSalvando(false)
+        return
+      }
+
+      // Verificar se o horário está dentro do expediente
+      const [hIni, mIni] = horarioDia.hora_inicio.split(':').map(Number)
+      const [hFim, mFim] = horarioDia.hora_fim.split(':').map(Number)
+      const [hSel, mSel] = aaForm.horario.split(':').map(Number)
+      const minIni = hIni * 60 + mIni
+      const minFim = hFim * 60 + mFim
+      const minSel = hSel * 60 + mSel
+
+      if (minSel < minIni || minSel >= minFim) {
+        alert(`⛔ Horário fora do expediente!\n\n${profNome} trabalha na ${diaNome} das ${horarioDia.hora_inicio.slice(0,5)} às ${horarioDia.hora_fim.slice(0,5)}.\n\nEscolha um horário dentro deste intervalo.`)
+        setAaSalvando(false)
+        return
+      }
+    }
+
+    // Verificar conflito com outro cliente no mesmo profissional/dia/horário
     if (aaForm.profissional_id) {
       const { data: conflito } = await sb
         .from('auto_agenda')
         .select('id, cliente_id, clientes!inner(nome)')
         .eq('empresa_id', empresaAtiva.id)
         .eq('profissional_id', aaForm.profissional_id)
-        .eq('dia_semana', parseInt(aaForm.dia_semana))
+        .eq('dia_semana', diaSelecionado)
         .eq('horario', aaForm.horario + ':00')
         .eq('ativo', true)
-        .neq('cliente_id', selecionado.id) // ignora o próprio cliente
+        .neq('cliente_id', selecionado.id)
         .maybeSingle()
 
       if (conflito) {
         const nomeCliente = (conflito as any).clientes?.nome || 'outro cliente'
-        const profNome = profissionais.find(p => p.id === aaForm.profissional_id)?.nome || 'este profissional'
-        const diaNome = DIAS_SEMANA[parseInt(aaForm.dia_semana)]
+        const diaNome = DIAS_SEMANA[diaSelecionado]
         alert(`⚠️ Conflito de horário!\n\n${profNome} já está reservado para ${nomeCliente} às ${aaForm.horario} toda ${diaNome}.\n\nEscolha outro horário ou outro profissional.`)
         setAaSalvando(false)
         return
@@ -220,7 +260,7 @@ export default function ClientesPage() {
     const { error } = await sb.from('auto_agenda').insert({
       empresa_id: empresaAtiva.id,
       cliente_id: selecionado.id,
-      dia_semana: parseInt(aaForm.dia_semana),
+      dia_semana: diaSelecionado,
       horario: aaForm.horario + ':00',
       profissional_id: aaForm.profissional_id || null,
       servico_id: aaForm.servico_id || null,
@@ -231,6 +271,7 @@ export default function ClientesPage() {
       else alert('Erro ao adicionar: ' + error.message)
     } else {
       setAaForm({ dia_semana:'1', horario:'09:00', profissional_id:'', servico_id:'' })
+      setHorariosProfissional([])
       await carregarAutoAgendas(selecionado.id)
     }
     setAaSalvando(false)
@@ -576,21 +617,55 @@ export default function ClientesPage() {
                     <p style={{ fontSize:'13px', fontWeight:'700', color:'#374151', marginBottom:'12px' }}>Adicionar horário fixo</p>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'10px' }}>
                       <div>
-                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Dia da semana</label>
-                        <select value={aaForm.dia_semana} onChange={e=>setAaForm(p=>({...p,dia_semana:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
-                          {DIAS_SEMANA.map((d,i)=><option key={i} value={String(i)}>{d}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Horário</label>
-                        <input type="time" value={aaForm.horario} onChange={e=>setAaForm(p=>({...p,horario:e.target.value}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}/>
-                      </div>
-                      <div>
-                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Profissional</label>
-                        <select value={aaForm.profissional_id} onChange={e=>setAaForm(p=>({...p, profissional_id:e.target.value, servico_id:''}))} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
+                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Profissional *</label>
+                        <select value={aaForm.profissional_id} onChange={e=>{ setAaForm(p=>({...p, profissional_id:e.target.value, servico_id:'', dia_semana:'1'})); carregarHorariosProfissional(e.target.value) }} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px' }}>
                           <option value="">Selecionar profissional</option>
                           {profissionais.map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}
                         </select>
+                      </div>
+                      <div>{/* espaçador */}</div>
+                      <div>
+                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Dia da semana</label>
+                        <select value={aaForm.dia_semana} onChange={e=>setAaForm(p=>({...p,dia_semana:e.target.value}))} disabled={!aaForm.profissional_id} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px', background:!aaForm.profissional_id?'#f9fafb':'white' }}>
+                          {DIAS_SEMANA.map((d,i)=>{
+                            const hDia = horariosProfissional.find(h=>h.dia_semana===i)
+                            const trabalhaNoDia = horariosProfissional.length === 0 || (hDia?.ativo === true)
+                            return (
+                              <option key={i} value={String(i)}>
+                                {d}{!trabalhaNoDia ? ' — descanso' : hDia ? ` (${hDia.hora_inicio.slice(0,5)}–${hDia.hora_fim.slice(0,5)})` : ''}
+                              </option>
+                            )
+                          })}
+                        </select>
+                        {aaForm.profissional_id && horariosProfissional.length > 0 && (() => {
+                          const hDia = horariosProfissional.find(h => h.dia_semana === parseInt(aaForm.dia_semana))
+                          if (!hDia || !hDia.ativo) return (
+                            <p style={{ fontSize:'11px', color:'#dc2626', marginTop:'4px', fontWeight:'600' }}>⛔ Dia de descanso</p>
+                          )
+                          return (
+                            <p style={{ fontSize:'11px', color:'#059669', marginTop:'4px' }}>
+                              Expediente: {hDia.hora_inicio.slice(0,5)} às {hDia.hora_fim.slice(0,5)}
+                            </p>
+                          )
+                        })()}
+                      </div>
+                      <div>
+                        <label style={{ display:'block', fontSize:'12px', fontWeight:'500', color:'#6b7280', marginBottom:'5px' }}>Horário</label>
+                        <input type="time" value={aaForm.horario} onChange={e=>setAaForm(p=>({...p,horario:e.target.value}))} disabled={!aaForm.profissional_id} style={{ ...inputStyle, padding:'8px 10px', fontSize:'13px', background:!aaForm.profissional_id?'#f9fafb':'white' }}/>
+                        {aaForm.profissional_id && horariosProfissional.length > 0 && aaForm.horario && (() => {
+                          const hDia = horariosProfissional.find(h => h.dia_semana === parseInt(aaForm.dia_semana))
+                          if (!hDia || !hDia.ativo) return null
+                          const [hIni, mIni] = hDia.hora_inicio.split(':').map(Number)
+                          const [hFim, mFim] = hDia.hora_fim.split(':').map(Number)
+                          const [hSel, mSel] = aaForm.horario.split(':').map(Number)
+                          const minSel = hSel * 60 + mSel
+                          if (minSel < hIni * 60 + mIni || minSel >= hFim * 60 + mFim) return (
+                            <p style={{ fontSize:'11px', color:'#dc2626', marginTop:'4px', fontWeight:'600' }}>
+                              ⛔ Fora do expediente ({hDia.hora_inicio.slice(0,5)}–{hDia.hora_fim.slice(0,5)})
+                            </p>
+                          )
+                          return null
+                        })()}
                       </div>
                       {/* Serviço só aparece após selecionar profissional */}
                       {aaForm.profissional_id && (() => {

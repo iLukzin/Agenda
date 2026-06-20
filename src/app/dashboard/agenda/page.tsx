@@ -692,19 +692,35 @@ export default function AgendaPage() {
     setFinalizando(true)
     const sb2 = createClient()
 
-    // Busca o agendamento atual para garantir que o valor/valor_bruto/desconto
-    // sejam preservados exatamente como estão — não depende do form (pode estar zerado)
+    // Busca o agendamento atual do banco como base
     const { data: agAtual } = await sb2
       .from('agendamentos')
       .select('valor, valor_bruto, desconto')
       .eq('id', id)
       .single()
 
-    // Se agRapido tiver valor, usa ele (já veio da lista com o valor correto)
-    // Caso contrário, usa o que está no banco
-    const valorFinal    = agRapido?.valor ?? agAtual?.valor ?? null
-    const valorBruto    = agAtual?.valor_bruto ?? valorFinal
+    // Prioridade do valor:
+    // 1. Se o usuário pode editar o valor diretamente (podeEditarValorDireto) E
+    //    está no modal de edição (não agRapido), usa o valor da tela (form.valor)
+    // 2. Se veio do botão rápido (agRapido), usa o valor do agRapido
+    // 3. Caso contrário, preserva o valor que está no banco
+    let valorFinal: number | null
+    let valorBruto: number | null
     const descontoFinal = agAtual?.desconto ?? null
+
+    if (!agRapido && podeEditarValorDireto && form.valor !== '' && form.valor !== undefined) {
+      // Usuário editou o valor manualmente na tela — usa esse valor
+      valorFinal = parseFloat(form.valor) || 0
+      valorBruto = valorFinal  // sem desconto neste fluxo, valor bruto = valor final
+    } else if (agRapido) {
+      // Botão rápido — usa o valor do agendamento já carregado na lista
+      valorFinal = agRapido.valor ?? agAtual?.valor ?? null
+      valorBruto = agAtual?.valor_bruto ?? valorFinal
+    } else {
+      // Modal de edição sem permissão de editar valor — preserva o que está no banco
+      valorFinal = agAtual?.valor ?? null
+      valorBruto = agAtual?.valor_bruto ?? valorFinal
+    }
 
     const { error } = await sb2.from('agendamentos').update({
       status:      'fechado',

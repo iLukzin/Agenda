@@ -2,15 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Cron rodado 1x por dia às 10h UTC (07h BRT).
-// Pode ser chamado manualmente via GET /api/cron/auto-agenda
-// para forçar execução sem esperar o cron.
+// Verifica hoje e amanhã (BRT) e cria agendamentos para os
+// dias que batem com o dia_semana de cada AutoAgenda ativo.
+// O log usa a DATA DO AGENDAMENTO (ex: 23/06) e não a data
+// em que o cron rodou — isso evita duplicatas independente de
+// quantas vezes o cron rodar ou ser executado manualmente.
 
 function getBRTDate(date: Date): { iso: string; diaSemana: number } {
-  // BRT = UTC-3: subtrai 3h para obter o horário local brasileiro
+  // BRT = UTC-3
   const brt = new Date(date.getTime() - 3 * 60 * 60 * 1000)
-  const iso = brt.toISOString().slice(0, 10) // YYYY-MM-DD
-  const diaSemana = brt.getUTCDay()          // 0=dom ... 6=sab
-  return { iso, diaSemana }
+  return {
+    iso: brt.toISOString().slice(0, 10),
+    diaSemana: brt.getUTCDay(),
+  }
+}
+
+// Dado um dia da semana alvo (0-6), retorna a data ISO do
+// próximo dia com aquele dia_semana a partir de uma data base
+function proximaDataComDia(base: Date, diaSemanaAlvo: number): string {
+  const brt = getBRTDate(base)
+  const hoje = brt.diaSemana
+  let diff = diaSemanaAlvo - hoje
+  if (diff < 0) diff += 7
+  // diff = 0 significa hoje mesmo
+  const alvo = new Date(base.getTime() - 3 * 60 * 60 * 1000) // em BRT
+  alvo.setUTCDate(alvo.getUTCDate() + diff)
+  return alvo.toISOString().slice(0, 10)
 }
 
 export async function GET(req: NextRequest) {
@@ -25,8 +42,6 @@ export async function GET(req: NextRequest) {
   )
 
   const agora = new Date()
-
-  // Hoje e amanhã no horário de Brasília (BRT = UTC-3)
   const hoje  = getBRTDate(agora)
   const amanha = getBRTDate(new Date(agora.getTime() + 24 * 60 * 60 * 1000))
 
@@ -50,12 +65,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: false,
       error: errConfigs?.message || 'Erro ao buscar configs',
-      hoje: hoje.iso,
-      amanha: amanha.iso,
     }, { status: 500 })
   }
 
-  // Só processa empresas com módulo habilitado e ativas
   const configsAtivas = configs.filter((c: any) =>
     c.empresas?.auto_agenda_habilitado === true &&
     c.empresas?.status === 'ativo'
@@ -67,34 +79,57 @@ export async function GET(req: NextRequest) {
   const detalhes: string[] = []
 
   for (const cfg of configsAtivas) {
-    // Verifica se hoje ou amanhã batem com o dia_semana configurado
-    const datas: { iso: string; diaSemana: number }[] = []
-    if (hoje.diaSemana  === Number(cfg.dia_semana)) datas.push(hoje)
-    if (amanha.diaSemana === Number(cfg.dia_semana)) datas.push(amanha)
-    if (datas.length === 0) continue
+    const diaSemanaAlvo = Number(cfg.dia_semana)
 
-    for (const dt of datas) {
-      // 1. Verificar log — se já foi processado hoje para esta data, pula
-      const { data: logExiste, error: errLog } = await sb
+    // Quais datas processar: a próxima ocorrência a partir de hoje,
+    // e a próxima a partir de amanhã (para criar com 1 dia de antecedência)
+    // Deduplica caso as duas apontem para a mesma data
+    const dataDeHoje  = proximaDataComDia(agora, diaSemanaAlvo)
+    const dataDeAmanha = proximaDataComDia(new Date(agora.getTime() + 24 * 60 * 60 * 1000), diaSemanaAlvo)
+
+    const datas = Array.from(new Set([dataDeHoje, dataDeAmanha]))
+
+    for (const dataAgendamento of datas) {
+      // O log usa a DATA DO AGENDAMENTO, não a data de hoje
+      // Isso garante que o mesmo agendamento não seja criado duas vezes
+      const { data: logExiste } = await sb
         .from('auto_agenda_log')
-        .select('id')
+        .select('id, agendamento_id')
         .eq('auto_agenda_id', cfg.id)
-        .eq('data_agendada', dt.iso)
+        .eq('data_agendada', dataAgendamento)
         .maybeSingle()
 
       if (logExiste) {
-        ignorados++
-        detalhes.push(`Log já existe: ${dt.iso} para config ${cfg.id.slice(0,8)}`)
-        continue
+        // Log existe — mas verificar se o agendamento ainda existe
+        // (pode ter sido excluído manualmente)
+        if (logExiste.agendamento_id) {
+          const { data: agAinda } = await sb
+            .from('agendamentos')
+            .select('id, status')
+            .eq('id', logExiste.agendamento_id)
+            .maybeSingle()
+
+          if (agAinda && agAinda.status !== 'cancelado') {
+            ignorados++
+            detalhes.push(`Já existe agendamento ativo para ${dataAgendamento} (config ${cfg.id.slice(0,8)})`)
+            continue
+          }
+          // Agendamento foi cancelado ou excluído — apaga o log e recria
+          await sb.from('auto_agenda_log').delete().eq('id', logExiste.id)
+          detalhes.push(`Agendamento cancelado/removido — recriando para ${dataAgendamento}`)
+        } else {
+          // Log sem agendamento_id (bug anterior) — apaga e reprocessa
+          await sb.from('auto_agenda_log').delete().eq('id', logExiste.id)
+          detalhes.push(`Log órfão removido para ${dataAgendamento} — reprocessando`)
+        }
       }
 
-      // 2. Montar data/hora do agendamento em BRT
-      const hora = (cfg.horario || '00:00:00').slice(0, 5) // HH:MM
-      // Cria a data como se fosse BRT e converte para UTC para salvar
-      const dataInicioBRT = new Date(`${dt.iso}T${hora}:00-03:00`)
-      const dataFim = new Date(dataInicioBRT.getTime() + 60 * 60 * 1000) // +1h padrão
+      // Montar data/hora em BRT
+      const hora = (cfg.horario || '00:00:00').slice(0, 5)
+      const dataInicioBRT = new Date(`${dataAgendamento}T${hora}:00-03:00`)
+      const dataFim       = new Date(dataInicioBRT.getTime() + 60 * 60 * 1000)
 
-      // 3. Verificar se já existe agendamento do cliente no mesmo horário (±10 min)
+      // Verificar conflito ±10 min
       const janelaMinus = new Date(dataInicioBRT.getTime() - 10 * 60 * 1000).toISOString()
       const janelaPlus  = new Date(dataInicioBRT.getTime() + 10 * 60 * 1000).toISOString()
 
@@ -109,18 +144,17 @@ export async function GET(req: NextRequest) {
         .maybeSingle()
 
       if (agExiste) {
-        // Registra no log para não processar de novo
         await sb.from('auto_agenda_log').insert({
           auto_agenda_id: cfg.id,
           agendamento_id: agExiste.id,
-          data_agendada: dt.iso,
+          data_agendada:  dataAgendamento,
         })
         ignorados++
-        detalhes.push(`Agendamento já existe: cliente ${cfg.cliente_id.slice(0,8)} em ${dt.iso} ${hora}`)
+        detalhes.push(`Agendamento já existe para ${dataAgendamento} ${hora} BRT`)
         continue
       }
 
-      // 4. Buscar duração do serviço (se tiver)
+      // Buscar duração do serviço
       let duracaoMin = 60
       if (cfg.servico_id) {
         const { data: srv } = await sb
@@ -134,7 +168,7 @@ export async function GET(req: NextRequest) {
       }
       const dataFimComDuracao = new Date(dataInicioBRT.getTime() + duracaoMin * 60 * 1000)
 
-      // 5. Criar o agendamento
+      // Criar agendamento
       const { data: agCriado, error: errAg } = await sb
         .from('agendamentos')
         .insert({
@@ -155,35 +189,30 @@ export async function GET(req: NextRequest) {
 
       if (errAg || !agCriado) {
         erros++
-        detalhes.push(`ERRO criar: cliente ${cfg.cliente_id.slice(0,8)} em ${dt.iso} - ${errAg?.message}`)
+        detalhes.push(`ERRO criar para ${dataAgendamento}: ${errAg?.message}`)
         continue
       }
 
-      // 6. Registrar no log
-      const { error: errLogInsert } = await sb.from('auto_agenda_log').insert({
+      // Registrar no log com a data do AGENDAMENTO
+      await sb.from('auto_agenda_log').insert({
         auto_agenda_id: cfg.id,
         agendamento_id: agCriado.id,
-        data_agendada:  dt.iso,
+        data_agendada:  dataAgendamento,
       })
 
-      if (errLogInsert) {
-        detalhes.push(`Aviso: agendamento criado mas log falhou - ${errLogInsert.message}`)
-      }
-
       criados++
-      detalhes.push(`CRIADO: cliente ${cfg.cliente_id.slice(0,8)} em ${dt.iso} às ${hora} BRT (UTC: ${dataInicioBRT.toISOString()})`)
+      detalhes.push(`CRIADO: ${dataAgendamento} às ${hora} BRT → UTC ${dataInicioBRT.toISOString()}`)
     }
   }
 
   return NextResponse.json({
     ok: true,
-    message: `AutoAgenda concluído: ${criados} criado(s), ${ignorados} ignorado(s), ${erros} erro(s)`,
-    agora_utc:      agora.toISOString(),
-    hoje_brt:       hoje.iso,
-    hoje_diasemana: hoje.diaSemana,
-    amanha_brt:     amanha.iso,
-    amanha_diasemana: amanha.diaSemana,
-    configs_ativas: configsAtivas.length,
+    message: `AutoAgenda: ${criados} criado(s), ${ignorados} ignorado(s), ${erros} erro(s)`,
+    agora_utc:        agora.toISOString(),
+    hoje_brt:         hoje.iso,
+    hoje_diasemana:   hoje.diaSemana,
+    amanha_brt:       amanha.iso,
+    configs_ativas:   configsAtivas.length,
     criados,
     ignorados,
     erros,

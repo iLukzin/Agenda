@@ -441,7 +441,10 @@ export default function AgendaPage() {
     const hiH = Math.floor(ag.horaInicio), hiM = Math.round((ag.horaInicio - hiH) * 60)
     const ehPlano = !!ag.planoId
     const vBruto = ag.valor_bruto && ag.valor_bruto > 0 ? ag.valor_bruto : ag.valor
-    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(vBruto), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
+    // form.valor = valor real do agendamento (ag.valor), não valor_bruto
+    // valorOriginal = valor_bruto (preço cheio sem desconto, referência para o desconto)
+    const vReal = ag.valor && ag.valor > 0 ? ag.valor : vBruto
+    setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(vReal), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
     setValorOriginal(String(vBruto))
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
     // Carregar pagamentos do banco
@@ -553,8 +556,11 @@ export default function AgendaPage() {
       sessaoParaSalvar = sessao
       totalParaSalvar = total
     }
-    // Na edicao com plano: manter o valor original do agendamento (form.valor)
-        const valorBruto = parseFloat(valorOriginal || form.valor) || valorFinal
+    // Na edicao com podeEditarValorDireto: valor_bruto = o valor editado pelo usuário
+    // Nos demais casos: valor_bruto = valorOriginal (preço cheio do serviço)
+    const valorBruto = podeEditarValorDireto
+      ? (parseFloat(form.valor) || valorFinal)
+      : (parseFloat(valorOriginal || form.valor) || valorFinal)
     const pagsValidos = pagamentos.filter(p => p.forma && parseFloat(p.valor) > 0)
     // Se o usuário usou o sistema de múltiplos pagamentos (mesmo que tenha removido tudo),
     // não usar form.forma_pagamento como fallback - gravar null para limpar

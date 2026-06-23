@@ -1204,11 +1204,9 @@ export default function AgendaPage() {
                     <div>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
                         <label style={{ fontSize:'13px', fontWeight:'600', color: !form.horaInicio ? '#ef4444' : '#374151' }}>{form.horaInicio ? 'Horario' : '* Selecione um horario'}</label>
-                        <div style={{ display:'flex', gap:'4px' }}>
-                          {[15,30,60].map(min => (
-                            <button key={min} onClick={()=>setIntervaloMin(min)} style={{ padding:'3px 8px', borderRadius:'6px', fontSize:'11px', border:intervaloMin===min?'1.5px solid #6366f1':'1px solid #e5e7eb', background:intervaloMin===min?'#eef2ff':'white', color:intervaloMin===min?'#6366f1':'#6b7280', cursor:'pointer' }}>{min}min</button>
-                          ))}
-                        </div>
+                        <span style={{ fontSize:'11px', color:'#6366f1', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'6px', padding:'3px 8px', fontWeight:'600' }}>
+                          Intervalo: {intervaloMin}min
+                        </span>
                       </div>
                       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px' }}>
                         {slotsDisponiveis.map(slot => {

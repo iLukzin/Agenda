@@ -79,7 +79,18 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
     }
   }, [])
 
-  // Fechar mini-cal clicando fora
+  // Fecha popup de ações ao clicar fora
+  useEffect(() => {
+    if (!agAtivo) return
+    const fn = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-popup-ag]')) setAgAtivo(null)
+    }
+    document.addEventListener('mousedown', fn)
+    return () => document.removeEventListener('mousedown', fn)
+  }, [agAtivo])
+
+  // Fecha mini-calendário ao clicar fora
   useEffect(() => {
     if (!miniCalAberto) return
     const fn = (e: MouseEvent) => {
@@ -271,10 +282,6 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
       </div>
 
       {/* ══════════════════ GRADE ══════════════════ */}
-      {/* Overlay para fechar popup ao clicar fora */}
-      {agAtivo && (
-        <div onClick={()=>setAgAtivo(null)} style={{ position:'fixed', inset:0, zIndex:15 }}/>
-      )}
       <div ref={scrollRef} style={{ flex:1, overflowY:'auto', overflowX:'auto', position:'relative' }}>
         <div style={{ display:'flex', minHeight:`${totalAltura}px` }}>
 
@@ -332,7 +339,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                     const isCanc = ag.status==='cancelado'
                     const popupAberto = agAtivo === ag.id
                     return (
-                      <div key={ag.id} style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', zIndex: popupAberto ? 20 : 3 }}>
+                      <div key={ag.id} data-popup-ag="true" style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', zIndex: popupAberto ? 20 : 3 }}>
                         {/* Bloco principal */}
                         <div onClick={e=>{ e.stopPropagation(); setAgAtivo(popupAberto ? null : ag.id) }}
                           style={{ height:`${altPx}px`,
@@ -361,10 +368,10 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                           )}
                         </div>
 
-                        {/* Popup de ações rápidas */}
+                        {/* Popup de ações — renderizado como modal fixo para evitar problemas de stacking context */}
                         {popupAberto && (
-                          <div onClick={e=>e.stopPropagation()}
-                            style={{ position:'absolute', top:`${altPx+4}px`, left:0, zIndex:30, background:'white', borderRadius:'12px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'10px', minWidth:'180px', maxWidth:'220px' }}>
+                          <div data-popup-ag="true" onClick={e=>e.stopPropagation()}
+                            style={{ position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', zIndex:9999, background:'white', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 12px 40px rgba(15,23,42,0.22)', padding:'12px', width:'min(92vw, 280px)' }}>
                             {/* Info do agendamento */}
                             <div style={{ marginBottom:'8px', paddingBottom:'8px', borderBottom:'1px solid #f1f5f9' }}>
                               <p style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', margin:'0 0 2px' }}>{ag.cliente}</p>

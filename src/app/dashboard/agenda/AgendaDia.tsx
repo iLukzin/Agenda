@@ -171,13 +171,22 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
     const el = agRefs.current[agId]
     if (el) {
       const rect = el.getBoundingClientRect()
-      const vw = window.innerWidth
-      const vh = window.innerHeight
-      const popW = Math.min(240, vw - 16)
+      const vw   = window.innerWidth
+      const vh   = window.innerHeight
+      // Largura do popup: no mobile (< 480px) usa quase toda a tela
+      const isMobile = vw < 480
+      const popW = isMobile ? Math.min(260, vw - 24) : 240
+      // Vertical: abaixo do bloco se couber, senão acima
       let top = rect.bottom + 6
       if (top + 320 > vh) top = Math.max(8, rect.top - 320)
-      let left = rect.left + rect.width / 2 - popW / 2
-      left = Math.max(8, Math.min(left, vw - popW - 8))
+      // Horizontal: no mobile centraliza na viewport, no desktop segue o bloco
+      let left: number
+      if (isMobile) {
+        left = (vw - popW) / 2  // sempre centralizado na tela no mobile
+      } else {
+        left = rect.left + rect.width / 2 - popW / 2
+        left = Math.max(8, Math.min(left, vw - popW - 8))
+      }
       setPopupPos({ top, left, width: popW })
     }
     setAgAtivo(agId)

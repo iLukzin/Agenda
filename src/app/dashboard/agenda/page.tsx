@@ -6,6 +6,7 @@ import { useEmpresa } from '@/context/EmpresaContext'
 import { usePermissao } from '@/hooks/usePermissao'
 import { carregarConfigWpp, enviarMensagem, registrarEnvio, aplicarVariaveis, formatarNumero } from '@/lib/whatsapp'
 import CalendarioAgenda from './CalendarioAgenda'
+import AgendaDia from './AgendaDia'
 import { criarAgendamento, atualizarAgendamento } from '@/lib/api'
 
 const HORA_INICIO = 7
@@ -875,36 +876,33 @@ export default function AgendaPage() {
     return ini + ' - ' + fim
   }
 
-  return (
-    <div style={{ padding:'16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
-      {/* Vista Calendario Mensal */}
-      <div style={{ flex:1, overflow:'hidden' }}>
-        <CalendarioAgenda
-          agendamentos={agendamentos}
-          profissionais={profissionais}
-          horariosProfissional={horariosProfissional}
-          onAbrirNovo={perm.criar ? abrirNovo : undefined}
-          onAbrirEdicao={abrirEdicao}
-          onCancelarRapido={(usuario as any)?.permitir_cancelar !== false ? (ag) => {
-            setAgRapido(ag); setMotivoCancelamento(''); setModalCancelar(true)
-          } : undefined}
-          onFinalizarRapido={(usuario as any)?.permitir_finalizar !== false ? (ag) => {
-            if (empresaAtiva?.finalizar_sem_pagamento) {
-              setAgRapido(ag); finalizarDireto(ag.id)
-            } else {
-              setAgRapido(ag); setPagamentos([]); setDescontoFin(''); setErroForm([]); setModalFinalizar(true)
-            }
-          } : undefined}
-          onVerPagamentos={(usuario as any)?.permitir_ver_pagamento !== false && !empresaAtiva?.finalizar_sem_pagamento ? (ag) => { setAgVerPag(ag); setVerPagamentos(true) } : undefined}
-          onEnviarWpp={wppConectado && (usuario as any)?.permitir_enviar_wpp !== false ? async (ag) => {
+  // Props compartilhadas pelos dois modelos de agenda
+  const agendaProps = {
+    agendamentos,
+    profissionais,
+    horariosProfissional,
+    onAbrirNovo: perm.criar ? abrirNovo : undefined,
+    onAbrirEdicao: abrirEdicao,
+    onCancelarRapido: (usuario as any)?.permitir_cancelar !== false ? (ag: any) => {
+      setAgRapido(ag); setMotivoCancelamento(''); setModalCancelar(true)
+    } : undefined,
+    onFinalizarRapido: (usuario as any)?.permitir_finalizar !== false ? (ag: any) => {
+      if (empresaAtiva?.finalizar_sem_pagamento) {
+        setAgRapido(ag); finalizarDireto(ag.id)
+      } else {
+        setAgRapido(ag); setPagamentos([]); setDescontoFin(''); setErroForm([]); setModalFinalizar(true)
+      }
+    } : undefined,
+    onVerPagamentos: (usuario as any)?.permitir_ver_pagamento !== false && !empresaAtiva?.finalizar_sem_pagamento ? (ag: any) => { setAgVerPag(ag); setVerPagamentos(true) } : undefined,
+  }
+
+  const onEnviarWppFn = wppConectado && (usuario as any)?.permitir_enviar_wpp !== false ? async (ag: any) => {
             if (!confirm(`Enviar confirmação de WhatsApp para ${ag.cliente}?`)) return
-            // Buscar dados necessários para enviar direto
             const sb = createClient()
             const { data: cli } = await sb.from('clientes').select('nome,whatsapp,telefone').eq('id', ag.clienteId).single()
             const fone = cli?.whatsapp || cli?.telefone
             if (!fone) { alert('Cliente sem número de WhatsApp cadastrado.'); return }
             const { data: emp } = await sb.from('empresas').select('nome,whatsapp_instancia').eq('id', empresaAtiva?.id || '').single()
-            const { data: srvObj } = await sb.from('servicos').select('nome').eq('id', ag.servico || '').maybeSingle()
             const { data: tmpl } = await sb.from('mensagens_template').select('mensagem').eq('empresa_id', empresaAtiva?.id || '').eq('tipo','confirmacao').eq('ativo',true).single()
             const dtBRT = new Date(new Date(ag.dataISO + 'T' + String(Math.floor(ag.horaInicio)).padStart(2,'0') + ':' + String(Math.round((ag.horaInicio % 1)*60)).padStart(2,'0') + ':00+00:00'))
             const dataStr = dtBRT.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'})
@@ -920,12 +918,27 @@ export default function AgendaPage() {
               if (res.ok) { alert('Mensagem enviada com sucesso!') }
               else { alert('Erro ao enviar mensagem.') }
             } catch { alert('Erro ao conectar com a API do WhatsApp.') }
-          } : undefined}
-          filtroProfissional={filtroProfissional}
-          setFiltroProfissional={setFiltroProfissional}
-        />
+  } : undefined
+
+  const tipoAgenda = empresaAtiva?.tipo_agenda || 'grade'
+
+  return (
+    <div style={{ padding: tipoAgenda === 'dia' ? '0' : '16px', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      <div style={{ flex:1, overflow:'hidden' }}>
+        {tipoAgenda === 'dia' ? (
+          <AgendaDia
+            {...agendaProps}
+            onEnviarWpp={onEnviarWppFn}
+          />
+        ) : (
+          <CalendarioAgenda
+            {...agendaProps}
+            onEnviarWpp={onEnviarWppFn}
+            filtroProfissional={filtroProfissional}
+            setFiltroProfissional={setFiltroProfissional}
+          />
+        )}
       </div>
-      
 
       {/* Modal novo cliente inline */}
       {modalNovoCliente && (

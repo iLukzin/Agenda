@@ -404,6 +404,36 @@ export default function ConfiguracoesPage() {
               <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Endereço</label>
               <input value={empresa.endereco||''} onChange={e=>setEmpresa((p: any)=>({...p,endereco:e.target.value}))} style={inputStyle} placeholder="Rua, número, bairro, cidade"/>
             </div>
+            <div style={{ gridColumn:'1/-1' }}>
+              <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'10px' }}>Modelo de agenda</label>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                {[
+                  { val:'grade', label:'Calendário mensal', desc:'Visão de mês com dias e horários em grade — modelo clássico', icon:(
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  )},
+                  { val:'dia', label:'Timeline por profissional', desc:'Visão diária com colunas por profissional e blocos coloridos por horário', icon:(
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="18" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+                  )},
+                ].map(opt => {
+                  const sel = (empresa.tipo_agenda || 'grade') === opt.val
+                  return (
+                    <div key={opt.val} onClick={()=>setEmpresa((p: any)=>({...p,tipo_agenda:opt.val}))}
+                      style={{ border:`2px solid ${sel?'#6366f1':'#e5e7eb'}`, borderRadius:'12px', padding:'14px', cursor:'pointer', background: sel?'#eef2ff':'white', transition:'all .15s' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px' }}>
+                        <div style={{ width:'40px', height:'40px', borderRadius:'10px', background: sel?'#6366f1':'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', color: sel?'white':'#9ca3af', flexShrink:0 }}>
+                          {opt.icon}
+                        </div>
+                        <div>
+                          <p style={{ fontSize:'13px', fontWeight:'700', color: sel?'#4f46e5':'#374151', margin:0 }}>{opt.label}</p>
+                          {sel && <p style={{ fontSize:'10px', color:'#6366f1', margin:0, fontWeight:'600' }}>✓ Selecionado</p>}
+                        </div>
+                      </div>
+                      <p style={{ fontSize:'11.5px', color: sel?'#6366f1':'#9ca3af', margin:0 }}>{opt.desc}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
           <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'20px' }}>
             <button onClick={salvarEmpresa} disabled={salvando} style={{ background:salvo?'#22c55e':salvando?'#a5b4fc':'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'10px 24px', fontSize:'14px', fontWeight:'600', cursor:salvando?'not-allowed':'pointer' }}>

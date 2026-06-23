@@ -22,378 +22,404 @@ type Props = {
   onEnviarWpp?: (ag: Ag) => void
 }
 
-// Cores para cada profissional (mesma paleta do sistema, tons distintos)
 const CORES_PROF = [
-  { bg: '#d4e4bc', borda: '#8fb567', texto: '#3a5c1a', dark: '#4a7a22' }, // verde
-  { bg: '#fef3c7', borda: '#f59e0b', texto: '#92400e', dark: '#b45309' }, // amarelo
-  { bg: '#dbeafe', borda: '#3b82f6', texto: '#1e40af', dark: '#1d4ed8' }, // azul
-  { bg: '#fce7f3', borda: '#ec4899', texto: '#9d174d', dark: '#be185d' }, // rosa
-  { bg: '#d1fae5', borda: '#10b981', texto: '#065f46', dark: '#059669' }, // teal
-  { bg: '#ede9fe', borda: '#8b5cf6', texto: '#4c1d95', dark: '#6d28d9' }, // roxo
-  { bg: '#fee2e2', borda: '#ef4444', texto: '#991b1b', dark: '#dc2626' }, // vermelho
-  { bg: '#fed7aa', borda: '#f97316', texto: '#9a3412', dark: '#ea580c' }, // laranja
+  { bg:'#e8f5e9', borda:'#66bb6a', texto:'#1b5e20', dark:'#388e3c' },
+  { bg:'#fff8e1', borda:'#ffca28', texto:'#e65100', dark:'#f57c00' },
+  { bg:'#e3f2fd', borda:'#42a5f5', texto:'#0d47a1', dark:'#1565c0' },
+  { bg:'#fce4ec', borda:'#ec407a', texto:'#880e4f', dark:'#c2185b' },
+  { bg:'#e0f2f1', borda:'#26a69a', texto:'#004d40', dark:'#00796b' },
+  { bg:'#ede7f6', borda:'#7e57c2', texto:'#311b92', dark:'#512da8' },
+  { bg:'#ffebee', borda:'#ef5350', texto:'#b71c1c', dark:'#c62828' },
+  { bg:'#fff3e0', borda:'#ff7043', texto:'#bf360c', dark:'#d84315' },
 ]
 
+const DIAS_PT  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
 function toISO(d: Date) {
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 function hojeNoBrasil() {
   const s = new Date().toLocaleString('en-US', { timeZone:'America/Sao_Paulo' })
   const d = new Date(s); d.setHours(0,0,0,0); return d
 }
 function addDias(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate()+n); return r }
+function addMes(d: Date, n: number)  { return new Date(d.getFullYear(), d.getMonth()+n, 1) }
 function fmtHora(h: number) {
   const hh = Math.floor(h), mm = Math.round((h-hh)*60)
-  return String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0')
-}
-function fmtData(d: Date) {
-  return d.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', timeZone:'America/Sao_Paulo' })
-}
-function nomeDiaSemana(d: Date) {
-  return d.toLocaleDateString('pt-BR', { weekday:'long', timeZone:'America/Sao_Paulo' })
-    .replace(/^\w/, c => c.toUpperCase())
-}
-function nomeMes(d: Date) {
-  return d.toLocaleDateString('pt-BR', { month:'long', year:'numeric', timeZone:'America/Sao_Paulo' })
-    .replace(/^\w/, c => c.toUpperCase())
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`
 }
 
-const HORA_INI = 7  // grade começa às 07:00
-const HORA_FIM = 21 // grade termina às 21:00
-const PX_POR_MIN = 2.5 // pixels por minuto
+const HORA_INI   = 7
+const HORA_FIM   = 21
+const PX_POR_MIN = 2.5
 
-const STATUS_LABEL: Record<string,string> = {
-  aberto: 'Em aberto',
-  fechado: 'Finalizado',
-  cancelado: 'Cancelado',
-}
-
-export default function AgendaDia({ agendamentos, profissionais, horariosProfissional = [], onAbrirNovo, onAbrirEdicao, onCancelarRapido, onFinalizarRapido, onVerPagamentos, onEnviarWpp }: Props) {
-  const hoje = hojeNoBrasil()
-  const [diaSel, setDiaSel] = useState(hoje)
-  const [semanaOffset, setSemanaOffset] = useState(0)
-  const [painelHorLivres, setPainelHorLivres] = useState(false)
+export default function AgendaDia({ agendamentos, profissionais, horariosProfissional=[], onAbrirNovo, onAbrirEdicao }: Props) {
+  const hoje       = useMemo(() => hojeNoBrasil(), [])
+  const [diaSel, setDiaSel]           = useState(hoje)
+  const [miniCalAberto, setMiniCalAberto] = useState(false)
+  const [mesBase, setMesBase]         = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
+  const [painelLivres, setPainelLivres] = useState(false)
   const [livresProfSel, setLivresProfSel] = useState('')
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef  = useRef<HTMLDivElement>(null)
+  const calRef     = useRef<HTMLDivElement>(null)
 
-  const isoSel = toISO(diaSel)
+  const isoSel       = toISO(diaSel)
+  const isoHoje      = toISO(hoje)
+  const isHoje       = isoSel === isoHoje
+  const diaSemanaNum = diaSel.getDay()
 
-  // Scroll automático para horário atual ao carregar
+  // Scroll para hora atual ao montar
   useEffect(() => {
     if (scrollRef.current) {
-      const agora = new Date()
+      const agora  = new Date()
       const hAtual = agora.getHours() + agora.getMinutes()/60
-      const top = (hAtual - HORA_INI) * PX_POR_MIN * 60 - 80
-      scrollRef.current.scrollTop = Math.max(0, top)
+      scrollRef.current.scrollTop = Math.max(0, (hAtual - HORA_INI) * 60 * PX_POR_MIN - 80)
     }
   }, [])
 
-  // Dias da semana atual
-  const inicioSemana = useMemo(() => {
-    const d = addDias(hoje, semanaOffset * 7)
-    const dow = d.getDay()
-    return addDias(d, -(dow === 0 ? 6 : dow - 1))
-  }, [hoje, semanaOffset])
+  // Fechar mini-cal clicando fora
+  useEffect(() => {
+    if (!miniCalAberto) return
+    const fn = (e: MouseEvent) => {
+      if (calRef.current && !calRef.current.contains(e.target as Node)) setMiniCalAberto(false)
+    }
+    document.addEventListener('mousedown', fn)
+    return () => document.removeEventListener('mousedown', fn)
+  }, [miniCalAberto])
 
-  const diasSemana = useMemo(() =>
-    Array.from({ length: 7 }, (_, i) => addDias(inicioSemana, i))
-  , [inicioSemana])
+  // Hora atual (linha vermelha)
+  const [horaAtual, setHoraAtual] = useState<number|null>(null)
+  useEffect(() => {
+    const upd = () => {
+      const n = new Date()
+      setHoraAtual(isHoje ? n.getHours() + n.getMinutes()/60 : null)
+    }
+    upd()
+    const t = setInterval(upd, 30000)
+    return () => clearInterval(t)
+  }, [isHoje])
 
-  // Profissionais com cor atribuída
+  // Profissionais com paleta de cor
   const profsComCor = useMemo(() =>
-    profissionais.map((p: any, i: number) => ({
-      ...p,
-      palette: CORES_PROF[i % CORES_PROF.length],
-    }))
+    profissionais.map((p: any, i: number) => ({ ...p, palette: CORES_PROF[i % CORES_PROF.length] }))
   , [profissionais])
 
-  // Agendamentos do dia selecionado
+  // Agendamentos do dia
   const agsDia = useMemo(() =>
     agendamentos.filter(ag => ag.dataISO === isoSel && ag.status !== 'cancelado')
   , [agendamentos, isoSel])
 
-  // Horário de trabalho do dia selecionado por profissional
-  const diaSemanaNum = diaSel.getDay()
+  // Horário de expediente geral (menor início / maior fim entre todos profissionais hoje)
+  const expedienteGeral = useMemo(() => {
+    const hs = (horariosProfissional||[]).filter(h => h.dia_semana === diaSemanaNum && h.ativo)
+    if (!hs.length) return null
+    const inicia = hs.map(h => h.hora_inicio).sort()[0]
+    const termina = hs.map(h => h.hora_fim).sort().reverse()[0]
+    return `${inicia.slice(0,5)} - ${termina.slice(0,5)}`
+  }, [horariosProfissional, diaSemanaNum])
 
-  // Horas da grade (07 a 21)
-  const horas = useMemo(() =>
-    Array.from({ length: HORA_FIM - HORA_INI + 1 }, (_, i) => HORA_INI + i)
-  , [])
+  // Label do dia — "Hoje" se for hoje, senão data curta
+  const labelDia = useMemo(() => {
+    if (isHoje) return 'Hoje'
+    const amanha = toISO(addDias(hoje, 1))
+    if (isoSel === amanha) return 'Amanhã'
+    return diaSel.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'short', timeZone:'America/Sao_Paulo' })
+      .replace(/^\w/, c => c.toUpperCase())
+  }, [isHoje, isoSel, hoje, diaSel])
 
-  // Hora atual para linha vermelha
-  const [horaAtual, setHoraAtual] = useState<number | null>(null)
-  useEffect(() => {
-    const upd = () => {
-      const agora = new Date()
-      const h = agora.getHours() + agora.getMinutes()/60 + agora.getSeconds()/3600
-      setHoraAtual(toISO(hoje) === isoSel ? h : null)
-    }
-    upd()
-    const t = setInterval(upd, 60000)
-    return () => clearInterval(t)
-  }, [isoSel, hoje])
+  // Mini calendário — dias do mês
+  const diasMes = useMemo(() => {
+    const ano = mesBase.getFullYear(), mes = mesBase.getMonth()
+    const primeiroDia = new Date(ano, mes, 1).getDay()
+    const totalDias   = new Date(ano, mes+1, 0).getDate()
+    const cells: (Date|null)[] = Array(primeiroDia).fill(null)
+    for (let d=1; d<=totalDias; d++) cells.push(new Date(ano, mes, d))
+    return cells
+  }, [mesBase])
 
-  const totalAltura = (HORA_FIM - HORA_INI) * 60 * PX_POR_MIN
+  const horas        = useMemo(() => Array.from({length: HORA_FIM - HORA_INI + 1}, (_, i) => HORA_INI+i), [])
+  const totalAltura  = (HORA_FIM - HORA_INI) * 60 * PX_POR_MIN
+  const colWidth     = 120
 
-  // Largura de cada coluna de profissional
-  const colWidth = Math.max(120, Math.floor(100 / Math.max(profsComCor.length, 1)))
+  function selDia(d: Date) { setDiaSel(d); setMiniCalAberto(false) }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#f8fafc', overflow:'hidden' }}>
 
-      {/* ─── Header ─── */}
-      <div style={{ background:'white', borderBottom:'1px solid #e2e8f0', flexShrink:0 }}>
+      {/* ══════════════════ HEADER SUTIL ══════════════════ */}
+      <div style={{ background:'white', flexShrink:0 }}>
 
-        {/* Linha 1: navegação de dia/semana */}
-        <div style={{ padding:'10px 16px', display:'flex', alignItems:'center', gap:'10px' }}>
-          {/* Setas de semana */}
-          <button onClick={()=>{ setSemanaOffset(v=>v-1) }} style={{ width:'32px', height:'32px', borderRadius:'8px', border:'1px solid #e2e8f0', background:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
+        {/* Linha superior — label dia + mini-cal trigger + ações */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px 0' }}>
 
-          {/* Dias da semana */}
-          <div style={{ flex:1, display:'flex', gap:'4px', overflowX:'auto', scrollbarWidth:'none' }}>
-            {diasSemana.map(dia => {
-              const iso = toISO(dia)
-              const isHoje = iso === toISO(hoje)
-              const isSel = iso === isoSel
-              const temAg = agendamentos.some(ag => ag.dataISO === iso && ag.status !== 'cancelado')
-              return (
-                <button key={iso} onClick={() => setDiaSel(dia)}
-                  style={{ flex:1, minWidth:'40px', padding:'6px 4px', borderRadius:'10px', border: isSel ? '2px solid #3b82f6' : '1px solid transparent', background: isSel ? '#eff6ff' : isHoje ? '#f8fafc' : 'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'2px' }}>
-                  <span style={{ fontSize:'10px', fontWeight:'600', color: isSel ? '#3b82f6' : '#94a3b8', textTransform:'uppercase' }}>
-                    {dia.toLocaleDateString('pt-BR',{weekday:'short',timeZone:'America/Sao_Paulo'}).replace('.','').toUpperCase()}
+          {/* Clique → abre mini-cal */}
+          <div ref={calRef} style={{ position:'relative' }}>
+            <button onClick={()=>setMiniCalAberto(v=>!v)}
+              style={{ display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none', cursor:'pointer', padding:'4px 6px', borderRadius:'8px' }}>
+              <span style={{ fontSize:'20px', fontWeight:'800', color:'#1e293b', letterSpacing:'-0.5px' }}>{labelDia}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"
+                style={{ transform: miniCalAberto ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {!isHoje && (
+              <span style={{ fontSize:'12px', color:'#94a3b8', paddingLeft:'6px' }}>
+                {diaSel.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'America/Sao_Paulo'})}
+              </span>
+            )}
+            {expedienteGeral && (
+              <p style={{ fontSize:'12px', color:'#94a3b8', margin:'0 0 0 6px', paddingTop:'1px' }}>{expedienteGeral}</p>
+            )}
+
+            {/* ── Mini calendário dropdown ── */}
+            {miniCalAberto && (
+              <div style={{ position:'absolute', top:'calc(100% + 8px)', left:0, zIndex:300, background:'white', borderRadius:'16px', boxShadow:'0 8px 40px rgba(15,23,42,0.18)', padding:'16px', width:'280px', border:'1px solid #e2e8f0' }}>
+                {/* Cabeçalho do mês */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
+                  <button onClick={()=>setMesBase(addMes(mesBase,-1))} style={{ width:'28px', height:'28px', borderRadius:'8px', border:'1px solid #e2e8f0', background:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <span style={{ fontSize:'14px', fontWeight:'700', color:'#1e293b' }}>
+                    {MESES_PT[mesBase.getMonth()]} {mesBase.getFullYear()}
                   </span>
-                  <span style={{ fontSize:'17px', fontWeight:'800', color: isSel ? '#1d4ed8' : isHoje ? '#1e293b' : '#475569', width:'32px', height:'32px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background: isHoje && !isSel ? '#e2e8f0' : 'transparent' }}>
-                    {dia.getDate()}
-                  </span>
-                  {temAg && <div style={{ width:'5px', height:'5px', borderRadius:'50%', background: isSel ? '#3b82f6' : '#94a3b8' }}/>}
-                </button>
-              )
-            })}
+                  <button onClick={()=>setMesBase(addMes(mesBase,1))} style={{ width:'28px', height:'28px', borderRadius:'8px', border:'1px solid #e2e8f0', background:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+
+                {/* Dias da semana */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px', marginBottom:'6px' }}>
+                  {DIAS_PT.map(d => (
+                    <div key={d} style={{ textAlign:'center', fontSize:'10px', fontWeight:'700', color:'#94a3b8', padding:'4px 0' }}>{d}</div>
+                  ))}
+                </div>
+
+                {/* Células */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px' }}>
+                  {diasMes.map((d, i) => {
+                    if (!d) return <div key={i}/>
+                    const iso    = toISO(d)
+                    const isHj   = iso === isoHoje
+                    const isSel  = iso === isoSel
+                    const temAg  = agendamentos.some(ag => ag.dataISO === iso && ag.status !== 'cancelado')
+                    return (
+                      <button key={i} onClick={()=>selDia(d)}
+                        style={{ padding:'5px 2px', borderRadius:'8px', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'2px',
+                          background: isSel ? '#2563eb' : isHj ? '#eff6ff' : 'transparent',
+                        }}>
+                        <span style={{ fontSize:'13px', fontWeight: isHj||isSel ? '800' : '500', color: isSel ? 'white' : isHj ? '#2563eb' : '#374151' }}>{d.getDate()}</span>
+                        {temAg && <div style={{ width:'4px', height:'4px', borderRadius:'50%', background: isSel ? 'rgba(255,255,255,0.7)' : '#2563eb' }}/>}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Botão Hoje */}
+                <div style={{ marginTop:'12px', display:'flex', justifyContent:'center' }}>
+                  <button onClick={()=>{ selDia(hoje); setMesBase(new Date(hoje.getFullYear(), hoje.getMonth(), 1)) }}
+                    style={{ padding:'6px 20px', borderRadius:'20px', border:'1px solid #2563eb', background: isHoje ? '#2563eb' : 'white', color: isHoje ? 'white' : '#2563eb', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}>
+                    Hoje
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <button onClick={()=>{ setSemanaOffset(v=>v+1) }} style={{ width:'32px', height:'32px', borderRadius:'8px', border:'1px solid #e2e8f0', background:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-
-          {semanaOffset !== 0 && (
-            <button onClick={()=>{ setSemanaOffset(0); setDiaSel(hoje) }} style={{ padding:'5px 10px', borderRadius:'8px', border:'1px solid #e2e8f0', background:'white', cursor:'pointer', fontSize:'12px', color:'#3b82f6', fontWeight:'600', whiteSpace:'nowrap' }}>Hoje</button>
+          {/* Botão Horários Livres */}
+          {profissionais.length > 0 && (
+            <button onClick={()=>{ setPainelLivres(v=>!v); if(!livresProfSel&&profissionais.length>0) setLivresProfSel(profissionais[0].id) }}
+              style={{ display:'flex', alignItems:'center', gap:'5px', padding:'6px 12px', borderRadius:'20px', border:`1.5px solid ${painelLivres?'#2563eb':'#e2e8f0'}`, background: painelLivres?'#2563eb':'white', color: painelLivres?'white':'#64748b', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Horários livres
+            </button>
           )}
         </div>
 
-        {/* Linha 2: profissionais + horários livres */}
-        <div style={{ display:'flex', alignItems:'center', padding:'0 16px 10px', gap:'8px' }}>
-          <div style={{ flex:1, display:'flex', gap:'6px', overflowX:'auto', scrollbarWidth:'none' }}>
+        {/* Faixa de chips — profissionais */}
+        <div style={{ display:'flex', gap:'8px', padding:'10px 16px 12px', overflowX:'auto', scrollbarWidth:'none' }}>
+          {profsComCor.map((p: any) => {
+            const temHoje = (horariosProfissional||[]).some(h => h.profissional_id===p.id && h.dia_semana===diaSemanaNum && h.ativo)
+            const qtdAgs  = agsDia.filter(ag => ag.profissional===p.nome).length
+            const label   = !temHoje ? 'Folga' : qtdAgs===0 ? 'Livre' : `${qtdAgs} ag.`
+            return (
+              <div key={p.id} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 10px 5px 6px', borderRadius:'20px', background:p.palette.bg, border:`1.5px solid ${p.palette.borda}`, whiteSpace:'nowrap', flexShrink:0 }}>
+                <div style={{ width:'22px', height:'22px', borderRadius:'50%', background:p.palette.dark, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'9px', fontWeight:'800', color:'white' }}>
+                  {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
+                </div>
+                <div>
+                  <p style={{ fontSize:'11px', fontWeight:'700', color:p.palette.texto, margin:0, lineHeight:1.2 }}>{p.nome}</p>
+                  <p style={{ fontSize:'10px', color:p.palette.dark, margin:0, lineHeight:1.2 }}>{label}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Divisor + header de colunas */}
+        <div style={{ display:'flex', borderTop:'1px solid #f1f5f9', marginLeft:'52px' }}>
+          {profsComCor.map((p: any) => (
+            <div key={p.id} style={{ flex:1, minWidth:`${colWidth}px`, padding:'6px 8px', textAlign:'center', borderRight:'1px solid #f1f5f9', borderBottom:'1px solid #e2e8f0' }}>
+              <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:p.palette.dark, margin:'0 auto 2px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'800', color:'white' }}>
+                {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
+              </div>
+              <p style={{ fontSize:'10px', fontWeight:'700', color:'#374151', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nome.split(' ')[0]}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══════════════════ GRADE ══════════════════ */}
+      <div ref={scrollRef} style={{ flex:1, overflowY:'auto', overflowX:'auto', position:'relative' }}>
+        <div style={{ display:'flex', minHeight:`${totalAltura}px` }}>
+
+          {/* Coluna de horas */}
+          <div style={{ width:'52px', flexShrink:0, position:'sticky', left:0, background:'white', zIndex:2, borderRight:'1px solid #e2e8f0' }}>
+            {horas.map(h => (
+              <div key={h} style={{ position:'absolute', top:`${(h-HORA_INI)*60*PX_POR_MIN}px`, right:'8px' }}>
+                <span style={{ fontSize:'10px', color:'#cbd5e1', fontWeight:'600' }}>{String(h).padStart(2,'0')}:00</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Colunas de profissionais */}
+          <div style={{ flex:1, display:'flex', position:'relative', minWidth:`${profsComCor.length*colWidth}px` }}>
+
+            {/* Grade de fundo */}
+            <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:0 }}>
+              {horas.map(h => (
+                <div key={h} style={{ position:'absolute', top:`${(h-HORA_INI)*60*PX_POR_MIN}px`, left:0, right:0,
+                  borderTop:`1px solid ${h%1===0 ? '#f1f5f9' : '#f8fafc'}` }}/>
+              ))}
+              {/* Linha hora atual */}
+              {horaAtual && horaAtual>=HORA_INI && horaAtual<=HORA_FIM && (
+                <div style={{ position:'absolute', top:`${(horaAtual-HORA_INI)*60*PX_POR_MIN}px`, left:0, right:0, zIndex:10, display:'flex', alignItems:'center' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', flexShrink:0, marginLeft:'-4px' }}/>
+                  <div style={{ flex:1, height:'1.5px', background:'#ef4444', opacity:0.7 }}/>
+                </div>
+              )}
+            </div>
+
             {profsComCor.map((p: any) => {
-              const temHoje = (horariosProfissional||[]).some(h => h.profissional_id === p.id && h.dia_semana === diaSemanaNum && h.ativo)
-              const qtdAgs = agsDia.filter(ag => ag.profissional === p.nome).length
+              const temHoje  = (horariosProfissional||[]).some(h => h.profissional_id===p.id && h.dia_semana===diaSemanaNum && h.ativo)
+              const horarioDia = (horariosProfissional||[]).find(h => h.profissional_id===p.id && h.dia_semana===diaSemanaNum && h.ativo)
+              const agsProf  = agsDia.filter(ag => ag.profissional===p.nome)
+
               return (
-                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 10px', borderRadius:'20px', background: p.palette.bg, border:`1.5px solid ${p.palette.borda}`, whiteSpace:'nowrap' }}>
-                  <div style={{ width:'24px', height:'24px', borderRadius:'50%', background: p.palette.dark, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'800', color:'white', flexShrink:0 }}>
-                    {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
-                  </div>
-                  <div>
-                    <p style={{ fontSize:'12px', fontWeight:'700', color: p.palette.texto, margin:0 }}>{p.nome}</p>
-                    <p style={{ fontSize:'10px', color: p.palette.dark, margin:0 }}>
-                      {!temHoje ? 'Folga' : qtdAgs === 0 ? 'Livre' : `${qtdAgs} agend.`}
-                    </p>
-                  </div>
+                <div key={p.id} style={{ flex:1, minWidth:`${colWidth}px`, borderRight:'1px solid #f1f5f9', position:'relative', zIndex:1 }}>
+                  {/* Folga */}
+                  {!temHoje && (
+                    <div style={{ position:'absolute', inset:0, background:'repeating-linear-gradient(45deg,#f8fafc,#f8fafc 6px,#f1f5f9 6px,#f1f5f9 12px)', pointerEvents:'none', opacity:0.8 }}/>
+                  )}
+                  {/* Fundo de expediente */}
+                  {temHoje && horarioDia && (() => {
+                    const [hI,mI] = horarioDia.hora_inicio.split(':').map(Number)
+                    const [hF,mF] = horarioDia.hora_fim.split(':').map(Number)
+                    const topPx = ((hI+mI/60)-HORA_INI)*60*PX_POR_MIN
+                    const altPx = ((hF+mF/60)-(hI+mI/60))*60*PX_POR_MIN
+                    return <div style={{ position:'absolute', top:`${topPx}px`, left:0, right:0, height:`${altPx}px`, background:p.palette.bg, opacity:0.2, pointerEvents:'none' }}/>
+                  })()}
+                  {/* Agendamentos */}
+                  {agsProf.map(ag => {
+                    const topPx = (ag.horaInicio-HORA_INI)*60*PX_POR_MIN
+                    const altPx = Math.max(ag.duracao*PX_POR_MIN, 28)
+                    const isFin = ag.status==='fechado'
+                    return (
+                      <div key={ag.id} onClick={()=>onAbrirEdicao(ag)}
+                        style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', height:`${altPx}px`,
+                          background: isFin ? `${p.palette.dark}dd` : p.palette.bg,
+                          border:`1.5px solid ${p.palette.borda}`,
+                          borderLeft:`4px solid ${p.palette.dark}`,
+                          borderRadius:'6px', cursor:'pointer', overflow:'hidden', padding:'3px 5px', zIndex:3,
+                          boxShadow: isFin ? 'none' : '0 1px 4px rgba(0,0,0,0.07)',
+                        }}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                          <p style={{ fontSize:'10px', fontWeight:'800', color: isFin?'rgba(255,255,255,0.9)':p.palette.dark, margin:0, fontFamily:'monospace' }}>
+                            {fmtHora(ag.horaInicio)}
+                          </p>
+                          {isFin && (
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          )}
+                        </div>
+                        <p style={{ fontSize:'11px', fontWeight:'700', color: isFin?'white':p.palette.texto, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {ag.cliente}
+                        </p>
+                        {altPx>42 && ag.servico && (
+                          <p style={{ fontSize:'10px', color: isFin?'rgba(255,255,255,0.7)':p.palette.dark, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {ag.servico}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}
           </div>
-          <button onClick={()=>{ setPainelHorLivres(v=>!v); if (!livresProfSel && profissionais.length > 0) setLivresProfSel(profissionais[0].id) }}
-            style={{ padding:'6px 12px', borderRadius:'8px', border:'1px solid #bfdbfe', background: painelHorLivres ? '#2563eb' : '#eff6ff', color: painelHorLivres ? 'white' : '#1d4ed8', fontSize:'12px', fontWeight:'700', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0, display:'flex', alignItems:'center', gap:'5px' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Horários Livres
-          </button>
         </div>
       </div>
 
-      {/* ─── Grade de horários ─── */}
-      <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-        {/* Header de colunas por profissional */}
-        <div style={{ display:'flex', background:'white', borderBottom:'1px solid #e2e8f0', flexShrink:0, marginLeft:'52px', overflowX:'auto' }}>
-          {profsComCor.map((p: any) => (
-            <div key={p.id} style={{ minWidth:`${colWidth}px`, flex:1, padding:'8px 6px', textAlign:'center', borderRight:'1px solid #f1f5f9' }}>
-              <div style={{ width:'28px', height:'28px', borderRadius:'50%', background: p.palette.dark, margin:'0 auto 3px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:'800', color:'white' }}>
-                {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
-              </div>
-              <p style={{ fontSize:'11px', fontWeight:'700', color:'#374151', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.nome}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Área scrollável */}
-        <div ref={scrollRef} style={{ flex:1, overflowY:'auto', overflowX:'auto', position:'relative' }}>
-          <div style={{ display:'flex', minHeight:`${totalAltura}px` }}>
-
-            {/* Coluna de horas */}
-            <div style={{ width:'52px', flexShrink:0, position:'sticky', left:0, background:'white', zIndex:2, borderRight:'1px solid #e2e8f0' }}>
-              {horas.map(h => (
-                <div key={h} style={{ position:'absolute', top:`${(h - HORA_INI) * 60 * PX_POR_MIN}px`, right:'8px', lineHeight:1 }}>
-                  <span style={{ fontSize:'10px', color:'#94a3b8', fontWeight:'600' }}>{String(h).padStart(2,'0')}:00</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Colunas por profissional */}
-            <div style={{ flex:1, display:'flex', position:'relative', minWidth:`${profsComCor.length * colWidth}px` }}>
-
-              {/* Linhas de hora (fundo) */}
-              <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:0 }}>
-                {horas.map(h => (
-                  <div key={h} style={{ position:'absolute', top:`${(h - HORA_INI) * 60 * PX_POR_MIN}px`, left:0, right:0, borderTop:`1px solid ${h % 2 === 0 ? '#e2e8f0' : '#f1f5f9'}` }}/>
-                ))}
-                {/* Linha do horário atual */}
-                {horaAtual && horaAtual >= HORA_INI && horaAtual <= HORA_FIM && (
-                  <div style={{ position:'absolute', top:`${(horaAtual - HORA_INI) * 60 * PX_POR_MIN}px`, left:0, right:0, zIndex:10, display:'flex', alignItems:'center' }}>
-                    <div style={{ width:'10px', height:'10px', borderRadius:'50%', background:'#ef4444', flexShrink:0, marginLeft:'-5px' }}/>
-                    <div style={{ flex:1, height:'2px', background:'#ef4444' }}/>
-                  </div>
-                )}
-              </div>
-
-              {/* Uma coluna por profissional */}
-              {profsComCor.map((p: any, colIdx: number) => {
-                const temHoje = (horariosProfissional||[]).some(h => h.profissional_id === p.id && h.dia_semana === diaSemanaNum && h.ativo)
-                const horarioDia = (horariosProfissional||[]).find(h => h.profissional_id === p.id && h.dia_semana === diaSemanaNum && h.ativo)
-                const agsProf = agsDia.filter(ag => ag.profissional === p.nome)
-
-                return (
-                  <div key={p.id} style={{ flex:1, minWidth:`${colWidth}px`, borderRight:'1px solid #f1f5f9', position:'relative', zIndex:1 }}>
-                    {/* Fundo de folga */}
-                    {!temHoje && (
-                      <div style={{ position:'absolute', inset:0, background:'repeating-linear-gradient(45deg, #f8fafc, #f8fafc 8px, #f1f5f9 8px, #f1f5f9 16px)', opacity:0.7, pointerEvents:'none' }}/>
-                    )}
-
-                    {/* Expediente do profissional (fundo claro) */}
-                    {temHoje && horarioDia && (() => {
-                      const [hI, mI] = horarioDia.hora_inicio.split(':').map(Number)
-                      const [hF, mF] = horarioDia.hora_fim.split(':').map(Number)
-                      const topPx = ((hI + mI/60) - HORA_INI) * 60 * PX_POR_MIN
-                      const altPx = ((hF + mF/60) - (hI + mI/60)) * 60 * PX_POR_MIN
-                      return (
-                        <div style={{ position:'absolute', top:`${topPx}px`, left:0, right:0, height:`${altPx}px`, background: p.palette.bg, opacity:0.25, pointerEvents:'none' }}/>
-                      )
-                    })()}
-
-                    {/* Agendamentos */}
-                    {agsProf.map(ag => {
-                      const topPx  = (ag.horaInicio - HORA_INI) * 60 * PX_POR_MIN
-                      const altPx  = Math.max(ag.duracao * PX_POR_MIN, 30)
-                      const isFin  = ag.status === 'fechado'
-                      return (
-                        <div key={ag.id}
-                          onClick={() => onAbrirEdicao(ag)}
-                          style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', height:`${altPx}px`, background: isFin ? `${p.palette.dark}cc` : p.palette.bg, border:`1.5px solid ${p.palette.borda}`, borderRadius:'8px', cursor:'pointer', overflow:'hidden', padding:'4px 6px', zIndex:3,
-                            boxShadow: isFin ? 'none' : '0 2px 6px rgba(0,0,0,0.08)',
-                            opacity: isFin ? 0.8 : 1,
-                          }}>
-                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                            <p style={{ fontSize:'11px', fontWeight:'800', color: isFin ? 'white' : p.palette.texto, margin:0, lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>
-                              {ag.horaInicio < 10 ? '0' : ''}{fmtHora(ag.horaInicio)} - {fmtHora(ag.horaInicio + ag.duracao/60)}
-                            </p>
-                            {isFin && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0, marginLeft:'2px' }}><polyline points="20 6 9 17 4 12"/></svg>
-                            )}
-                          </div>
-                          <p style={{ fontSize:'11px', fontWeight:'700', color: isFin ? 'rgba(255,255,255,0.9)' : p.palette.texto, margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            {ag.cliente}
-                          </p>
-                          {altPx > 45 && (
-                            <p style={{ fontSize:'10px', color: isFin ? 'rgba(255,255,255,0.7)' : p.palette.dark, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {ag.servico}
-                            </p>
-                          )}
-                          {isFin && altPx > 55 && (
-                            <div style={{ position:'absolute', bottom:'3px', left:'4px', right:'4px', background:'rgba(255,255,255,0.2)', borderRadius:'4px', padding:'1px 5px' }}>
-                              <span style={{ fontSize:'9px', color:'white', fontWeight:'700' }}>FINALIZADO</span>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Botão + Novo ─── */}
+      {/* ══════════════════ BOTÃO + NOVO ══════════════════ */}
       {onAbrirNovo && (
-        <button onClick={onAbrirNovo} style={{ position:'fixed', bottom:'24px', right:'24px', width:'52px', height:'52px', borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(29,78,216,0.4)', zIndex:50 }}>
+        <button onClick={onAbrirNovo}
+          style={{ position:'fixed', bottom:'24px', right:'24px', width:'50px', height:'50px', borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(29,78,216,0.4)', zIndex:50 }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
       )}
 
-      {/* ─── Painel Horários Livres ─── */}
-      {painelHorLivres && (
+      {/* ══════════════════ PAINEL HORÁRIOS LIVRES ══════════════════ */}
+      {painelLivres && (
         <>
-          <div onClick={()=>setPainelHorLivres(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.35)', zIndex:190, backdropFilter:'blur(2px)' }}/>
-          <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:191, width:'min(96vw,580px)', maxHeight:'80vh', borderRadius:'20px', overflow:'hidden', boxShadow:'0 25px 80px rgba(29,78,216,0.22)', display:'flex', flexDirection:'column' }}>
-            <div style={{ background:'linear-gradient(135deg,#1e40af,#2563eb,#3b82f6)', padding:'18px 20px', flexShrink:0 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                  <div style={{ width:'36px', height:'36px', borderRadius:'12px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  </div>
-                  <div>
-                    <h2 style={{ fontSize:'15px', fontWeight:'800', color:'white', margin:0 }}>Horários Livres</h2>
-                    <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.7)', margin:0 }}>{nomeDiaSemana(diaSel)} · {diaSel.toLocaleDateString('pt-BR')}</p>
-                  </div>
+          <div onClick={()=>setPainelLivres(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.3)', zIndex:190, backdropFilter:'blur(2px)' }}/>
+          <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:191, width:'min(96vw,520px)', maxHeight:'80vh', borderRadius:'20px', overflow:'hidden', boxShadow:'0 20px 60px rgba(29,78,216,0.2)', display:'flex', flexDirection:'column' }}>
+            <div style={{ background:'linear-gradient(135deg,#1e40af,#2563eb)', padding:'16px 18px', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <h2 style={{ fontSize:'14px', fontWeight:'800', color:'white', margin:0 }}>Horários Livres</h2>
+                  <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.7)' }}>· {labelDia}</span>
                 </div>
-                <button onClick={()=>setPainelHorLivres(false)} style={{ width:'30px', height:'30px', borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <button onClick={()=>setPainelLivres(false)} style={{ width:'26px', height:'26px', borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
               <select value={livresProfSel} onChange={e=>setLivresProfSel(e.target.value)}
-                style={{ width:'100%', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.35)', borderRadius:'10px', padding:'7px 12px', fontSize:'13px', fontWeight:'600', color:'white', cursor:'pointer', outline:'none' }}>
-                {profissionais.map((p:any) => <option key={p.id} value={p.id} style={{ color:'#1e3a5f' }}>{p.nome}</option>)}
+                style={{ width:'100%', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'10px', padding:'7px 10px', fontSize:'13px', fontWeight:'600', color:'white', cursor:'pointer', outline:'none' }}>
+                {profissionais.map((p:any)=><option key={p.id} value={p.id} style={{ color:'#1e293b' }}>{p.nome}</option>)}
               </select>
             </div>
-            <div style={{ background:'#f0f6ff', overflowY:'auto', flex:1, padding:'16px' }}>
+            <div style={{ background:'#f0f6ff', overflowY:'auto', flex:1, padding:'14px' }}>
               {(() => {
                 if (!livresProfSel) return null
-                const prof = profsComCor.find((p:any) => p.id === livresProfSel)
+                const prof = profsComCor.find((p:any)=>p.id===livresProfSel)
                 if (!prof) return null
                 const intervalo = prof.intervalo_atendimento || 30
-                const horario = (horariosProfissional||[]).find(h => h.profissional_id === prof.id && h.dia_semana === diaSemanaNum && h.ativo)
-                if (!horario) return (
-                  <div style={{ textAlign:'center', padding:'32px', color:'#94a3b8' }}>
-                    <p style={{ fontSize:'14px', fontWeight:'600' }}>{prof.nome} está de folga hoje.</p>
-                  </div>
-                )
-                const [hI, mI] = horario.hora_inicio.split(':').map(Number)
-                const [hF, mF] = horario.hora_fim.split(':').map(Number)
-                const inicioMin = hI*60 + mI, fimMin = hF*60 + mF
-                const slots: { min: number; livre: boolean; cliente?: string; status?: string }[] = []
-                const agsProf = agsDia.filter(ag => ag.profissional === prof.nome)
-                for (let min = inicioMin; min < fimMin; min += intervalo) {
-                  const agNoSlot = agsProf.find(ag => Math.round(ag.horaInicio * 60) === min)
-                  slots.push({ min, livre: !agNoSlot, cliente: agNoSlot?.cliente, status: agNoSlot?.status })
+                const horario   = (horariosProfissional||[]).find(h=>h.profissional_id===prof.id&&h.dia_semana===diaSemanaNum&&h.ativo)
+                if (!horario) return <p style={{ textAlign:'center', color:'#94a3b8', padding:'24px' }}>Folga hoje.</p>
+                const [hI,mI] = horario.hora_inicio.split(':').map(Number)
+                const [hF,mF] = horario.hora_fim.split(':').map(Number)
+                const slots: {min:number; livre:boolean; cliente?:string; status?:string}[] = []
+                const agsProf = agsDia.filter(ag=>ag.profissional===prof.nome)
+                for (let min=hI*60+mI; min<hF*60+mF; min+=intervalo) {
+                  const ag = agsProf.find(a=>Math.round(a.horaInicio*60)===min)
+                  slots.push({min, livre:!ag, cliente:ag?.cliente, status:ag?.status})
                 }
                 return (
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'7px' }}>
                     {slots.map(s => {
-                      const hh = String(Math.floor(s.min/60)).padStart(2,'0')
-                      const mm = String(s.min%60).padStart(2,'0')
-                      const isFin = s.status === 'fechado'
+                      const hh=String(Math.floor(s.min/60)).padStart(2,'0'), mm=String(s.min%60).padStart(2,'0')
+                      const fin=s.status==='fechado'
                       return (
-                        <div key={s.min} style={{ padding:'8px 12px', borderRadius:'10px', background: s.livre ? 'white' : isFin ? '#dcfce7' : '#fff1f2', border:`1.5px solid ${s.livre ? '#bfdbfe' : isFin ? '#86efac' : '#fecdd3'}`, display:'flex', alignItems:'center', gap:'8px' }}>
-                          <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: s.livre ? '#22c55e' : isFin ? '#16a34a' : '#f87171', flexShrink:0 }}/>
+                        <div key={s.min} style={{ padding:'7px 10px', borderRadius:'10px', background:s.livre?'white':fin?'#dcfce7':'#fff1f2', border:`1.5px solid ${s.livre?'#bfdbfe':fin?'#86efac':'#fecdd3'}`, display:'flex', alignItems:'center', gap:'7px' }}>
+                          <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:s.livre?'#22c55e':fin?'#16a34a':'#f87171', flexShrink:0 }}/>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <p style={{ fontSize:'13px', fontWeight:'800', color: s.livre ? '#1d4ed8' : isFin ? '#15803d' : '#9ca3af', fontFamily:'monospace', margin:0 }}>{hh}:{mm}</p>
-                            {!s.livre && <p style={{ fontSize:'10px', color: isFin ? '#16a34a' : '#e11d48', fontWeight:'600', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.cliente}{isFin ? ' ✓' : ''}</p>}
+                            <p style={{ fontSize:'13px', fontWeight:'800', color:s.livre?'#1d4ed8':fin?'#15803d':'#9ca3af', fontFamily:'monospace', margin:0 }}>{hh}:{mm}</p>
+                            {!s.livre && <p style={{ fontSize:'10px', color:fin?'#16a34a':'#e11d48', fontWeight:'600', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.cliente}{fin?' ✓':''}</p>}
                           </div>
                           {s.livre && <span style={{ fontSize:'10px', color:'#22c55e', fontWeight:'700' }}>Livre</span>}
                         </div>
                       )
                     })}
-                    {slots.length === 0 && <p style={{ gridColumn:'1/-1', textAlign:'center', color:'#94a3b8', padding:'20px' }}>Nenhum slot disponível.</p>}
                   </div>
                 )
               })()}

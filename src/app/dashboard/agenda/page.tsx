@@ -282,7 +282,7 @@ export default function AgendaPage() {
     const ehProf = !!profIdVinculado
     let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,desconto,valor_bruto,forma_pagamento,pagamentos,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
     if (ehProf) qAgs = qAgs.eq('prof_id', profIdVinculado)
-    let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
+    let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos,intervalo_atendimento').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf) qProfs = qProfs.eq('id', profIdVinculado)
     const [r1, r2, r3, r4, r5] = await Promise.all([
       qAgs.order('data_inicio'),

@@ -881,6 +881,7 @@ export default function AgendaPage() {
         <CalendarioAgenda
           agendamentos={agendamentos}
           profissionais={profissionais}
+          horariosProfissional={horariosProfissional}
           onAbrirNovo={perm.criar ? abrirNovo : undefined}
           onAbrirEdicao={abrirEdicao}
           onCancelarRapido={(usuario as any)?.permitir_cancelar !== false ? (ag) => {

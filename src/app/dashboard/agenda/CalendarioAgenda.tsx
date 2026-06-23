@@ -8,6 +8,10 @@ type Ag = {
   valor: number; motivoCancelamento?: string
 }
 
+type HorarioDB = {
+  profissional_id: string; dia_semana: number; hora_inicio: string; hora_fim: string; ativo: boolean
+}
+
 function toISO(d: Date) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
 }
@@ -20,10 +24,19 @@ function nomeMes(d: Date) {
   return d.toLocaleDateString('pt-BR',{month:'long',year:'numeric',timeZone:'America/Sao_Paulo'})
     .replace(/^\w/,c=>c.toUpperCase())
 }
+function addDias(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate()+n); return r }
+function isoParaDate(iso: string) {
+  const [y,m,d] = iso.split('-').map(Number)
+  return new Date(y, m-1, d)
+}
+function nomeDia(d: Date) {
+  return d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',timeZone:'America/Sao_Paulo'})
+}
 
 type Props = {
   agendamentos: Ag[]
   profissionais: any[]
+  horariosProfissional?: HorarioDB[]
   onAbrirNovo: (() => void) | undefined
   onAbrirEdicao: (ag: Ag) => void
   onCancelarRapido?: (ag: Ag) => void
@@ -40,7 +53,22 @@ const AZUL_DARK   = '#1d4ed8'
 const AZUL_LIGHT  = '#dbeafe'
 const AZUL_XLIGHT = '#eff6ff'
 
-export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirNovo, onAbrirEdicao, onCancelarRapido, onFinalizarRapido, onVerPagamentos, onEnviarWpp, filtroProfissional, setFiltroProfissional }: Props) {
+// Gera slots de 30 em 30 min entre hora_inicio e hora_fim
+function gerarSlots(horaIni: string, horaFim: string, passo = 30): number[] {
+  const [hI, mI] = horaIni.split(':').map(Number)
+  const [hF, mF] = horaFim.split(':').map(Number)
+  const inicio = hI * 60 + mI
+  const fim    = hF * 60 + mF
+  const slots: number[] = []
+  for (let t = inicio; t < fim; t += passo) slots.push(t)
+  return slots
+}
+
+function minParaHora(min: number) {
+  return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0')
+}
+
+export default function CalendarioAgenda({ agendamentos, profissionais, horariosProfissional = [], onAbrirNovo, onAbrirEdicao, onCancelarRapido, onFinalizarRapido, onVerPagamentos, onEnviarWpp, filtroProfissional, setFiltroProfissional }: Props) {
   const hoje = hojeNoBrasil()
   const [mesBase, setMesBase] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
   const [diaSel, setDiaSel]   = useState<string>(toISO(hoje))
@@ -48,6 +76,76 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
   const [filtroIni, setFiltroIni] = useState('')
   const [filtroFim, setFiltroFim] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<'todos'|'aberto'|'fechado'|'cancelado'>('todos')
+
+  // ── Horários Livres ──
+  const [painelLivres, setPainelLivres] = useState(false)
+  const [livresProfSel, setLivresProfSel] = useState('')
+  const [livresSemana, setLivresSemana] = useState(0) // offset de semanas a partir de hoje
+
+  // Calcula a semana a exibir
+  const inicioSemana = useMemo(() => {
+    const d = new Date(hoje)
+    d.setDate(d.getDate() + livresSemana * 7)
+    // Vai para a segunda-feira desta semana
+    const dow = d.getDay() // 0=dom
+    d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1))
+    return d
+  }, [hoje, livresSemana])
+
+  // Monta os 7 dias da semana selecionada
+  const diasSemana = useMemo(() =>
+    Array.from({length:7},(_,i) => addDias(inicioSemana, i))
+  , [inicioSemana])
+
+  // Calcula slots livres para cada dia
+  const slotsLivresPorDia = useMemo(() => {
+    if (!livresProfSel) return {}
+    const prof = profissionais.find(p => p.id === livresProfSel)
+    if (!prof) return {}
+
+    const resultado: Record<string, { livre: number[]; ocupado: number[] }> = {}
+
+    diasSemana.forEach(dia => {
+      const iso = toISO(dia)
+      const diaSemana = dia.getDay() // 0=dom
+
+      // Horário de trabalho do profissional neste dia
+      const horario = horariosProfissional.find(h =>
+        h.profissional_id === prof.id && h.dia_semana === diaSemana && h.ativo
+      )
+      if (!horario) { resultado[iso] = { livre: [], ocupado: [] }; return }
+
+      const todosSlots = gerarSlots(horario.hora_inicio, horario.hora_fim)
+
+      // Agendamentos do profissional neste dia (excluindo cancelados)
+      const agsNoDia = agendamentos.filter(a =>
+        a.profissional === prof.nome &&
+        a.dataISO === iso &&
+        a.status !== 'cancelado'
+      )
+
+      // Marca slots ocupados (considera a duração do agendamento)
+      const minOcupados = new Set<number>()
+      agsNoDia.forEach(ag => {
+        const inicioMin = Math.round(ag.horaInicio * 60)
+        const fimMin    = inicioMin + ag.duracao
+        for (let t = inicioMin; t < fimMin; t += 30) minOcupados.add(t)
+      })
+
+      const livre   = todosSlots.filter(s => !minOcupados.has(s))
+      const ocupado = todosSlots.filter(s =>  minOcupados.has(s))
+      resultado[iso] = { livre, ocupado }
+    })
+    return resultado
+  }, [livresProfSel, diasSemana, profissionais, horariosProfissional, agendamentos])
+
+  const labelSemana = useMemo(() => {
+    const ini = inicioSemana
+    const fim = addDias(ini, 6)
+    return ini.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' - ' + fim.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})
+  }, [inicioSemana])
+
+  const profSelecionadoNome = profissionais.find(p => p.id === livresProfSel)?.nome || ''
   const modoFiltro = !!(filtroIni || filtroFim)
 
   const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab']
@@ -213,7 +311,16 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
             </select>
           )}
 
-          {/* Filtro status */}
+          {/* Botão Horários Livres */}
+          {profissionais.length > 0 && (
+            <button onClick={()=>{ setPainelLivres(v=>!v); if(!livresProfSel && profissionais.length>0) setLivresProfSel(profissionais[0].id) }}
+              style={{ marginLeft:'auto', background: painelLivres ? 'white' : 'rgba(255,255,255,0.18)', border:'1px solid '+(painelLivres ? AZUL_LIGHT : 'rgba(255,255,255,0.35)'), borderRadius:'8px', padding:'5px 11px', cursor:'pointer', color: painelLivres ? AZUL_DARK : 'white', fontSize:'12px', fontWeight:'700', display:'flex', alignItems:'center', gap:'5px', transition:'all .2s' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Horários Livres
+            </button>
+          )}
           <div style={{ display:'flex', gap:'4px', marginLeft:'auto' }}>
             {([
               { key:'todos',    label:'Todos',      bg:'rgba(255,255,255,0.2)',  cor:'white',   bgAtivo:'white',    corAtivo:AZUL     },
@@ -382,6 +489,159 @@ export default function CalendarioAgenda({ agendamentos, profissionais, onAbrirN
         </button>
         )}
       </div>
+
+      {/* ═══════════════════════════════════════════════════
+          PAINEL: Horários Livres
+          ═══════════════════════════════════════════════════ */}
+      {painelLivres && (
+        <>
+          {/* Overlay */}
+          <div onClick={()=>setPainelLivres(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.35)', zIndex:190, backdropFilter:'blur(2px)' }}/>
+
+          {/* Painel */}
+          <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', zIndex:191, width:'min(96vw, 720px)', maxHeight:'88vh', display:'flex', flexDirection:'column', borderRadius:'20px', overflow:'hidden', boxShadow:'0 25px 80px rgba(29,78,216,0.22), 0 0 0 1px rgba(37,99,235,0.12)' }}>
+
+            {/* Header do painel */}
+            <div style={{ background:'linear-gradient(135deg, #1e40af, #2563eb, #3b82f6)', padding:'20px 22px 18px', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                  <div style={{ width:'38px', height:'38px', borderRadius:'12px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize:'17px', fontWeight:'800', color:'white', letterSpacing:'-0.3px', margin:0 }}>Horários Livres</h2>
+                    <p style={{ fontSize:'12px', color:'rgba(255,255,255,0.7)', margin:0 }}>Disponibilidade por profissional</p>
+                  </div>
+                </div>
+                <button onClick={()=>setPainelLivres(false)} style={{ width:'32px', height:'32px', borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.25)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+
+              {/* Controles: profissional + semana */}
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                {/* Select profissional */}
+                <select value={livresProfSel} onChange={e=>setLivresProfSel(e.target.value)}
+                  style={{ background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.35)', borderRadius:'10px', padding:'7px 12px', fontSize:'13px', fontWeight:'600', color:'white', cursor:'pointer', outline:'none', flex:'1', minWidth:'140px' }}>
+                  {profissionais.map((p:any) => <option key={p.id} value={p.id} style={{ color:'#1e3a5f' }}>{p.nome}</option>)}
+                </select>
+
+                {/* Navegação de semana */}
+                <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'rgba(255,255,255,0.12)', borderRadius:'10px', padding:'4px 6px' }}>
+                  <button onClick={()=>setLivresSemana(v=>v-1)} style={{ width:'28px', height:'28px', borderRadius:'7px', background:'rgba(255,255,255,0.2)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <span style={{ fontSize:'12px', fontWeight:'600', color:'white', minWidth:'130px', textAlign:'center' }}>{labelSemana}</span>
+                  <button onClick={()=>setLivresSemana(v=>v+1)} style={{ width:'28px', height:'28px', borderRadius:'7px', background:'rgba(255,255,255,0.2)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                  {livresSemana !== 0 && (
+                    <button onClick={()=>setLivresSemana(0)} style={{ background:'rgba(255,255,255,0.25)', border:'none', borderRadius:'7px', padding:'4px 8px', color:'white', fontSize:'11px', fontWeight:'700', cursor:'pointer' }}>Hoje</button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Corpo do painel */}
+            <div style={{ background:'#f0f6ff', overflowY:'auto', flex:1 }}>
+              {!livresProfSel ? (
+                <div style={{ textAlign:'center', padding:'48px 24px', color:'#94a3b8' }}>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="1.5" style={{ display:'block', margin:'0 auto 12px' }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <p style={{ fontSize:'14px', fontWeight:'600', color:'#64748b' }}>Selecione um profissional</p>
+                </div>
+              ) : (
+                <div style={{ padding:'16px', display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:'12px' }}>
+                  {diasSemana.map(dia => {
+                    const iso = toISO(dia)
+                    const slots = slotsLivresPorDia[iso]
+                    const isHoje = iso === toISO(hoje)
+                    const isPast = dia < hoje
+                    const totalLivres  = slots?.livre.length   ?? 0
+                    const totalOcupado = slots?.ocupado.length ?? 0
+                    const semExpediente = !slots || (totalLivres === 0 && totalOcupado === 0)
+
+                    return (
+                      <div key={iso} style={{ background: isHoje ? 'white' : isPast ? '#f8fafc' : 'white', borderRadius:'14px', border: isHoje ? '2px solid #2563eb' : '1px solid #dbeafe', overflow:'hidden', opacity: isPast ? 0.65 : 1, boxShadow: isHoje ? '0 4px 16px rgba(37,99,235,0.12)' : '0 1px 3px rgba(29,78,216,0.06)' }}>
+                        {/* Header do dia */}
+                        <div style={{ background: isHoje ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : '#eff6ff', padding:'10px 12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                          <div>
+                            <p style={{ fontSize:'12px', fontWeight:'800', color: isHoje ? 'white' : '#1d4ed8', textTransform:'capitalize', margin:0 }}>
+                              {dia.toLocaleDateString('pt-BR',{weekday:'short',timeZone:'America/Sao_Paulo'}).replace('.','').toUpperCase()}
+                            </p>
+                            <p style={{ fontSize:'18px', fontWeight:'800', color: isHoje ? 'white' : '#1e40af', lineHeight:1, margin:0 }}>
+                              {dia.toLocaleDateString('pt-BR',{day:'2-digit',timeZone:'America/Sao_Paulo'})}
+                            </p>
+                          </div>
+                          {!semExpediente && (
+                            <div style={{ textAlign:'right' }}>
+                              <p style={{ fontSize:'10px', color: isHoje ? 'rgba(255,255,255,0.8)' : '#60a5fa', margin:0, fontWeight:'600' }}>{totalLivres} livres</p>
+                              {totalOcupado > 0 && <p style={{ fontSize:'10px', color: isHoje ? 'rgba(255,255,255,0.6)' : '#93c5fd', margin:0 }}>{totalOcupado} ocupados</p>}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Slots */}
+                        <div style={{ padding:'10px 12px 12px', display:'flex', flexDirection:'column', gap:'4px', minHeight:'60px' }}>
+                          {semExpediente ? (
+                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, paddingTop:'8px' }}>
+                              <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'4px' }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              </div>
+                              <p style={{ fontSize:'10px', color:'#94a3b8', fontWeight:'600', textAlign:'center', margin:0 }}>Folga</p>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Slots livres */}
+                              {slots?.livre.map(min => (
+                                <div key={min} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 8px', background:'#eff6ff', borderRadius:'7px', border:'1px solid #bfdbfe' }}>
+                                  <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#22c55e', flexShrink:0 }}/>
+                                  <span style={{ fontSize:'12px', fontWeight:'700', color:'#1d4ed8', fontFamily:'monospace' }}>{minParaHora(min)}</span>
+                                  <span style={{ fontSize:'10px', color:'#60a5fa', marginLeft:'auto', fontWeight:'600' }}>livre</span>
+                                </div>
+                              ))}
+                              {/* Slots ocupados */}
+                              {slots?.ocupado.map(min => (
+                                <div key={min} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 8px', background:'#f8fafc', borderRadius:'7px', border:'1px solid #e2e8f0', opacity:0.7 }}>
+                                  <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#f87171', flexShrink:0 }}/>
+                                  <span style={{ fontSize:'12px', fontWeight:'700', color:'#94a3b8', fontFamily:'monospace', textDecoration:'line-through' }}>{minParaHora(min)}</span>
+                                  <span style={{ fontSize:'10px', color:'#f87171', marginLeft:'auto', fontWeight:'600' }}>ocupado</span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Rodapé */}
+            <div style={{ background:'white', padding:'12px 22px', borderTop:'1px solid #dbeafe', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#22c55e' }}/>
+                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Horário livre</span>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#f87171' }}/>
+                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Ocupado</span>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#94a3b8' }}/>
+                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Folga</span>
+                </div>
+              </div>
+              {profSelecionadoNome && (
+                <span style={{ fontSize:'12px', color:'#1d4ed8', fontWeight:'700', background:'#eff6ff', padding:'4px 10px', borderRadius:'99px', border:'1px solid #bfdbfe' }}>
+                  {profSelecionadoNome}
+                </span>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

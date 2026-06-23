@@ -93,6 +93,9 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
     const prof = profissionais.find((p:any) => p.id === livresProfSel)
     if (!prof) return {}
 
+    // Usa o intervalo configurado no profissional (padrão 30)
+    const intervalo = prof.intervalo_atendimento || 30
+
     const resultado: Record<string, { livre: number[]; ocupado: { min: number; cliente: string }[] }> = {}
 
     diasSemana.forEach(dia => {
@@ -112,10 +115,8 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
       const livre: number[] = []
       const ocupado: { min: number; cliente: string }[] = []
 
-      // Gera slots com o mesmo intervalo (30 min padrão)
-      // e usa a mesma condição: min - fimMin <= 0 (permite o slot exato do fim)
-      for (let min = inicioMin; min - fimMin <= 0; min += 30) {
-        // Verifica se existe agendamento com horaInicio exato neste slot
+      // Gera slots com o intervalo do profissional (igual à agenda)
+      for (let min = inicioMin; min - fimMin <= 0; min += intervalo) {
         const agNoSlot = agendamentos.find(ag =>
           ag.profissional === prof.nome &&
           ag.dataISO === iso &&

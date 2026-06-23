@@ -44,10 +44,10 @@ export default function ProfissionaisPage() {
   const [erro, setErro]             = useState('')
   const [busca, setBusca]           = useState('')
   const [modalAberto, setModalAberto]   = useState(false)
-  const [abaModal, setAbaModal]         = useState<'dados'|'servicos'|'horarios'>('dados')
+  const [abaModal, setAbaModal]         = useState<'dados'|'servicos'|'horarios'|'intervalo'>('dados')
   const [modoEdicao, setModoEdicao]     = useState(false)
   const [selecionado, setSelecionado]   = useState<Profissional|null>(null)
-  const [form, setForm]  = useState({ nome:'', email:'', telefone:'', cargo:'', especialidade:'', cor:CORES[0], status:'ativo' })
+  const [form, setForm]  = useState({ nome:'', email:'', telefone:'', cargo:'', especialidade:'', cor:CORES[0], status:'ativo', intervalo_atendimento:'30' })
   const [servicosSel, setServicosSel]   = useState<string[]>([])
   const [horarios, setHorarios]     = useState(horariosBase.map(h => ({...h})))
 
@@ -59,7 +59,7 @@ export default function ProfissionaisPage() {
     // Busca da tabela profissionais (não usuarios)
     const { data: profs, error } = await sb
       .from('profissionais')
-      .select('id, nome, email, telefone, cargo, especialidade, cor, status, servicos')
+      .select('id, nome, email, telefone, cargo, especialidade, cor, status, servicos, intervalo_atendimento')
       .eq('empresa_id', empresaAtiva.id)
       .order('nome')
 
@@ -99,6 +99,7 @@ export default function ProfissionaisPage() {
         cargo:p.cargo||'', especialidade:p.especialidade||p.cargo||'',
         cor:p.cor||CORES[0], status:p.status,
         horarios:horariosFormatados, servicos:p.servicos||[],
+        intervalo_atendimento: p.intervalo_atendimento || 30,
       }
     }))
     setCarregando(false)
@@ -114,14 +115,14 @@ export default function ProfissionaisPage() {
 
   function abrirNovo() {
     setModoEdicao(false); setSelecionado(null); setErro(''); setAbaModal('dados')
-    setForm({ nome:'', email:'', telefone:'', cargo:'', especialidade:'', cor:CORES[0], status:'ativo' })
+    setForm({ nome:'', email:'', telefone:'', cargo:'', especialidade:'', cor:CORES[0], status:'ativo', intervalo_atendimento:'30' })
     setServicosSel([]); setHorarios(horariosBase.map(h => ({...h})))
     setModalAberto(true)
   }
 
   function abrirEdicao(p: Profissional) {
     setModoEdicao(true); setSelecionado(p); setErro(''); setAbaModal('dados')
-    setForm({ nome:p.nome, email:p.email, telefone:p.telefone, cargo:p.cargo, especialidade:p.especialidade, cor:p.cor, status:p.status })
+    setForm({ nome:p.nome, email:p.email, telefone:p.telefone, cargo:p.cargo, especialidade:p.especialidade, cor:p.cor, status:p.status, intervalo_atendimento: String((p as any).intervalo_atendimento || 30) })
     setServicosSel(p.servicos || [])
     setHorarios(p.horarios.map(h => ({...h})))
     setModalAberto(true)
@@ -146,6 +147,7 @@ export default function ProfissionaisPage() {
       cor:          form.cor,
       status:       form.status,
       servicos:     servicosSel,
+      intervalo_atendimento: parseInt(form.intervalo_atendimento) || 30,
     }
 
     if (modoEdicao && selecionado) {
@@ -285,7 +287,7 @@ export default function ProfissionaisPage() {
 
             {/* Abas */}
             <div style={{ display:'flex', marginBottom:'20px', borderBottom:'2px solid #f3f4f6' }}>
-              {([['dados','Dados'],['servicos','Serviços'],['horarios','Horários']] as const).map(([v,l]) => (
+              {([['dados','Dados'],['servicos','Serviços'],['horarios','Horários'],['intervalo','Intervalo']] as const).map(([v,l]) => (
                 <button key={v} onClick={() => setAbaModal(v)} style={{ padding:'8px 16px', border:'none', background:'none', cursor:'pointer', fontSize:'13px', fontWeight:abaModal===v?'600':'400', color:abaModal===v?'#6366f1':'#9ca3af', borderBottom:abaModal===v?'2px solid #6366f1':'2px solid transparent', marginBottom:'-2px' }}>{l}</button>
               ))}
             </div>
@@ -372,6 +374,51 @@ export default function ProfissionaisPage() {
                     ) : <span style={{ fontSize:'12px', color:'#d1d5db' }}>Não atende</span>}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {abaModal === 'intervalo' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
+                <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'12px', padding:'14px 16px' }}>
+                  <p style={{ fontSize:'13px', color:'#1d4ed8', fontWeight:'600', marginBottom:'4px' }}>Intervalo entre atendimentos</p>
+                  <p style={{ fontSize:'12px', color:'#3b82f6' }}>Define o espaçamento dos horários disponíveis ao agendar para este profissional. Também usado na visualização de Horários Livres.</p>
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'12px' }}>
+                  {[
+                    { min: 15, label: '15 min', desc: 'Atendimentos rápidos\nSlots a cada 15 min' },
+                    { min: 30, label: '30 min', desc: 'Padrão recomendado\nSlots a cada 30 min' },
+                    { min: 60, label: '60 min', desc: 'Atendimentos longos\nSlots a cada 60 min' },
+                  ].map(op => {
+                    const sel = form.intervalo_atendimento === String(op.min)
+                    return (
+                      <div key={op.min} onClick={() => setForm(p=>({...p, intervalo_atendimento: String(op.min)}))}
+                        style={{ border:`2px solid ${sel?'#6366f1':'#e5e7eb'}`, borderRadius:'14px', padding:'18px 12px', textAlign:'center', cursor:'pointer', background: sel ? '#eef2ff' : 'white', transition:'all .15s' }}>
+                        <div style={{ width:'48px', height:'48px', borderRadius:'50%', background: sel ? '#6366f1' : '#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 10px' }}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sel?'white':'#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <p style={{ fontSize:'18px', fontWeight:'800', color: sel ? '#4f46e5' : '#374151', marginBottom:'6px' }}>{op.label}</p>
+                        {op.desc.split('\n').map((line, i) => (
+                          <p key={i} style={{ fontSize:'11px', color: sel ? '#6366f1' : '#9ca3af', margin:'1px 0', fontWeight: i===0?'600':'400' }}>{line}</p>
+                        ))}
+                        {sel && (
+                          <div style={{ marginTop:'10px', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span style={{ fontSize:'11px', color:'#6366f1', fontWeight:'700' }}>Selecionado</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div style={{ background:'#f8fafc', borderRadius:'10px', padding:'14px 16px', fontSize:'12.5px', color:'#6b7280', lineHeight:1.6 }}>
+                  <b style={{ color:'#374151' }}>Exemplo com intervalo de {form.intervalo_atendimento} min:</b><br/>
+                  {Array.from({length:5},(_,i)=>{
+                    const base = 8*60 + i*parseInt(form.intervalo_atendimento)
+                    return String(Math.floor(base/60)).padStart(2,'0')+':'+String(base%60).padStart(2,'0')
+                  }).join(' → ')} → ...
+                </div>
               </div>
             )}
 

@@ -465,7 +465,8 @@ export default function AgendaPage() {
       }
     } catch { setPagamentos([]) }
 
-    setIntervaloMin(30); setModalAberto(true)
+    const profDesteAg = profissionais.find((p:any) => p.nome === ag.profissional)
+    setIntervaloMin(profDesteAg?.intervalo_atendimento || 30); setModalAberto(true)
     // Carregar plano do cliente se for plano
     if (ehPlano && ag.clienteId) {
       // Buscar dados do agendamento diretamente do banco para exibicao correta
@@ -1148,7 +1149,12 @@ export default function AgendaPage() {
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Profissional">
-                  <select value={form.profissional} onChange={e=>setForm(f=>({...f,profissional:e.target.value,servico:'',horaInicio:''}))} style={selectStyle}>
+                  <select value={form.profissional} onChange={e=>{
+                    const profNome = e.target.value
+                    const prof = profissionais.find((p:any) => p.nome === profNome)
+                    if (prof?.intervalo_atendimento) setIntervaloMin(prof.intervalo_atendimento)
+                    setForm(f=>({...f,profissional:profNome,servico:'',horaInicio:''}))
+                  }} style={selectStyle}>
                     <option value="">Selecione...</option>
                     {profissionais.map((p: any) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
                   </select>

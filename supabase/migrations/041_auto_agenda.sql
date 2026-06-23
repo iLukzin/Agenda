@@ -43,3 +43,6 @@ CREATE POLICY auto_agenda_log_auth ON auto_agenda_log FOR ALL USING (true) WITH 
 
 -- Flag para finalizar agendamento sem exigir forma de pagamento
 ALTER TABLE empresas ADD COLUMN IF NOT EXISTS finalizar_sem_pagamento BOOLEAN DEFAULT FALSE;
+
+-- Intervalo padrão de atendimento por profissional (15, 30 ou 60 min)
+ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS intervalo_atendimento INTEGER DEFAULT 30;

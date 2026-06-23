@@ -280,7 +280,7 @@ export default function ProfissionaisPage() {
             <div style={{ width:'36px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 16px' }}/>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
               <h2 style={{ fontSize:'17px', fontWeight:'600', color:'#1a1a2e' }}>
-                {modoEdicao ? 'edit Editar profissional' : '+ Novo profissional'}
+                {modoEdicao ? 'Editar profissional' : '+ Novo profissional'}
               </h2>
               <button onClick={fecharModal} style={{ background:'#f3f4f6', border:'none', borderRadius:'50%', width:'30px', height:'30px', cursor:'pointer' }}>x</button>
             </div>

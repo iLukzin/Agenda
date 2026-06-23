@@ -61,7 +61,9 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
   const [mesBase, setMesBase]         = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
   const [painelLivres, setPainelLivres] = useState(false)
   const [livresProfSel, setLivresProfSel] = useState('')
-  const [agAtivo, setAgAtivo]         = useState<string|null>(null) // id do ag com popup aberto
+  const [agAtivo, setAgAtivo]         = useState<string|null>(null)
+  const [popupPos, setPopupPos]       = useState<{top:number; left:number; width:number}>({top:0, left:0, width:240})
+  const agRefs = useRef<Record<string, HTMLDivElement|null>>({})
   const scrollRef  = useRef<HTMLDivElement>(null)
   const calRef     = useRef<HTMLDivElement>(null)
 
@@ -339,9 +341,31 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                     const isCanc = ag.status==='cancelado'
                     const popupAberto = agAtivo === ag.id
                     return (
-                      <div key={ag.id} data-popup-ag="true" style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', zIndex: popupAberto ? 20 : 3 }}>
+                      <div key={ag.id}
+                        data-popup-ag="true"
+                        ref={el => { agRefs.current[ag.id] = el }}
+                        style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', zIndex: popupAberto ? 20 : 3 }}>
                         {/* Bloco principal */}
-                        <div onClick={e=>{ e.stopPropagation(); setAgAtivo(popupAberto ? null : ag.id) }}
+                        <div onClick={e=>{ e.stopPropagation()
+                          if (popupAberto) { setAgAtivo(null); return }
+                          // Calcula posição real na tela para o popup
+                          const el = agRefs.current[ag.id]
+                          if (el) {
+                            const rect = el.getBoundingClientRect()
+                            const vw = window.innerWidth
+                            const vh = window.innerHeight
+                            const popW = 240
+                            // Tenta abrir abaixo; se não couber, abre acima
+                            let top = rect.bottom + 6
+                            if (top + 300 > vh) top = rect.top - 310
+                            // Centraliza horizontalmente no bloco, mas mantém na tela
+                            let left = rect.left + rect.width/2 - popW/2
+                            if (left < 8) left = 8
+                            if (left + popW > vw - 8) left = vw - popW - 8
+                            setPopupPos({ top, left, width: popW })
+                          }
+                          setAgAtivo(ag.id)
+                        }}
                           style={{ height:`${altPx}px`,
                             background: isFin ? `${p.palette.dark}dd` : isCanc ? '#f1f5f9' : p.palette.bg,
                             border:`1.5px solid ${isFin ? p.palette.dark : isCanc ? '#cbd5e1' : p.palette.borda}`,
@@ -368,10 +392,10 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                           )}
                         </div>
 
-                        {/* Popup de ações — renderizado como modal fixo para evitar problemas de stacking context */}
+                        {/* Popup de ações rápidas — position:fixed com posição calculada do bloco */}
                         {popupAberto && (
                           <div data-popup-ag="true" onClick={e=>e.stopPropagation()}
-                            style={{ position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)', zIndex:9999, background:'white', borderRadius:'16px', border:'1px solid #e2e8f0', boxShadow:'0 12px 40px rgba(15,23,42,0.22)', padding:'12px', width:'min(92vw, 280px)' }}>
+                            style={{ position:'fixed', top:`${popupPos.top}px`, left:`${popupPos.left}px`, width:`${popupPos.width}px`, zIndex:9999, background:'white', borderRadius:'14px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'12px' }}>
                             {/* Info do agendamento */}
                             <div style={{ marginBottom:'8px', paddingBottom:'8px', borderBottom:'1px solid #f1f5f9' }}>
                               <p style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', margin:'0 0 2px' }}>{ag.cliente}</p>

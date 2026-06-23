@@ -154,7 +154,34 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
 
   const horas        = useMemo(() => Array.from({length: HORA_FIM - HORA_INI + 1}, (_, i) => HORA_INI+i), [])
   const totalAltura  = (HORA_FIM - HORA_INI) * 60 * PX_POR_MIN
-  const colWidth     = 120
+  // Largura mínima por coluna — no mobile usa a largura disponível dividida por profissionais
+  const COL_MIN = 110
+  const headerScrollRef = useRef<HTMLDivElement>(null)
+
+  // Sincroniza scroll horizontal entre header de colunas e grade
+  function onGradeScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = (e.currentTarget as HTMLDivElement).scrollLeft
+    }
+  }
+
+  function abrirPopup(e: React.MouseEvent, agId: string) {
+    e.stopPropagation()
+    if (agAtivo === agId) { setAgAtivo(null); return }
+    const el = agRefs.current[agId]
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const popW = Math.min(240, vw - 16)
+      let top = rect.bottom + 6
+      if (top + 320 > vh) top = Math.max(8, rect.top - 320)
+      let left = rect.left + rect.width / 2 - popW / 2
+      left = Math.max(8, Math.min(left, vw - popW - 8))
+      setPopupPos({ top, left, width: popW })
+    }
+    setAgAtivo(agId)
+  }
 
   function selDia(d: Date) { setDiaSel(d); setMiniCalAberto(false) }
 
@@ -270,22 +297,27 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
           })}
         </div>
 
-        {/* Divisor + header de colunas */}
-        <div style={{ display:'flex', borderTop:'1px solid #f1f5f9', marginLeft:'52px' }}>
-          {profsComCor.map((p: any) => (
-            <div key={p.id} style={{ flex:1, minWidth:`${colWidth}px`, padding:'6px 8px', textAlign:'center', borderRight:'1px solid #f1f5f9', borderBottom:'1px solid #e2e8f0' }}>
-              <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:p.palette.dark, margin:'0 auto 2px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'800', color:'white' }}>
-                {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
+        {/* Header de colunas — scroll sincronizado com a grade */}
+        <div style={{ display:'flex', borderTop:'1px solid #f1f5f9' }}>
+          {/* Espaço da coluna de horas */}
+          <div style={{ width:'52px', flexShrink:0, borderRight:'1px solid #e2e8f0', borderBottom:'1px solid #e2e8f0' }}/>
+          {/* Colunas de profissionais com overflow oculto e scroll sync */}
+          <div ref={headerScrollRef} style={{ flex:1, display:'flex', overflowX:'hidden' }}>
+            {profsComCor.map((p: any) => (
+              <div key={p.id} style={{ flex:1, minWidth:`${COL_MIN}px`, padding:'6px 8px', textAlign:'center', borderRight:'1px solid #f1f5f9', borderBottom:'1px solid #e2e8f0', flexShrink:0 }}>
+                <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:p.palette.dark, margin:'0 auto 2px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'800', color:'white' }}>
+                  {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
+                </div>
+                <p style={{ fontSize:'10px', fontWeight:'700', color:'#374151', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nome.split(' ')[0]}</p>
               </div>
-              <p style={{ fontSize:'10px', fontWeight:'700', color:'#374151', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nome.split(' ')[0]}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ══════════════════ GRADE ══════════════════ */}
-      <div ref={scrollRef} style={{ flex:1, overflowY:'auto', overflowX:'auto', position:'relative' }}>
-        <div style={{ display:'flex', minHeight:`${totalAltura}px` }}>
+      <div ref={scrollRef} onScroll={onGradeScroll} style={{ flex:1, overflowY:'auto', overflowX:'auto', position:'relative', WebkitOverflowScrolling:'touch' } as React.CSSProperties}>
+        <div style={{ display:'flex', minHeight:`${totalAltura}px`, minWidth:`${profsComCor.length * COL_MIN + 52}px` }}>
 
           {/* Coluna de horas */}
           <div style={{ width:'52px', flexShrink:0, position:'sticky', left:0, background:'white', zIndex:2, borderRight:'1px solid #e2e8f0' }}>
@@ -297,7 +329,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
           </div>
 
           {/* Colunas de profissionais */}
-          <div style={{ flex:1, display:'flex', position:'relative', minWidth:`${profsComCor.length*colWidth}px` }}>
+          <div style={{ flex:1, display:'flex', position:'relative', minWidth:`${profsComCor.length * COL_MIN}px` }}>
 
             {/* Grade de fundo */}
             <div style={{ position:'absolute', inset:0, pointerEvents:'none', zIndex:0 }}>
@@ -320,7 +352,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
               const agsProf  = agsDia.filter(ag => ag.profissional===p.nome)
 
               return (
-                <div key={p.id} style={{ flex:1, minWidth:`${colWidth}px`, borderRight:'1px solid #f1f5f9', position:'relative', zIndex:1 }}>
+                <div key={p.id} style={{ flex:1, minWidth:`${COL_MIN}px`, borderRight:'1px solid #f1f5f9', position:'relative', zIndex:1 }}>
                   {/* Folga */}
                   {!temHoje && (
                     <div style={{ position:'absolute', inset:0, background:'repeating-linear-gradient(45deg,#f8fafc,#f8fafc 6px,#f1f5f9 6px,#f1f5f9 12px)', pointerEvents:'none', opacity:0.8 }}/>
@@ -346,26 +378,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                         ref={el => { agRefs.current[ag.id] = el }}
                         style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', zIndex: popupAberto ? 20 : 3 }}>
                         {/* Bloco principal */}
-                        <div onClick={e=>{ e.stopPropagation()
-                          if (popupAberto) { setAgAtivo(null); return }
-                          // Calcula posição real na tela para o popup
-                          const el = agRefs.current[ag.id]
-                          if (el) {
-                            const rect = el.getBoundingClientRect()
-                            const vw = window.innerWidth
-                            const vh = window.innerHeight
-                            const popW = 240
-                            // Tenta abrir abaixo; se não couber, abre acima
-                            let top = rect.bottom + 6
-                            if (top + 300 > vh) top = rect.top - 310
-                            // Centraliza horizontalmente no bloco, mas mantém na tela
-                            let left = rect.left + rect.width/2 - popW/2
-                            if (left < 8) left = 8
-                            if (left + popW > vw - 8) left = vw - popW - 8
-                            setPopupPos({ top, left, width: popW })
-                          }
-                          setAgAtivo(ag.id)
-                        }}
+                        <div onClick={e => abrirPopup(e, ag.id)}
                           style={{ height:`${altPx}px`,
                             background: isFin ? `${p.palette.dark}dd` : isCanc ? '#f1f5f9' : p.palette.bg,
                             border:`1.5px solid ${isFin ? p.palette.dark : isCanc ? '#cbd5e1' : p.palette.borda}`,

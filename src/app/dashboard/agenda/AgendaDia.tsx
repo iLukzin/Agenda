@@ -54,13 +54,14 @@ const HORA_INI   = 7
 const HORA_FIM   = 21
 const PX_POR_MIN = 2.5
 
-export default function AgendaDia({ agendamentos, profissionais, horariosProfissional=[], onAbrirNovo, onAbrirEdicao }: Props) {
+export default function AgendaDia({ agendamentos, profissionais, horariosProfissional=[], onAbrirNovo, onAbrirEdicao, onCancelarRapido, onFinalizarRapido, onVerPagamentos, onEnviarWpp }: Props) {
   const hoje       = useMemo(() => hojeNoBrasil(), [])
   const [diaSel, setDiaSel]           = useState(hoje)
   const [miniCalAberto, setMiniCalAberto] = useState(false)
   const [mesBase, setMesBase]         = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
   const [painelLivres, setPainelLivres] = useState(false)
   const [livresProfSel, setLivresProfSel] = useState('')
+  const [agAtivo, setAgAtivo]         = useState<string|null>(null) // id do ag com popup aberto
   const scrollRef  = useRef<HTMLDivElement>(null)
   const calRef     = useRef<HTMLDivElement>(null)
 
@@ -270,6 +271,10 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
       </div>
 
       {/* ══════════════════ GRADE ══════════════════ */}
+      {/* Overlay para fechar popup ao clicar fora */}
+      {agAtivo && (
+        <div onClick={()=>setAgAtivo(null)} style={{ position:'fixed', inset:0, zIndex:15 }}/>
+      )}
       <div ref={scrollRef} style={{ flex:1, overflowY:'auto', overflowX:'auto', position:'relative' }}>
         <div style={{ display:'flex', minHeight:`${totalAltura}px` }}>
 
@@ -321,33 +326,109 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                   })()}
                   {/* Agendamentos */}
                   {agsProf.map(ag => {
-                    const topPx = (ag.horaInicio-HORA_INI)*60*PX_POR_MIN
-                    const altPx = Math.max(ag.duracao*PX_POR_MIN, 28)
-                    const isFin = ag.status==='fechado'
+                    const topPx  = (ag.horaInicio-HORA_INI)*60*PX_POR_MIN
+                    const altPx  = Math.max(ag.duracao*PX_POR_MIN, 28)
+                    const isFin  = ag.status==='fechado'
+                    const isCanc = ag.status==='cancelado'
+                    const popupAberto = agAtivo === ag.id
                     return (
-                      <div key={ag.id} onClick={()=>onAbrirEdicao(ag)}
-                        style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', height:`${altPx}px`,
-                          background: isFin ? `${p.palette.dark}dd` : p.palette.bg,
-                          border:`1.5px solid ${p.palette.borda}`,
-                          borderLeft:`4px solid ${p.palette.dark}`,
-                          borderRadius:'6px', cursor:'pointer', overflow:'hidden', padding:'3px 5px', zIndex:3,
-                          boxShadow: isFin ? 'none' : '0 1px 4px rgba(0,0,0,0.07)',
-                        }}>
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                          <p style={{ fontSize:'10px', fontWeight:'800', color: isFin?'rgba(255,255,255,0.9)':p.palette.dark, margin:0, fontFamily:'monospace' }}>
-                            {fmtHora(ag.horaInicio)}
+                      <div key={ag.id} style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', zIndex: popupAberto ? 20 : 3 }}>
+                        {/* Bloco principal */}
+                        <div onClick={e=>{ e.stopPropagation(); setAgAtivo(popupAberto ? null : ag.id) }}
+                          style={{ height:`${altPx}px`,
+                            background: isFin ? `${p.palette.dark}dd` : isCanc ? '#f1f5f9' : p.palette.bg,
+                            border:`1.5px solid ${isFin ? p.palette.dark : isCanc ? '#cbd5e1' : p.palette.borda}`,
+                            borderLeft:`4px solid ${isFin ? p.palette.dark : isCanc ? '#94a3b8' : p.palette.dark}`,
+                            borderRadius:'6px', cursor:'pointer', overflow:'hidden', padding:'3px 5px',
+                            boxShadow: popupAberto ? `0 0 0 2px ${p.palette.dark}` : isFin ? 'none' : '0 1px 4px rgba(0,0,0,0.07)',
+                            opacity: isCanc ? 0.5 : 1,
+                          }}>
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                            <p style={{ fontSize:'10px', fontWeight:'800', color: isFin?'rgba(255,255,255,0.9)':p.palette.dark, margin:0, fontFamily:'monospace' }}>
+                              {fmtHora(ag.horaInicio)}
+                            </p>
+                            {isFin && (
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            )}
+                          </div>
+                          <p style={{ fontSize:'11px', fontWeight:'700', color: isFin?'white':isCanc?'#94a3b8':p.palette.texto, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {ag.cliente}
                           </p>
-                          {isFin && (
-                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          {altPx>42 && ag.servico && (
+                            <p style={{ fontSize:'10px', color: isFin?'rgba(255,255,255,0.7)':isCanc?'#94a3b8':p.palette.dark, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                              {ag.servico}
+                            </p>
                           )}
                         </div>
-                        <p style={{ fontSize:'11px', fontWeight:'700', color: isFin?'white':p.palette.texto, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {ag.cliente}
-                        </p>
-                        {altPx>42 && ag.servico && (
-                          <p style={{ fontSize:'10px', color: isFin?'rgba(255,255,255,0.7)':p.palette.dark, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            {ag.servico}
-                          </p>
+
+                        {/* Popup de ações rápidas */}
+                        {popupAberto && (
+                          <div onClick={e=>e.stopPropagation()}
+                            style={{ position:'absolute', top:`${altPx+4}px`, left:0, zIndex:30, background:'white', borderRadius:'12px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'10px', minWidth:'180px', maxWidth:'220px' }}>
+                            {/* Info do agendamento */}
+                            <div style={{ marginBottom:'8px', paddingBottom:'8px', borderBottom:'1px solid #f1f5f9' }}>
+                              <p style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', margin:'0 0 2px' }}>{ag.cliente}</p>
+                              <p style={{ fontSize:'11px', color:'#64748b', margin:0 }}>{fmtHora(ag.horaInicio)} · {ag.servico || 'Sem serviço'}</p>
+                              <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', marginTop:'4px', padding:'2px 8px', borderRadius:'99px', background: isFin?'#dcfce7':isCanc?'#f1f5f9':'#fef9c3' }}>
+                                <div style={{ width:'5px', height:'5px', borderRadius:'50%', background: isFin?'#16a34a':isCanc?'#94a3b8':'#f59e0b' }}/>
+                                <span style={{ fontSize:'10px', fontWeight:'700', color: isFin?'#15803d':isCanc?'#64748b':'#b45309' }}>
+                                  {isFin ? 'Finalizado' : isCanc ? 'Cancelado' : 'Em aberto'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Botões de ação */}
+                            <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
+                              {/* Editar — sempre disponível */}
+                              <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onAbrirEdicao(ag) }}
+                                style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'600', color:'#374151', cursor:'pointer', textAlign:'left' }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Editar agendamento
+                              </button>
+
+                              {/* Ações disponíveis por status */}
+                              {!isFin && !isCanc && (
+                                <>
+                                  {onEnviarWpp && (
+                                    <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onEnviarWpp(ag) }}
+                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'600', color:'#16a34a', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                                      Enviar WhatsApp
+                                    </button>
+                                  )}
+                                  {onFinalizarRapido && (
+                                    <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onFinalizarRapido(ag) }}
+                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#059669', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      Finalizar
+                                    </button>
+                                  )}
+                                  {onCancelarRapido && (
+                                    <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onCancelarRapido(ag) }}
+                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#ef4444', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                      Cancelar
+                                    </button>
+                                  )}
+                                </>
+                              )}
+
+                              {/* Ver pagamento — só finalizados */}
+                              {isFin && onVerPagamentos && (
+                                <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onVerPagamentos(ag) }}
+                                  style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#2563eb', cursor:'pointer', textAlign:'left' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                  Ver pagamento
+                                </button>
+                              )}
+
+                              {/* Fechar popup */}
+                              <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null) }}
+                                style={{ width:'100%', background:'none', border:'none', borderRadius:'8px', padding:'5px', fontSize:'11px', color:'#94a3b8', cursor:'pointer', marginTop:'2px' }}>
+                                Fechar
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )

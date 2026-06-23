@@ -96,7 +96,7 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
     // Usa o intervalo configurado no profissional (padrão 30)
     const intervalo = prof.intervalo_atendimento || 30
 
-    const resultado: Record<string, { livre: number[]; ocupado: { min: number; cliente: string }[] }> = {}
+    const resultado: Record<string, { livre: number[]; ocupado: { min: number; cliente: string; status: string }[] }> = {}
 
     diasSemana.forEach(dia => {
       const iso = toISO(dia)
@@ -113,7 +113,7 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
       const fimMin    = hF * 60 + mF
 
       const livre: number[] = []
-      const ocupado: { min: number; cliente: string }[] = []
+      const ocupado: { min: number; cliente: string; status: string }[] = []
 
       // Gera slots com o intervalo do profissional (igual à agenda)
       for (let min = inicioMin; min - fimMin <= 0; min += intervalo) {
@@ -126,7 +126,8 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
         if (agNoSlot) {
           ocupado.push({
             min,
-            cliente: agNoSlot.cliente + (agNoSlot.status === 'fechado' ? ' ✓' : ''),
+            cliente: agNoSlot.cliente,
+            status:  agNoSlot.status,
           })
         } else {
           livre.push(min)
@@ -597,14 +598,24 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
                                   <span style={{ fontSize:'10px', color:'#60a5fa', marginLeft:'auto', fontWeight:'600' }}>livre</span>
                                 </div>
                               ))}
-                              {/* Slots ocupados — mostra o cliente */}
-                              {slots?.ocupado.map(({ min, cliente }) => (
-                                <div key={min} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 8px', background:'#fff1f2', borderRadius:'7px', border:'1px solid #fecdd3' }}>
-                                  <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#f87171', flexShrink:0 }}/>
-                                  <span style={{ fontSize:'12px', fontWeight:'700', color:'#9ca3af', fontFamily:'monospace' }}>{minParaHora(min)}</span>
-                                  <span style={{ fontSize:'10px', color:'#e11d48', marginLeft:'auto', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70px' }} title={cliente}>{cliente}</span>
-                                </div>
-                              ))}
+                              {/* Slots ocupados — diferencia aberto de finalizado */}
+                              {slots?.ocupado.map(({ min, cliente, status: stSlot }) => {
+                                const finalizado = stSlot === 'fechado'
+                                return (
+                                  <div key={min} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 8px', background: finalizado ? '#f0fdf4' : '#fff1f2', borderRadius:'7px', border: `1px solid ${finalizado ? '#86efac' : '#fecdd3'}` }}>
+                                    <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: finalizado ? '#22c55e' : '#f87171', flexShrink:0 }}/>
+                                    <span style={{ fontSize:'12px', fontWeight:'700', color: finalizado ? '#15803d' : '#9ca3af', fontFamily:'monospace' }}>{minParaHora(min)}</span>
+                                    <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'3px', minWidth:0 }}>
+                                      <span style={{ fontSize:'10px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'60px', color: finalizado ? '#16a34a' : '#e11d48', fontWeight:'600' }} title={cliente}>{cliente}</span>
+                                      {finalizado ? (
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><polyline points="20 6 9 17 4 12"/></svg>
+                                      ) : (
+                                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#f97316', flexShrink:0 }}/>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
                             </>
                           )}
                         </div>
@@ -616,15 +627,20 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
             </div>
 
             {/* Rodapé */}
-            <div style={{ background:'white', padding:'12px 22px', borderTop:'1px solid #dbeafe', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+            <div style={{ background:'white', padding:'12px 22px', borderTop:'1px solid #dbeafe', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, flexWrap:'wrap', gap:'8px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
                   <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#22c55e' }}/>
-                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Horário livre</span>
+                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Livre</span>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
                   <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#f87171' }}/>
-                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Ocupado</span>
+                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Agendado</span>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#22c55e' }}/>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span style={{ fontSize:'11px', color:'#64748b', fontWeight:'600' }}>Finalizado</span>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
                   <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#94a3b8' }}/>

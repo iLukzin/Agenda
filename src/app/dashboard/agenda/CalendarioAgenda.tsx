@@ -53,17 +53,6 @@ const AZUL_DARK   = '#1d4ed8'
 const AZUL_LIGHT  = '#dbeafe'
 const AZUL_XLIGHT = '#eff6ff'
 
-// Gera slots de 30 em 30 min entre hora_inicio e hora_fim
-function gerarSlots(horaIni: string, horaFim: string, passo = 30): number[] {
-  const [hI, mI] = horaIni.split(':').map(Number)
-  const [hF, mF] = horaFim.split(':').map(Number)
-  const inicio = hI * 60 + mI
-  const fim    = hF * 60 + mF
-  const slots: number[] = []
-  for (let t = inicio; t < fim; t += passo) slots.push(t)
-  return slots
-}
-
 function minParaHora(min: number) {
   return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0')
 }
@@ -97,43 +86,52 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
     Array.from({length:7},(_,i) => addDias(inicioSemana, i))
   , [inicioSemana])
 
-  // Calcula slots livres para cada dia
+  // Calcula slots por dia — replica exatamente a lógica do calcSlots do page.tsx:
+  // um slot é ocupado se existe agendamento com horaInicio exato naquele slot (não pela duração)
   const slotsLivresPorDia = useMemo(() => {
     if (!livresProfSel) return {}
-    const prof = profissionais.find(p => p.id === livresProfSel)
+    const prof = profissionais.find((p:any) => p.id === livresProfSel)
     if (!prof) return {}
 
-    const resultado: Record<string, { livre: number[]; ocupado: number[] }> = {}
+    const resultado: Record<string, { livre: number[]; ocupado: { min: number; cliente: string }[] }> = {}
 
     diasSemana.forEach(dia => {
       const iso = toISO(dia)
-      const diaSemana = dia.getDay() // 0=dom
+      const diaSemana = dia.getDay()
 
-      // Horário de trabalho do profissional neste dia
       const horario = horariosProfissional.find(h =>
         h.profissional_id === prof.id && h.dia_semana === diaSemana && h.ativo
       )
       if (!horario) { resultado[iso] = { livre: [], ocupado: [] }; return }
 
-      const todosSlots = gerarSlots(horario.hora_inicio, horario.hora_fim)
+      const [hI, mI] = horario.hora_inicio.split(':').map(Number)
+      const [hF, mF] = horario.hora_fim.split(':').map(Number)
+      const inicioMin = hI * 60 + mI
+      const fimMin    = hF * 60 + mF
 
-      // Agendamentos do profissional neste dia (excluindo cancelados)
-      const agsNoDia = agendamentos.filter(a =>
-        a.profissional === prof.nome &&
-        a.dataISO === iso &&
-        a.status !== 'cancelado'
-      )
+      const livre: number[] = []
+      const ocupado: { min: number; cliente: string }[] = []
 
-      // Marca slots ocupados (considera a duração do agendamento)
-      const minOcupados = new Set<number>()
-      agsNoDia.forEach(ag => {
-        const inicioMin = Math.round(ag.horaInicio * 60)
-        const fimMin    = inicioMin + ag.duracao
-        for (let t = inicioMin; t < fimMin; t += 30) minOcupados.add(t)
-      })
+      // Gera slots com o mesmo intervalo (30 min padrão)
+      // e usa a mesma condição: min - fimMin <= 0 (permite o slot exato do fim)
+      for (let min = inicioMin; min - fimMin <= 0; min += 30) {
+        // Verifica se existe agendamento com horaInicio exato neste slot
+        const agNoSlot = agendamentos.find(ag =>
+          ag.profissional === prof.nome &&
+          ag.dataISO === iso &&
+          ag.status !== 'cancelado' &&
+          Math.round(ag.horaInicio * 60) === min
+        )
+        if (agNoSlot) {
+          ocupado.push({
+            min,
+            cliente: agNoSlot.cliente + (agNoSlot.status === 'fechado' ? ' ✓' : ''),
+          })
+        } else {
+          livre.push(min)
+        }
+      }
 
-      const livre   = todosSlots.filter(s => !minOcupados.has(s))
-      const ocupado = todosSlots.filter(s =>  minOcupados.has(s))
       resultado[iso] = { livre, ocupado }
     })
     return resultado
@@ -559,7 +557,6 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
                     const totalLivres  = slots?.livre.length   ?? 0
                     const totalOcupado = slots?.ocupado.length ?? 0
                     const semExpediente = !slots || (totalLivres === 0 && totalOcupado === 0)
-
                     return (
                       <div key={iso} style={{ background: isHoje ? 'white' : isPast ? '#f8fafc' : 'white', borderRadius:'14px', border: isHoje ? '2px solid #2563eb' : '1px solid #dbeafe', overflow:'hidden', opacity: isPast ? 0.65 : 1, boxShadow: isHoje ? '0 4px 16px rgba(37,99,235,0.12)' : '0 1px 3px rgba(29,78,216,0.06)' }}>
                         {/* Header do dia */}
@@ -599,12 +596,12 @@ export default function CalendarioAgenda({ agendamentos, profissionais, horarios
                                   <span style={{ fontSize:'10px', color:'#60a5fa', marginLeft:'auto', fontWeight:'600' }}>livre</span>
                                 </div>
                               ))}
-                              {/* Slots ocupados */}
-                              {slots?.ocupado.map(min => (
-                                <div key={min} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 8px', background:'#f8fafc', borderRadius:'7px', border:'1px solid #e2e8f0', opacity:0.7 }}>
+                              {/* Slots ocupados — mostra o cliente */}
+                              {slots?.ocupado.map(({ min, cliente }) => (
+                                <div key={min} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 8px', background:'#fff1f2', borderRadius:'7px', border:'1px solid #fecdd3' }}>
                                   <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#f87171', flexShrink:0 }}/>
-                                  <span style={{ fontSize:'12px', fontWeight:'700', color:'#94a3b8', fontFamily:'monospace', textDecoration:'line-through' }}>{minParaHora(min)}</span>
-                                  <span style={{ fontSize:'10px', color:'#f87171', marginLeft:'auto', fontWeight:'600' }}>ocupado</span>
+                                  <span style={{ fontSize:'12px', fontWeight:'700', color:'#9ca3af', fontFamily:'monospace' }}>{minParaHora(min)}</span>
+                                  <span style={{ fontSize:'10px', color:'#e11d48', marginLeft:'auto', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70px' }} title={cliente}>{cliente}</span>
                                 </div>
                               ))}
                             </>

@@ -34,6 +34,68 @@ const CORES_PROF = [
   { bg:'#fff3e0', borda:'#ff7043', texto:'#bf360c', dark:'#d84315' },
 ]
 
+// Converte hex (#rrggbb) para HSL [h:0-360, s:0-100, l:0-100]
+function hexToHsl(hex: string): [number, number, number] {
+  const h = hex.replace('#', '')
+  if (h.length !== 6) return [220, 50, 50]
+  const r = parseInt(h.substring(0,2), 16) / 255
+  const g = parseInt(h.substring(2,4), 16) / 255
+  const b = parseInt(h.substring(4,6), 16) / 255
+  const max = Math.max(r,g,b), min = Math.min(r,g,b)
+  let hVal = 0, s = 0
+  const l = (max + min) / 2
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    if (max === r)      hVal = ((g - b) / d + (g < b ? 6 : 0)) / 6
+    else if (max === g) hVal = ((b - r) / d + 2) / 6
+    else                hVal = ((r - g) / d + 4) / 6
+  }
+  return [hVal * 360, s * 100, l * 100]
+}
+
+// Converte HSL para hex
+function hslToHex(h: number, s: number, l: number): string {
+  s = Math.max(0, Math.min(100, s)) / 100
+  l = Math.max(0, Math.min(100, l)) / 100
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+  const m = l - c / 2
+  let r=0, g=0, b=0
+  if (h < 60)       { r=c; g=x; b=0 }
+  else if (h < 120) { r=x; g=c; b=0 }
+  else if (h < 180) { r=0; g=c; b=x }
+  else if (h < 240) { r=0; g=x; b=c }
+  else if (h < 300) { r=x; g=0; b=c }
+  else              { r=c; g=0; b=x }
+  const toHex = (n: number) => {
+    const v = Math.round((n + m) * 255).toString(16)
+    return v.length === 1 ? '0' + v : v
+  }
+  return '#' + toHex(r) + toHex(g) + toHex(b)
+}
+
+// Gera a paleta completa (bg, borda, texto, dark) a partir da cor cadastrada do profissional.
+// Para branco usa tons de cinza para nao virar invisivel.
+function paletteFromColor(cor?: string): { bg: string; borda: string; texto: string; dark: string } {
+  const c = (cor || '').toLowerCase().trim()
+  // Cor invalida -> fallback azul
+  if (!/^#[0-9a-f]{6}$/.test(c)) {
+    return { bg:'#e3f2fd', borda:'#42a5f5', texto:'#0d47a1', dark:'#1565c0' }
+  }
+  // Branco -> cinza neutro (para o card e chip continuarem visiveis)
+  if (c === '#ffffff') {
+    return { bg:'#ffffff', borda:'#cbd5e1', texto:'#334155', dark:'#64748b' }
+  }
+  const [h, s] = hexToHsl(c)
+  return {
+    bg:    hslToHex(h, Math.min(s, 60), 92),  // fundo claro do card e chip
+    borda: hslToHex(h, Math.min(s, 70), 65),  // borda media
+    dark:  hslToHex(h, Math.min(s, 80), 42),  // accent / avatar / finalizado
+    texto: hslToHex(h, Math.min(s, 75), 22),  // texto principal escuro
+  }
+}
+
 const DIAS_PT  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -131,9 +193,15 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
     return () => clearInterval(t)
   }, [isHoje])
 
-  // Profissionais com paleta de cor
+  // Profissionais com paleta de cor derivada da cor cadastrada (p.cor)
+  // Se a cor for invalida/ausente, cai no fallback CORES_PROF pelo indice
   const profsComCor = useMemo(() =>
-    profissionais.map((p: any, i: number) => ({ ...p, palette: CORES_PROF[i % CORES_PROF.length] }))
+    profissionais.map((p: any, i: number) => ({
+      ...p,
+      palette: (p.cor && /^#[0-9a-f]{6}$/i.test(p.cor))
+        ? paletteFromColor(p.cor)
+        : CORES_PROF[i % CORES_PROF.length]
+    }))
   , [profissionais])
 
   // Agendamentos do dia

@@ -46,3 +46,10 @@ ALTER TABLE empresas ADD COLUMN IF NOT EXISTS finalizar_sem_pagamento BOOLEAN DE
 
 -- Intervalo padrão de atendimento por profissional (15, 30 ou 60 min)
 ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS intervalo_atendimento INTEGER DEFAULT 30;
+
+-- Trial de 3 dias para empresas criadas pelo cadastro rápido
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS data_expiracao_trial TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS is_trial BOOLEAN DEFAULT FALSE;
+
+-- Tipo de agenda padrão timeline, financeiro habilitado
+-- (já aplicado na API de cadastro rápido, aqui só documenta)

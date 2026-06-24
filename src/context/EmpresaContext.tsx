@@ -12,6 +12,8 @@ export type EmpresaResumo = {
   status: string
   bloqueada?: boolean
   motivo_bloqueio?: string
+  is_trial?: boolean
+  data_expiracao_trial?: string
   tipo_agenda: string  // 'grade' | 'calendario'
   whatsapp_habilitado?: boolean
   financeiro_habilitado?: boolean
@@ -86,7 +88,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         })
         // Tenta carregar empresas mesmo assim
         const { data: emps } = await sb
-          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado, auto_agenda_habilitado, finalizar_sem_pagamento').order('nome')
+          .from('empresas').select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado, auto_agenda_habilitado, finalizar_sem_pagamento, is_trial, data_expiracao_trial').order('nome')
         const lista: EmpresaResumo[] = emps || []
         setEmpresas(lista)
         setEmpresaAtiva(lista[0] || null)
@@ -114,7 +116,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         // Master: carrega todas as empresas
         const { data: lista } = await sb
           .from('empresas')
-          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado, auto_agenda_habilitado, finalizar_sem_pagamento')
+          .select('id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado, auto_agenda_habilitado, finalizar_sem_pagamento, is_trial, data_expiracao_trial')
           .order('nome')
 
         const l: EmpresaResumo[] = lista || []
@@ -133,7 +135,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setEmpresaAtiva(empresaRestaurada || l[0] || null)
 
       } else {
-        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado, auto_agenda_habilitado, finalizar_sem_pagamento'
+        const SELECT_EMP = 'id, nome, logo_url, plano, status, bloqueada, motivo_bloqueio, tipo_agenda, whatsapp_habilitado, financeiro_habilitado, auto_agenda_habilitado, finalizar_sem_pagamento, is_trial, data_expiracao_trial'
 
         // Buscar empresa principal do cadastro do usuário
         const idsSet = new Set<string>()
@@ -191,6 +193,22 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
               window.location.href = '/auth/login?bloqueada=1&motivo=' + encodeURIComponent(motivo)
             }
             return
+          }
+
+          // Verificar trial expirado — bloqueia automaticamente
+          if (empPrincipal?.is_trial && empPrincipal?.data_expiracao_trial && u.nivel_acesso !== 'master') {
+            const exp = new Date(empPrincipal.data_expiracao_trial)
+            if (new Date() > exp) {
+              await sb.from('empresas').update({
+                bloqueada: true,
+                motivo_bloqueio: 'Período de teste encerrado. Entre em contato com o suporte para continuar.',
+              }).eq('id', empPrincipal.id)
+              await sb.auth.signOut()
+              if (typeof window !== 'undefined') {
+                window.location.href = '/auth/login?bloqueada=1&trial=1&motivo=' + encodeURIComponent('Período de teste de 3 dias encerrado.')
+              }
+              return
+            }
           }
 
           setEmpresas(todasEmpresas)

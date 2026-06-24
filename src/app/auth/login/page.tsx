@@ -29,11 +29,15 @@ function LoginForm({ onCadastrar }: { onCadastrar: () => void }) {
   const [carregando, setCarregando] = useState(false)
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [empresaBloqueada, setEmpresaBloqueada] = useState(false)
+  const [isTrialExpirado, setIsTrialExpirado]   = useState(false)
   const [motivoBloqueio, setMotivoBloqueio]     = useState('')
+
+  const WHATSAPP_SUPORTE = '5534991993570' // número do suporte
 
   useEffect(() => {
     if (params.get('bloqueada') === '1') {
       setEmpresaBloqueada(true)
+      setIsTrialExpirado(params.get('trial') === '1')
       setMotivoBloqueio(params.get('motivo') || 'Falta de pagamento')
     }
   }, [params])
@@ -48,12 +52,91 @@ function LoginForm({ onCadastrar }: { onCadastrar: () => void }) {
     } catch { setErro('Erro inesperado. Tente novamente.'); setCarregando(false) }
   }
 
+  // ── Tela de trial expirado ──────────────────────────────────────
+  if (isTrialExpirado) return (
+    <div style={{ background:'white', borderRadius:'22px', overflow:'hidden', boxShadow:'0 25px 60px rgba(0,0,0,0.5)' }}>
+      {/* Banner de cima */}
+      <div style={{ background:'linear-gradient(135deg,#0f172a,#1e1b4b,#1d4ed8)', padding:'32px 28px 24px', textAlign:'center', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:'-40px', left:'-40px', width:'160px', height:'160px', background:'radial-gradient(circle,rgba(99,102,241,0.3),transparent 70%)', borderRadius:'50%' }}/>
+        <div style={{ position:'absolute', bottom:'-30px', right:'-30px', width:'120px', height:'120px', background:'radial-gradient(circle,rgba(59,130,246,0.2),transparent 70%)', borderRadius:'50%' }}/>
+        {/* Ícone de cadeado */}
+        <div style={{ width:'64px', height:'64px', borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'2px solid rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', position:'relative', zIndex:1 }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h2 style={{ color:'white', fontSize:'20px', fontWeight:'800', margin:'0 0 6px', position:'relative', zIndex:1 }}>Período de teste encerrado</h2>
+        <p style={{ color:'rgba(255,255,255,0.65)', fontSize:'13px', margin:0, position:'relative', zIndex:1 }}>Seus 3 dias gratuitos expiraram</p>
+      </div>
+
+      {/* Corpo */}
+      <div style={{ padding:'24px 28px 28px' }}>
+        {/* Linha do tempo */}
+        <div style={{ display:'flex', alignItems:'center', gap:'0', marginBottom:'24px' }}>
+          {[
+            { label:'Cadastrou', icon:'✓', ok:true },
+            { label:'3 dias de teste', icon:'✓', ok:true },
+            { label:'Continuar usando', icon:'🔒', ok:false },
+          ].map((s, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', flex: i<2?1:'auto' }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
+                <div style={{ width:'32px', height:'32px', borderRadius:'50%', background: s.ok?'#4f46e5':'#f1f5f9', border: s.ok?'none':'2px dashed #cbd5e1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px' }}>
+                  {s.ok ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> : <span>🔒</span>}
+                </div>
+                <span style={{ fontSize:'9px', fontWeight:'600', color: s.ok?'#4f46e5':'#94a3b8', whiteSpace:'nowrap' }}>{s.label}</span>
+              </div>
+              {i < 2 && <div style={{ flex:1, height:'2px', background: i===0?'#4f46e5':'#e2e8f0', margin:'0 4px', marginBottom:'14px' }}/>}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background:'#f8fafc', borderRadius:'14px', padding:'18px', marginBottom:'20px', border:'1px solid #e2e8f0' }}>
+          <p style={{ fontSize:'14px', fontWeight:'700', color:'#1e293b', margin:'0 0 8px' }}>Continue usando o AgendaFortitude</p>
+          <p style={{ fontSize:'13px', color:'#64748b', margin:0, lineHeight:'1.6' }}>
+            Para continuar com acesso ao sistema, entre em contato com nosso suporte. A ativação é rápida e você não perde nenhum dado cadastrado.
+          </p>
+        </div>
+
+        {/* Card de contato */}
+        <a href={`https://wa.me/${WHATSAPP_SUPORTE}?text=${encodeURIComponent('Olá! Meu período de teste do AgendaFortitude expirou e quero continuar usando o sistema.')}`}
+          target="_blank" rel="noopener noreferrer"
+          style={{ display:'flex', alignItems:'center', gap:'14px', background:'linear-gradient(135deg,#16a34a,#15803d)', borderRadius:'14px', padding:'16px 18px', textDecoration:'none', marginBottom:'14px', boxShadow:'0 4px 16px rgba(22,163,74,0.35)' }}>
+          <div style={{ width:'46px', height:'46px', borderRadius:'12px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ color:'rgba(255,255,255,0.75)', fontSize:'11px', fontWeight:'600', margin:'0 0 2px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Falar com suporte</p>
+            <p style={{ color:'white', fontSize:'15px', fontWeight:'800', margin:0 }}>Ativar minha conta agora</p>
+          </div>
+          <div style={{ marginLeft:'auto', flexShrink:0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </a>
+
+        <button onClick={()=>{ setEmpresaBloqueada(false); setIsTrialExpirado(false); window.history.replaceState({},'','/auth/login') }}
+          style={{ width:'100%', background:'none', border:'1px solid #e2e8f0', borderRadius:'10px', padding:'10px', fontSize:'13px', color:'#64748b', cursor:'pointer', fontWeight:'600' }}>
+          Voltar ao login
+        </button>
+      </div>
+    </div>
+  )
+
+  // ── Tela de empresa bloqueada (não trial) ────────────────────────
   return (
     <div style={{ background:'white', borderRadius:'22px', padding:'32px', boxShadow:'0 25px 60px rgba(0,0,0,0.4)' }}>
       {empresaBloqueada && (
         <div style={{ background:'linear-gradient(135deg,#7f1d1d,#991b1b)', borderRadius:'14px', padding:'18px', marginBottom:'22px', border:'1px solid #fca5a5' }}>
           <p style={{ color:'white', fontWeight:'700', fontSize:'15px', margin:'0 0 6px' }}>Sistema Suspenso</p>
-          <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'13px', margin:0 }}>{motivoBloqueio}</p>
+          <p style={{ color:'rgba(255,255,255,0.8)', fontSize:'13px', margin:'0 0 10px' }}>{motivoBloqueio}</p>
+          <a href={`https://wa.me/5534991993570?text=${encodeURIComponent('Olá! Preciso regularizar meu acesso ao AgendaFortitude.')}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'rgba(255,255,255,0.2)', color:'white', borderRadius:'8px', padding:'8px 14px', textDecoration:'none', fontSize:'13px', fontWeight:'600' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+            Contatar suporte
+          </a>
         </div>
       )}
 

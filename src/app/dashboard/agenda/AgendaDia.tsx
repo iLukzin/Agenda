@@ -23,19 +23,39 @@ type Props = {
   onEnviarWpp?: (ag: Ag) => void
 }
 
-const CORES_PROF = [
-  { bg:'#e8f5e9', borda:'#66bb6a', texto:'#1b5e20', dark:'#388e3c' },
-  { bg:'#fff8e1', borda:'#ffca28', texto:'#e65100', dark:'#f57c00' },
-  { bg:'#e3f2fd', borda:'#42a5f5', texto:'#0d47a1', dark:'#1565c0' },
-  { bg:'#fce4ec', borda:'#ec407a', texto:'#880e4f', dark:'#c2185b' },
-  { bg:'#e0f2f1', borda:'#26a69a', texto:'#004d40', dark:'#00796b' },
-  { bg:'#ede7f6', borda:'#7e57c2', texto:'#311b92', dark:'#512da8' },
-  { bg:'#ffebee', borda:'#ef5350', texto:'#b71c1c', dark:'#c62828' },
-  { bg:'#fff3e0', borda:'#ff7043', texto:'#bf360c', dark:'#d84315' },
-]
-
 const DIAS_PT  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+// Converte hex → HSL
+function hexToHSL(hex: string): [number, number, number] {
+  const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2
+  if(max===min) return [0,0,Math.round(l*100)]
+  const d=max-min, s=l>0.5?d/(2-max-min):d/(max+min)
+  let h=max===r?(g-b)/d+(g<b?6:0):max===g?(b-r)/d+2:(r-g)/d+4
+  return [Math.round(h*60),Math.round(s*100),Math.round(l*100)]
+}
+
+// Gera paleta completa a partir da cor hex cadastrada no profissional
+function paletaFromHex(hex: string) {
+  const h=(hex||'#6366f1').trim().toLowerCase()
+  // Branco → cinza neutro elegante
+  if(h==='#ffffff'||h==='#fff')
+    return { bg:'#f8fafc', borda:'#94a3b8', texto:'#334155', dark:'#475569', textoBlocos:'#1e293b' }
+  try {
+    const [hue,sat]=hexToHSL(h)
+    const s=Math.min(sat,80)
+    return {
+      bg:          `hsl(${hue},${s}%,94%)`,
+      borda:       `hsl(${hue},${s}%,58%)`,
+      texto:       `hsl(${hue},${Math.min(s,70)}%,22%)`,
+      dark:        `hsl(${hue},${Math.min(s,75)}%,32%)`,
+      textoBlocos: `hsl(${hue},${Math.min(s,70)}%,18%)`,
+    }
+  } catch {
+    return { bg:'#eff6ff', borda:'#60a5fa', texto:'#1e40af', dark:'#1d4ed8', textoBlocos:'#1e3a8a' }
+  }
+}
 
 function toISO(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -117,7 +137,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
 
   // Profissionais com paleta de cor
   const profsComCor = useMemo(() =>
-    profissionais.map((p: any, i: number) => ({ ...p, palette: CORES_PROF[i % CORES_PROF.length] }))
+    profissionais.map((p: any) => ({ ...p, palette: paletaFromHex(p.cor || '#6366f1') }))
   , [profissionais])
 
   // Agendamentos do dia
@@ -295,7 +315,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
             const label   = !temHoje ? 'Folga' : qtdAgs===0 ? 'Livre' : `${qtdAgs} ag.`
             return (
               <div key={p.id} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 10px 5px 6px', borderRadius:'20px', background:p.palette.bg, border:`1.5px solid ${p.palette.borda}`, whiteSpace:'nowrap', flexShrink:0 }}>
-                <div style={{ width:'22px', height:'22px', borderRadius:'50%', background:p.palette.dark, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'9px', fontWeight:'800', color:'white' }}>
+                <div style={{ width:'22px', height:'22px', borderRadius:'50%', background: p.cor || p.palette.dark, border:`1.5px solid ${p.palette.borda}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'9px', fontWeight:'800', color: (p.cor||'#000')==='#ffffff'?'#334155':'white' }}>
                   {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
                 </div>
                 <div>
@@ -315,7 +335,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
           <div ref={headerScrollRef} style={{ flex:1, display:'flex', overflowX:'hidden' }}>
             {profsComCor.map((p: any) => (
               <div key={p.id} style={{ flex:1, minWidth:`${COL_MIN}px`, padding:'6px 8px', textAlign:'center', borderRight:'1px solid #f1f5f9', borderBottom:'1px solid #e2e8f0', flexShrink:0 }}>
-                <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:p.palette.dark, margin:'0 auto 2px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'800', color:'white' }}>
+                <div style={{ width:'26px', height:'26px', borderRadius:'50%', background: p.cor || p.palette.dark, border:`1.5px solid ${p.palette.borda}`, margin:'0 auto 2px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'800', color: (p.cor||'#000')==='#ffffff'?'#334155':'white' }}>
                   {p.nome.split(' ').map((n:string)=>n[0]).slice(0,2).join('').toUpperCase()}
                 </div>
                 <p style={{ fontSize:'10px', fontWeight:'700', color:'#374151', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nome.split(' ')[0]}</p>

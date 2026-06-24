@@ -44,6 +44,24 @@ export async function POST(req: NextRequest) {
     if (emailExiste)
       return NextResponse.json({ error: 'Este e-mail já está cadastrado.' }, { status: 400 })
 
+    // Verificar CPF/CNPJ duplicado (se informado)
+    if (empresa_cnpj?.trim()) {
+      const cnpjLimpo = empresa_cnpj.replace(/\D/g, '').trim()
+      if (cnpjLimpo.length > 0) {
+        const { data: cnpjExiste } = await admin
+          .from('empresas')
+          .select('id, nome')
+          .ilike('cnpj', `%${cnpjLimpo}%`)
+          .maybeSingle()
+        if (cnpjExiste) {
+          const tipo = cnpjLimpo.length <= 11 ? 'CPF' : 'CNPJ'
+          return NextResponse.json({
+            error: `Este ${tipo} já está cadastrado no sistema. Se esqueceu sua senha, entre em contato com o suporte.`
+          }, { status: 400 })
+        }
+      }
+    }
+
     // Data de expiração do trial: 3 dias a partir de agora
     const agora = new Date()
     const expiracao = new Date(agora.getTime() + 3 * 24 * 60 * 60 * 1000)
@@ -58,7 +76,7 @@ export async function POST(req: NextRequest) {
         email:                  empresa_email?.trim() || null,
         endereco:               empresa_endereco?.trim() || null,
         status:                 'ativo',
-        plano:                  'trial',
+        plano:                  'basico',
         bloqueada:              false,
         // Configurações padrão já habilitadas
         financeiro_habilitado:  true,

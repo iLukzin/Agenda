@@ -34,68 +34,6 @@ const CORES_PROF = [
   { bg:'#fff3e0', borda:'#ff7043', texto:'#bf360c', dark:'#d84315' },
 ]
 
-// Converte hex (#rrggbb) para HSL [h:0-360, s:0-100, l:0-100]
-function hexToHsl(hex: string): [number, number, number] {
-  const h = hex.replace('#', '')
-  if (h.length !== 6) return [220, 50, 50]
-  const r = parseInt(h.substring(0,2), 16) / 255
-  const g = parseInt(h.substring(2,4), 16) / 255
-  const b = parseInt(h.substring(4,6), 16) / 255
-  const max = Math.max(r,g,b), min = Math.min(r,g,b)
-  let hVal = 0, s = 0
-  const l = (max + min) / 2
-  if (max !== min) {
-    const d = max - min
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-    if (max === r)      hVal = ((g - b) / d + (g < b ? 6 : 0)) / 6
-    else if (max === g) hVal = ((b - r) / d + 2) / 6
-    else                hVal = ((r - g) / d + 4) / 6
-  }
-  return [hVal * 360, s * 100, l * 100]
-}
-
-// Converte HSL para hex
-function hslToHex(h: number, s: number, l: number): string {
-  s = Math.max(0, Math.min(100, s)) / 100
-  l = Math.max(0, Math.min(100, l)) / 100
-  const c = (1 - Math.abs(2 * l - 1)) * s
-  const x = c * (1 - Math.abs((h / 60) % 2 - 1))
-  const m = l - c / 2
-  let r=0, g=0, b=0
-  if (h < 60)       { r=c; g=x; b=0 }
-  else if (h < 120) { r=x; g=c; b=0 }
-  else if (h < 180) { r=0; g=c; b=x }
-  else if (h < 240) { r=0; g=x; b=c }
-  else if (h < 300) { r=x; g=0; b=c }
-  else              { r=c; g=0; b=x }
-  const toHex = (n: number) => {
-    const v = Math.round((n + m) * 255).toString(16)
-    return v.length === 1 ? '0' + v : v
-  }
-  return '#' + toHex(r) + toHex(g) + toHex(b)
-}
-
-// Gera a paleta completa (bg, borda, texto, dark) a partir da cor cadastrada do profissional.
-// Para branco usa tons de cinza para nao virar invisivel.
-function paletteFromColor(cor?: string): { bg: string; borda: string; texto: string; dark: string } {
-  const c = (cor || '').toLowerCase().trim()
-  // Cor invalida -> fallback azul
-  if (!/^#[0-9a-f]{6}$/.test(c)) {
-    return { bg:'#e3f2fd', borda:'#42a5f5', texto:'#0d47a1', dark:'#1565c0' }
-  }
-  // Branco -> cinza neutro (para o card e chip continuarem visiveis)
-  if (c === '#ffffff') {
-    return { bg:'#ffffff', borda:'#cbd5e1', texto:'#334155', dark:'#64748b' }
-  }
-  const [h, s] = hexToHsl(c)
-  return {
-    bg:    hslToHex(h, Math.min(s, 60), 92),  // fundo claro do card e chip
-    borda: hslToHex(h, Math.min(s, 70), 65),  // borda media
-    dark:  hslToHex(h, Math.min(s, 80), 42),  // accent / avatar / finalizado
-    texto: hslToHex(h, Math.min(s, 75), 22),  // texto principal escuro
-  }
-}
-
 const DIAS_PT  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
@@ -155,22 +93,6 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
     return () => document.removeEventListener('mousedown', fn)
   }, [agAtivo])
 
-  // Fecha popup ao rolar (qualquer scroll na pagina ou na grade) ou redimensionar
-  // Evita que o popup fique "boiando" desalinhado do card quando o usuario faz scroll
-  useEffect(() => {
-    if (!agAtivo) return
-    const fechar = () => setAgAtivo(null)
-    // capture:true pega eventos de scroll de qualquer elemento descendente (scroll nao bubla)
-    window.addEventListener('scroll', fechar, true)
-    window.addEventListener('resize', fechar)
-    window.addEventListener('orientationchange', fechar)
-    return () => {
-      window.removeEventListener('scroll', fechar, true)
-      window.removeEventListener('resize', fechar)
-      window.removeEventListener('orientationchange', fechar)
-    }
-  }, [agAtivo])
-
   // Fecha mini-calendário ao clicar fora
   useEffect(() => {
     if (!miniCalAberto) return
@@ -193,15 +115,9 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
     return () => clearInterval(t)
   }, [isHoje])
 
-  // Profissionais com paleta de cor derivada da cor cadastrada (p.cor)
-  // Se a cor for invalida/ausente, cai no fallback CORES_PROF pelo indice
+  // Profissionais com paleta de cor
   const profsComCor = useMemo(() =>
-    profissionais.map((p: any, i: number) => ({
-      ...p,
-      palette: (p.cor && /^#[0-9a-f]{6}$/i.test(p.cor))
-        ? paletteFromColor(p.cor)
-        : CORES_PROF[i % CORES_PROF.length]
-    }))
+    profissionais.map((p: any, i: number) => ({ ...p, palette: CORES_PROF[i % CORES_PROF.length] }))
   , [profissionais])
 
   // Agendamentos do dia
@@ -253,35 +169,25 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
   function abrirPopup(e: React.MouseEvent, agId: string) {
     e.stopPropagation()
     if (agAtivo === agId) { setAgAtivo(null); return }
-    const ag = agsDia.find(a => a.id === agId)
     const el = agRefs.current[agId]
-    if (el && ag) {
+    if (el) {
       const rect = el.getBoundingClientRect()
       const vw   = window.innerWidth
       const vh   = window.innerHeight
-      const popW = Math.min(220, vw - 16)
-      // Calcula altura real do popup baseado nos botoes que vao aparecer
-      const isFin  = ag.status === 'fechado'
-      const isCanc = ag.status === 'cancelado'
-      let nBtns = 1 // Editar sempre
-      if (!isFin && !isCanc) {
-        if (onEnviarWpp)       nBtns++
-        if (onFinalizarRapido) nBtns++
-        if (onCancelarRapido)  nBtns++
-      }
-      if (isFin && onVerPagamentos) nBtns++
-      // info topo (~62) + botoes (28 cada + 4 gap) + fechar (~24) + paddings (20)
-      const popH = 62 + nBtns * 32 + 24 + 20
-      // Vertical: tenta abaixo do bloco; se nao couber, abre acima; senao, encaixa onde der
+      // Largura do popup: no mobile (< 480px) usa quase toda a tela
+      const isMobile = vw < 480
+      const popW = isMobile ? Math.min(260, vw - 24) : 240
+      // Vertical: abaixo do bloco se couber, senão acima
       let top = rect.bottom + 6
-      if (top + popH > vh - 8) {
-        const topAcima = rect.top - popH - 6
-        if (topAcima >= 8) top = topAcima
-        else top = Math.max(8, vh - popH - 8)
+      if (top + 320 > vh) top = Math.max(8, rect.top - 320)
+      // Horizontal: no mobile centraliza na viewport, no desktop segue o bloco
+      let left: number
+      if (isMobile) {
+        left = (vw - popW) / 2  // sempre centralizado na tela no mobile
+      } else {
+        left = rect.left + rect.width / 2 - popW / 2
+        left = Math.max(8, Math.min(left, vw - popW - 8))
       }
-      // Horizontal: centraliza com o card, mas clampa dentro da tela
-      let left = rect.left + rect.width / 2 - popW / 2
-      left = Math.max(8, Math.min(left, vw - popW - 8))
       setPopupPos({ top, left, width: popW })
     }
     setAgAtivo(agId)
@@ -481,7 +387,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                         data-popup-ag="true"
                         ref={el => { agRefs.current[ag.id] = el }}
                         style={{ position:'absolute', top:`${topPx}px`, left:'3px', right:'3px', zIndex: popupAberto ? 20 : 3 }}>
-                        {/* Bloco principal */}
+                        {/* Bloco do agendamento */}
                         <div onClick={e => abrirPopup(e, ag.id)}
                           style={{ height:`${altPx}px`,
                             background: isFin ? `${p.palette.dark}dd` : isCanc ? '#f1f5f9' : p.palette.bg,
@@ -509,28 +415,28 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                           )}
                         </div>
 
-                        {/* Popup de ações rápidas — renderizado via Portal no body para escapar do stacking context da coluna */}
-                        {popupAberto && typeof document !== 'undefined' && createPortal(
+                        {/* Popup de ações rápidas — position:fixed com posição calculada do bloco */}
+                        {popupAberto && (
                           <div data-popup-ag="true" onClick={e=>e.stopPropagation()}
-                            style={{ position:'fixed', top:`${popupPos.top}px`, left:`${popupPos.left}px`, width:`${popupPos.width}px`, zIndex:9999, background:'white', borderRadius:'12px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'10px' }}>
+                            style={{ position:'fixed', top:`${popupPos.top}px`, left:`${popupPos.left}px`, width:`${popupPos.width}px`, zIndex:9999, background:'white', borderRadius:'14px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'12px' }}>
                             {/* Info do agendamento */}
-                            <div style={{ marginBottom:'6px', paddingBottom:'6px', borderBottom:'1px solid #f1f5f9' }}>
-                              <p style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', margin:'0 0 1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.cliente}</p>
-                              <p style={{ fontSize:'10px', color:'#64748b', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fmtHora(ag.horaInicio)} · {ag.servico || 'Sem serviço'}</p>
-                              <div style={{ display:'inline-flex', alignItems:'center', gap:'3px', marginTop:'3px', padding:'1px 7px', borderRadius:'99px', background: isFin?'#dcfce7':isCanc?'#f1f5f9':'#fef9c3' }}>
-                                <div style={{ width:'4px', height:'4px', borderRadius:'50%', background: isFin?'#16a34a':isCanc?'#94a3b8':'#f59e0b' }}/>
-                                <span style={{ fontSize:'9px', fontWeight:'700', color: isFin?'#15803d':isCanc?'#64748b':'#b45309' }}>
+                            <div style={{ marginBottom:'8px', paddingBottom:'8px', borderBottom:'1px solid #f1f5f9' }}>
+                              <p style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', margin:'0 0 2px' }}>{ag.cliente}</p>
+                              <p style={{ fontSize:'11px', color:'#64748b', margin:0 }}>{fmtHora(ag.horaInicio)} · {ag.servico || 'Sem serviço'}</p>
+                              <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', marginTop:'4px', padding:'2px 8px', borderRadius:'99px', background: isFin?'#dcfce7':isCanc?'#f1f5f9':'#fef9c3' }}>
+                                <div style={{ width:'5px', height:'5px', borderRadius:'50%', background: isFin?'#16a34a':isCanc?'#94a3b8':'#f59e0b' }}/>
+                                <span style={{ fontSize:'10px', fontWeight:'700', color: isFin?'#15803d':isCanc?'#64748b':'#b45309' }}>
                                   {isFin ? 'Finalizado' : isCanc ? 'Cancelado' : 'Em aberto'}
                                 </span>
                               </div>
                             </div>
 
                             {/* Botões de ação */}
-                            <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
+                            <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
                               {/* Editar — sempre disponível */}
                               <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onAbrirEdicao(ag) }}
-                                style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'600', color:'#374151', cursor:'pointer', textAlign:'left' }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'600', color:'#374151', cursor:'pointer', textAlign:'left' }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 Editar agendamento
                               </button>
 
@@ -539,22 +445,22 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                                 <>
                                   {onEnviarWpp && (
                                     <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onEnviarWpp(ag) }}
-                                      style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'600', color:'#16a34a', cursor:'pointer', textAlign:'left' }}>
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'600', color:'#16a34a', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
                                       Enviar WhatsApp
                                     </button>
                                   )}
                                   {onFinalizarRapido && (
                                     <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onFinalizarRapido(ag) }}
-                                      style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'700', color:'#059669', cursor:'pointer', textAlign:'left' }}>
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#059669', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                                       Finalizar
                                     </button>
                                   )}
                                   {onCancelarRapido && (
                                     <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onCancelarRapido(ag) }}
-                                      style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'700', color:'#ef4444', cursor:'pointer', textAlign:'left' }}>
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#ef4444', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                       Cancelar
                                     </button>
                                   )}
@@ -564,20 +470,19 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                               {/* Ver pagamento — só finalizados */}
                               {isFin && onVerPagamentos && (
                                 <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onVerPagamentos(ag) }}
-                                  style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'700', color:'#2563eb', cursor:'pointer', textAlign:'left' }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                  style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#2563eb', cursor:'pointer', textAlign:'left' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                                   Ver pagamento
                                 </button>
                               )}
 
                               {/* Fechar popup */}
                               <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null) }}
-                                style={{ width:'100%', background:'none', border:'none', borderRadius:'7px', padding:'4px', fontSize:'10px', color:'#94a3b8', cursor:'pointer', marginTop:'0' }}>
+                                style={{ width:'100%', background:'none', border:'none', borderRadius:'8px', padding:'5px', fontSize:'11px', color:'#94a3b8', cursor:'pointer', marginTop:'2px' }}>
                                 Fechar
                               </button>
                             </div>
-                          </div>,
-                          document.body
+                          </div>
                         )}
                       </div>
                     )

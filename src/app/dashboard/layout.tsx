@@ -23,11 +23,10 @@ const navItems = [
 ]
 
 const navMaster = [
-  { href:'/master/empresas',         icon:'BLD', label:'Empresas'         },
-  { href:'/master/recebimentos',     icon:'FIN', label:'Recebimentos'     },
-  { href:'/master/usuarios',         icon:'CRW', label:'Usuarios Master'  },
-  { href:'/master/permissoes',       icon:'LCK', label:'Permissoes'       },
-  { href:'/master/permissoes-padrao',icon:'LCK', label:'Permissoes Padrao'},
+  { href:'/master/empresas',     icon:'BLD', label:'Empresas'       },
+  { href:'/master/recebimentos', icon:'FIN', label:'Recebimentos'   },
+  { href:'/master/usuarios',     icon:'CRW', label:'Usuarios Master' },
+  { href:'/master/permissoes',   icon:'LCK', label:'Permissoes'      },
 ]
 
 function NavIcon({ code, size = 18 }: { code: string; size?: number }) {

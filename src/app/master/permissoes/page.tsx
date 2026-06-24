@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { useEmpresa } from '@/context/EmpresaContext'
-import { TELAS, permPadrao, salvarPermissoes, buscarPermissoes, buscarPadraoEmpresa, type Permissao } from '@/lib/permissoes'
+import { TELAS, permPadrao, salvarPermissoes, buscarPermissoes, type Permissao } from '@/lib/permissoes'
 
 type Usuario = { id:string; nome:string; email:string; nivel_acesso:string; empresa_id:string; empresa_nome:string; status:string }
 type Empresa  = { id:string; nome:string }
@@ -43,17 +43,10 @@ export default function PermissoesPage() {
 
   useEffect(() => { carregar() }, [carregar])
 
- async function selecionarUsuario(u: Usuario) {
+  async function selecionarUsuario(u: Usuario) {
     setUsuarioSel(u); setMensagem('')
     const perm = await buscarPermissoes(u.id)
-    if (Object.keys(perm).length > 0) {
-      setPermissoes(perm)
-    } else {
-      const padrao = u.empresa_id
-        ? await buscarPadraoEmpresa(u.empresa_id, u.nivel_acesso)
-        : permPadrao(u.nivel_acesso)
-      setPermissoes(padrao)
-    }
+    setPermissoes(Object.keys(perm).length > 0 ? perm : permPadrao(u.nivel_acesso))
   }
 
   function togglePerm(tela: string, tipo: keyof Omit<Permissao,'tela'>) {
@@ -166,15 +159,8 @@ export default function PermissoesPage() {
                 </div>
               </div>
               <div style={{ display:'flex', gap:'8px' }}>
-               {(['profissional','admin','usuario'] as const).map(nivel => (
-                  <button key={nivel} onClick={async ()=>{
-                    if (usuarioSel?.empresa_id) {
-                      const p = await buscarPadraoEmpresa(usuarioSel.empresa_id, nivel)
-                      setPermissoes(p)
-                    } else {
-                      setPermissoes(permPadrao(nivel))
-                    }
-                  }}
+                {(['profissional','admin','usuario'] as const).map(nivel => (
+                  <button key={nivel} onClick={()=>setPermissoes(permPadrao(nivel))}
                     style={{ background:NIVEL_BG[nivel], border:'1.5px solid '+NIVEL_COR[nivel]+'40', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', cursor:'pointer', color:NIVEL_COR[nivel], fontWeight:'600', transition:'all .15s' }}
                     onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=NIVEL_COR[nivel];(e.currentTarget as HTMLElement).style.color='white'}}
                     onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=NIVEL_BG[nivel];(e.currentTarget as HTMLElement).style.color=NIVEL_COR[nivel]}}>

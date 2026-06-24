@@ -14,7 +14,7 @@ type Profissional = {
 }
 
 const DIAS         = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
-const CORES        = ['#ffffff','#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899']
+const CORES        = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899']
 const horariosBase = DIAS.map((_, i) => ({ dia:i, inicio:'08:00', fim:'18:00', ativo: i>=1&&i<=5 }))
 const inputStyle   = { width:'100%', border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none', boxSizing:'border-box' as const }
 
@@ -317,7 +317,7 @@ export default function ProfissionaisPage() {
                   <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'8px' }}>Cor de identificação</label>
                   <div style={{ display:'flex', gap:'8px' }}>
                     {CORES.map(cor => (
-                      <button key={cor} onClick={() => setForm(p => ({...p, cor}))} style={{ width:'28px', height:'28px', borderRadius:'50%', background:cor, border:form.cor===cor?'3px solid #1a1a2e':(cor.toLowerCase()==='#ffffff'?'2px solid #d1d5db':'2px solid transparent'), cursor:'pointer' }}/>
+                      <button key={cor} onClick={() => setForm(p => ({...p, cor}))} style={{ width:'28px', height:'28px', borderRadius:'50%', background:cor, border:form.cor===cor?'3px solid #1a1a2e':'2px solid transparent', cursor:'pointer' }}/>
                     ))}
                   </div>
                 </div>

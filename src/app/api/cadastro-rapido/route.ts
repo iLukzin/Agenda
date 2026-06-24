@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       .select('id').single()
 
     if (errEmpresa || !empresa)
-      return NextResponse.json({ error: 'Erro ao criar empresa: ' + (errEmpresa?.message || '') }, { status: 400 })
+      return NextResponse.json({ error: 'Erro ao criar empresa. Tente novamente.' }, { status: 400 })
 
     // 2. Criar usuário no Auth
     const { data: authData, error: authErr } = await admin.auth.admin.createUser({
@@ -99,7 +99,17 @@ export async function POST(req: NextRequest) {
 
     if (authErr || !authData?.user) {
       await admin.from('empresas').delete().eq('id', empresa.id)
-      return NextResponse.json({ error: 'Erro ao criar acesso: ' + (authErr?.message || '') }, { status: 400 })
+      // Traduzir erros comuns do Supabase Auth
+      let msgErro = authErr?.message || 'Erro desconhecido.'
+      if (msgErro.toLowerCase().includes('already been registered') || msgErro.toLowerCase().includes('already registered'))
+        msgErro = 'Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.'
+      else if (msgErro.toLowerCase().includes('invalid email'))
+        msgErro = 'E-mail inválido. Verifique e tente novamente.'
+      else if (msgErro.toLowerCase().includes('password'))
+        msgErro = 'Senha inválida. Use pelo menos 6 caracteres.'
+      else if (msgErro.toLowerCase().includes('rate limit'))
+        msgErro = 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
+      return NextResponse.json({ error: 'Erro ao criar acesso: ' + msgErro }, { status: 400 })
     }
 
     // 3. Criar usuário na tabela
@@ -123,7 +133,7 @@ export async function POST(req: NextRequest) {
     if (errUsuario || !usuario) {
       await admin.auth.admin.deleteUser(authData.user.id)
       await admin.from('empresas').delete().eq('id', empresa.id)
-      return NextResponse.json({ error: 'Erro ao salvar usuário: ' + (errUsuario?.message || '') }, { status: 400 })
+      return NextResponse.json({ error: 'Erro ao salvar usuário. Tente novamente.' }, { status: 400 })
     }
 
     // 4. Permissões por tela

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 type Ag = {
   id: string; dataISO: string; horaInicio: number; duracao: number
@@ -414,8 +415,8 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                           )}
                         </div>
 
-                        {/* Popup de ações rápidas — position:fixed com posição calculada do bloco */}
-                        {popupAberto && (
+                        {/* Popup de ações rápidas — renderizado via Portal no body para escapar do stacking context da coluna */}
+                        {popupAberto && typeof document !== 'undefined' && createPortal(
                           <div data-popup-ag="true" onClick={e=>e.stopPropagation()}
                             style={{ position:'fixed', top:`${popupPos.top}px`, left:`${popupPos.left}px`, width:`${popupPos.width}px`, zIndex:9999, background:'white', borderRadius:'14px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'12px' }}>
                             {/* Info do agendamento */}
@@ -481,7 +482,8 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                                 Fechar
                               </button>
                             </div>
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </div>
                     )

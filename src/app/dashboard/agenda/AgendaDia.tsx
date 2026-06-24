@@ -169,25 +169,35 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
   function abrirPopup(e: React.MouseEvent, agId: string) {
     e.stopPropagation()
     if (agAtivo === agId) { setAgAtivo(null); return }
+    const ag = agsDia.find(a => a.id === agId)
     const el = agRefs.current[agId]
-    if (el) {
+    if (el && ag) {
       const rect = el.getBoundingClientRect()
       const vw   = window.innerWidth
       const vh   = window.innerHeight
-      // Largura do popup: no mobile (< 480px) usa quase toda a tela
-      const isMobile = vw < 480
-      const popW = isMobile ? Math.min(260, vw - 24) : 240
-      // Vertical: abaixo do bloco se couber, senão acima
-      let top = rect.bottom + 6
-      if (top + 320 > vh) top = Math.max(8, rect.top - 320)
-      // Horizontal: no mobile centraliza na viewport, no desktop segue o bloco
-      let left: number
-      if (isMobile) {
-        left = (vw - popW) / 2  // sempre centralizado na tela no mobile
-      } else {
-        left = rect.left + rect.width / 2 - popW / 2
-        left = Math.max(8, Math.min(left, vw - popW - 8))
+      const popW = Math.min(220, vw - 16)
+      // Calcula altura real do popup baseado nos botoes que vao aparecer
+      const isFin  = ag.status === 'fechado'
+      const isCanc = ag.status === 'cancelado'
+      let nBtns = 1 // Editar sempre
+      if (!isFin && !isCanc) {
+        if (onEnviarWpp)       nBtns++
+        if (onFinalizarRapido) nBtns++
+        if (onCancelarRapido)  nBtns++
       }
+      if (isFin && onVerPagamentos) nBtns++
+      // info topo (~62) + botoes (28 cada + 4 gap) + fechar (~24) + paddings (20)
+      const popH = 62 + nBtns * 32 + 24 + 20
+      // Vertical: tenta abaixo do bloco; se nao couber, abre acima; senao, encaixa onde der
+      let top = rect.bottom + 6
+      if (top + popH > vh - 8) {
+        const topAcima = rect.top - popH - 6
+        if (topAcima >= 8) top = topAcima
+        else top = Math.max(8, vh - popH - 8)
+      }
+      // Horizontal: centraliza com o card, mas clampa dentro da tela
+      let left = rect.left + rect.width / 2 - popW / 2
+      left = Math.max(8, Math.min(left, vw - popW - 8))
       setPopupPos({ top, left, width: popW })
     }
     setAgAtivo(agId)
@@ -418,25 +428,25 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                         {/* Popup de ações rápidas — renderizado via Portal no body para escapar do stacking context da coluna */}
                         {popupAberto && typeof document !== 'undefined' && createPortal(
                           <div data-popup-ag="true" onClick={e=>e.stopPropagation()}
-                            style={{ position:'fixed', top:`${popupPos.top}px`, left:`${popupPos.left}px`, width:`${popupPos.width}px`, zIndex:9999, background:'white', borderRadius:'14px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'12px' }}>
+                            style={{ position:'fixed', top:`${popupPos.top}px`, left:`${popupPos.left}px`, width:`${popupPos.width}px`, zIndex:9999, background:'white', borderRadius:'12px', border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(15,23,42,0.18)', padding:'10px' }}>
                             {/* Info do agendamento */}
-                            <div style={{ marginBottom:'8px', paddingBottom:'8px', borderBottom:'1px solid #f1f5f9' }}>
-                              <p style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', margin:'0 0 2px' }}>{ag.cliente}</p>
-                              <p style={{ fontSize:'11px', color:'#64748b', margin:0 }}>{fmtHora(ag.horaInicio)} · {ag.servico || 'Sem serviço'}</p>
-                              <div style={{ display:'inline-flex', alignItems:'center', gap:'4px', marginTop:'4px', padding:'2px 8px', borderRadius:'99px', background: isFin?'#dcfce7':isCanc?'#f1f5f9':'#fef9c3' }}>
-                                <div style={{ width:'5px', height:'5px', borderRadius:'50%', background: isFin?'#16a34a':isCanc?'#94a3b8':'#f59e0b' }}/>
-                                <span style={{ fontSize:'10px', fontWeight:'700', color: isFin?'#15803d':isCanc?'#64748b':'#b45309' }}>
+                            <div style={{ marginBottom:'6px', paddingBottom:'6px', borderBottom:'1px solid #f1f5f9' }}>
+                              <p style={{ fontSize:'12px', fontWeight:'700', color:'#1e293b', margin:'0 0 1px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ag.cliente}</p>
+                              <p style={{ fontSize:'10px', color:'#64748b', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fmtHora(ag.horaInicio)} · {ag.servico || 'Sem serviço'}</p>
+                              <div style={{ display:'inline-flex', alignItems:'center', gap:'3px', marginTop:'3px', padding:'1px 7px', borderRadius:'99px', background: isFin?'#dcfce7':isCanc?'#f1f5f9':'#fef9c3' }}>
+                                <div style={{ width:'4px', height:'4px', borderRadius:'50%', background: isFin?'#16a34a':isCanc?'#94a3b8':'#f59e0b' }}/>
+                                <span style={{ fontSize:'9px', fontWeight:'700', color: isFin?'#15803d':isCanc?'#64748b':'#b45309' }}>
                                   {isFin ? 'Finalizado' : isCanc ? 'Cancelado' : 'Em aberto'}
                                 </span>
                               </div>
                             </div>
 
                             {/* Botões de ação */}
-                            <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
+                            <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
                               {/* Editar — sempre disponível */}
                               <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onAbrirEdicao(ag) }}
-                                style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'600', color:'#374151', cursor:'pointer', textAlign:'left' }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'600', color:'#374151', cursor:'pointer', textAlign:'left' }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 Editar agendamento
                               </button>
 
@@ -445,22 +455,22 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                                 <>
                                   {onEnviarWpp && (
                                     <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onEnviarWpp(ag) }}
-                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'600', color:'#16a34a', cursor:'pointer', textAlign:'left' }}>
-                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                                      style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'600', color:'#16a34a', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.413A9.953 9.953 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
                                       Enviar WhatsApp
                                     </button>
                                   )}
                                   {onFinalizarRapido && (
                                     <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onFinalizarRapido(ag) }}
-                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#059669', cursor:'pointer', textAlign:'left' }}>
-                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#ecfdf5', border:'1px solid #6ee7b7', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'700', color:'#059669', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                                       Finalizar
                                     </button>
                                   )}
                                   {onCancelarRapido && (
                                     <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onCancelarRapido(ag) }}
-                                      style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#ef4444', cursor:'pointer', textAlign:'left' }}>
-                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                      style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'700', color:'#ef4444', cursor:'pointer', textAlign:'left' }}>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                       Cancelar
                                     </button>
                                   )}
@@ -470,15 +480,15 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                               {/* Ver pagamento — só finalizados */}
                               {isFin && onVerPagamentos && (
                                 <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null); onVerPagamentos(ag) }}
-                                  style={{ display:'flex', alignItems:'center', gap:'7px', width:'100%', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'8px', padding:'7px 10px', fontSize:'12px', fontWeight:'700', color:'#2563eb', cursor:'pointer', textAlign:'left' }}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                  style={{ display:'flex', alignItems:'center', gap:'6px', width:'100%', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'7px', padding:'6px 9px', fontSize:'11px', fontWeight:'700', color:'#2563eb', cursor:'pointer', textAlign:'left' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                                   Ver pagamento
                                 </button>
                               )}
 
                               {/* Fechar popup */}
                               <button onClick={e=>{ e.stopPropagation(); setAgAtivo(null) }}
-                                style={{ width:'100%', background:'none', border:'none', borderRadius:'8px', padding:'5px', fontSize:'11px', color:'#94a3b8', cursor:'pointer', marginTop:'2px' }}>
+                                style={{ width:'100%', background:'none', border:'none', borderRadius:'7px', padding:'4px', fontSize:'10px', color:'#94a3b8', cursor:'pointer', marginTop:'0' }}>
                                 Fechar
                               </button>
                             </div>

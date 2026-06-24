@@ -24,14 +24,16 @@ export default function EmpresasPage() {
   const [todosUsuarios, setTodosUsuarios] = useState([] as any[])
   const [usuariosVinculados, setUsuariosVinculados] = useState([] as string[])
   const [salvandoVinculos, setSalvandoVinculos] = useState(false)
+  const [filtroTrial, setFiltroTrial] = useState(false)
   const [form, setForm] = useState(formVazio())
   const ativas = empresas.filter(function(e) { return e.status === 'ativo' }).length
+  const totalTrial = empresas.filter(function(e) { return e.is_trial }).length
 
   const carregar = useCallback(async function() {
     setCarregando(true)
     const sb = createClient()
-    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado,financeiro_habilitado,auto_agenda_habilitado,finalizar_sem_pagamento,valor_mensal,dia_vencimento').order('nome')
-    setEmpresas((data || []).map(function(e: any) { return { id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false, financeiro_habilitado:e.financeiro_habilitado||false, auto_agenda_habilitado:e.auto_agenda_habilitado||false, finalizar_sem_pagamento:e.finalizar_sem_pagamento||false, valor_mensal:e.valor_mensal||null, dia_vencimento:e.dia_vencimento||null, } }))
+    const { data } = await sb.from('empresas').select('id,nome,cnpj,email,telefone,endereco,plano,status,vencimento,bloqueada,motivo_bloqueio,whatsapp_habilitado,financeiro_habilitado,auto_agenda_habilitado,finalizar_sem_pagamento,valor_mensal,dia_vencimento,is_trial,data_expiracao_trial').order('nome')
+    setEmpresas((data || []).map(function(e: any) { return { id:e.id, nome:e.nome||'', cnpj:e.cnpj||'', email:e.email||'', telefone:e.telefone||'', endereco:e.endereco||'', plano:e.plano||'profissional', status:e.status||'ativo', vencimento:e.vencimento||'', bloqueada:e.bloqueada||false, motivo_bloqueio:e.motivo_bloqueio||'', whatsapp_habilitado:e.whatsapp_habilitado||false, financeiro_habilitado:e.financeiro_habilitado||false, auto_agenda_habilitado:e.auto_agenda_habilitado||false, finalizar_sem_pagamento:e.finalizar_sem_pagamento||false, valor_mensal:e.valor_mensal||null, dia_vencimento:e.dia_vencimento||null, is_trial:e.is_trial||false, data_expiracao_trial:e.data_expiracao_trial||null, } }))
     setCarregando(false)
   }, [])
 
@@ -43,7 +45,9 @@ export default function EmpresasPage() {
   }, [modalAberto])
 
   const filtradas = empresas.filter(function(e) {
-    return e.nome.toLowerCase().includes(busca.toLowerCase()) || e.cnpj.includes(busca) || e.email.toLowerCase().includes(busca.toLowerCase())
+    const matchBusca = e.nome.toLowerCase().includes(busca.toLowerCase()) || e.cnpj.includes(busca) || e.email.toLowerCase().includes(busca.toLowerCase())
+    if (filtroTrial) return matchBusca && e.is_trial
+    return matchBusca
   })
 
   function abrirNova() { setModoEdicao(false); setSelecionada(null); setErro(''); setForm(formVazio()); setAbaModal('dados'); setModalAberto(true) }
@@ -131,6 +135,30 @@ export default function EmpresasPage() {
     if (novo) alert('Empresa bloqueada. Usuarios serao deslogados automaticamente.')
   }
 
+  async function liberarTrial(e: any) {
+    const planoEscolhido = prompt(
+      `Liberar "${e.nome}" após pagamento.\n\nDigite o plano para ativar:\n- basico\n- profissional\n- enterprise`,
+      'profissional'
+    )
+    if (!planoEscolhido) return
+    const planosValidos = ['basico','profissional','enterprise']
+    if (!planosValidos.includes(planoEscolhido.trim().toLowerCase())) {
+      alert('Plano inválido. Use: basico, profissional ou enterprise.')
+      return
+    }
+    const sb = createClient()
+    await sb.from('empresas').update({
+      is_trial:              false,
+      data_expiracao_trial:  null,
+      bloqueada:             false,
+      motivo_bloqueio:       null,
+      status:                'ativo',
+      plano:                 planoEscolhido.trim().toLowerCase(),
+    }).eq('id', e.id)
+    await carregar(); recarregar()
+    alert(`✅ "${e.nome}" foi liberada com sucesso!\nPlano: ${planoEscolhido}\n\nO cliente já pode acessar o sistema normalmente.`)
+  }
+
   const setF = function(k: any) { return function(v: any) { setForm(function(p: any) { return { ...p, [k]: v } }) } }
 
   return (
@@ -143,6 +171,13 @@ export default function EmpresasPage() {
         <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', flex:1 }}>Empresas</h1>
         <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
           <span style={{ fontSize:'12px', color:'#6b7280' }}>{ativas} ativas / {empresas.length} total</span>
+          {totalTrial > 0 && (
+            <button onClick={function() { setFiltroTrial(function(v) { return !v }) }}
+              style={{ display:'flex', alignItems:'center', gap:'5px', background: filtroTrial ? '#0891b2' : '#e0f2fe', color: filtroTrial ? 'white' : '#0891b2', border:'none', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Trial ({totalTrial})
+            </button>
+          )}
           <button onClick={abrirNova} style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>+ Nova empresa</button>
         </div>
       </div>
@@ -159,11 +194,21 @@ export default function EmpresasPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
           {filtradas.map(function(e: any) {
             return (
-              <div key={e.id} style={{ background:'white', borderRadius:'12px', padding:'14px 16px', border:'1px solid #f0f0f8', display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+              <div key={e.id} style={{ background:'white', borderRadius:'12px', padding:'14px 16px', border:`1px solid ${e.is_trial ? '#e0f2fe' : '#f0f0f8'}`, display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'4px', flexWrap:'wrap' }}>
                     <p style={{ fontSize:'14px', fontWeight:'700', color:'#0f172a' }}>{e.nome}</p>
                     {e.bloqueada && <span style={{ fontSize:'10px', fontWeight:'700', color:'#dc2626', background:'#fef2f2', borderRadius:'4px', padding:'1px 6px' }}>BLOQ</span>}
+                    {e.is_trial && (() => {
+                      const exp = e.data_expiracao_trial ? new Date(e.data_expiracao_trial) : null
+                      const dias = exp ? Math.ceil((exp.getTime() - Date.now()) / (1000*60*60*24)) : 0
+                      const expirado = dias <= 0
+                      return (
+                        <span style={{ fontSize:'10px', fontWeight:'700', color: expirado?'#dc2626':'#0891b2', background: expirado?'#fef2f2':'#e0f2fe', borderRadius:'4px', padding:'1px 6px' }}>
+                          {expirado ? 'TRIAL EXPIRADO' : `TRIAL ${dias}d`}
+                        </span>
+                      )
+                    })()}
                     {e.whatsapp_habilitado && <span style={{ fontSize:'10px', fontWeight:'700', color:'#16a34a', background:'#f0fdf4', borderRadius:'4px', padding:'1px 6px' }}>WPP</span>}
                     {e.financeiro_habilitado && <span style={{ fontSize:'10px', fontWeight:'700', color:'#7c3aed', background:'#f5f3ff', borderRadius:'4px', padding:'1px 6px' }}>FIN</span>}
                     {e.auto_agenda_habilitado && <span style={{ fontSize:'10px', fontWeight:'700', color:'#0891b2', background:'#ecfeff', borderRadius:'4px', padding:'1px 6px' }}>AA</span>}
@@ -171,8 +216,20 @@ export default function EmpresasPage() {
                     <span style={{ fontSize:'11px', fontWeight:'500', padding:'2px 8px', borderRadius:'99px', background:planoBg[e.plano]||'#f3f4f6', color:planoCor[e.plano]||'#6b7280', textTransform:'capitalize' as const }}>{e.plano}</span>
                   </div>
                   <p style={{ fontSize:'12px', color:'#6b7280' }}>{e.cnpj||'–'} · {e.email||'–'}</p>
+                  {e.is_trial && e.data_expiracao_trial && (
+                    <p style={{ fontSize:'11px', color:'#94a3b8', marginTop:'2px' }}>
+                      Trial até: {new Date(e.data_expiracao_trial).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
                 </div>
-                <div style={{ display:'flex', gap:'8px', flexShrink:0 }}>
+                <div style={{ display:'flex', gap:'8px', flexShrink:0, flexWrap:'wrap' }}>
+                  {e.is_trial && (
+                    <button onClick={function() { liberarTrial(e) }}
+                      style={{ background:'linear-gradient(135deg,#059669,#10b981)', color:'white', border:'none', borderRadius:'7px', padding:'7px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Liberar
+                    </button>
+                  )}
                   <button onClick={function() { abrirEdicao(e) }} style={{ background:'#f3f4f6', border:'none', borderRadius:'7px', padding:'7px 12px', fontSize:'12px', cursor:'pointer', color:'#374151' }}>Editar</button>
                   <button onClick={function() { toggleStatus(e) }} style={{ background: e.status==='ativo'?'#fff7ed':'#f0fdf4', border:'none', borderRadius:'7px', padding:'7px 12px', fontSize:'12px', cursor:'pointer', color: e.status==='ativo'?'#c2410c':'#16a34a' }}>{e.status==='ativo'?'Desativar':'Ativar'}</button>
                   <button onClick={function() { toggleBloqueio(e) }} style={{ background:'#f3f4f6', border:'none', borderRadius:'7px', padding:'7px 12px', fontSize:'12px', cursor:'pointer' }}>

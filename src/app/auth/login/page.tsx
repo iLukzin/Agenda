@@ -20,6 +20,23 @@ function mascaraTel(v: string) {
   return n.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3').replace(/-$/,'')
 }
 
+function mascaraCpfCnpj(v: string) {
+  const n = v.replace(/\D/g,'').slice(0,14)
+  if (n.length <= 11) {
+    // CPF: 000.000.000-00
+    return n
+      .replace(/(\d{3})(\d)/,'$1.$2')
+      .replace(/(\d{3})(\d)/,'$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/,'$1-$2')
+  }
+  // CNPJ: 00.000.000/0000-00
+  return n
+    .replace(/(\d{2})(\d)/,'$1.$2')
+    .replace(/(\d{3})(\d)/,'$1.$2')
+    .replace(/(\d{3})(\d)/,'$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/,'$1-$2')
+}
+
 // ─── Formulário de Login ───────────────────────────────────────────
 function LoginForm({ onCadastrar }: { onCadastrar: () => void }) {
   const params = useSearchParams()
@@ -196,7 +213,12 @@ function CadastroForm({ onVoltar }: { onVoltar: () => void }) {
   const [mostrarSenha, setMostrarSenha] = useState(false)
 
   const setE = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setEmpresa(p => ({ ...p, [k]: k==='telefone' ? mascaraTel(e.target.value) : e.target.value }))
+    setEmpresa(p => ({
+      ...p,
+      [k]: k === 'telefone' ? mascaraTel(e.target.value)
+         : k === 'cnpj'    ? mascaraCpfCnpj(e.target.value)
+         : e.target.value
+    }))
   const setU = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setUsuario(p => ({ ...p, [k]: e.target.value }))
 
@@ -300,7 +322,20 @@ function CadastroForm({ onVoltar }: { onVoltar: () => void }) {
           </div>
           <div>
             <label style={{ display:'block', fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>CNPJ ou CPF</label>
-            <input value={empresa.cnpj} onChange={setE('cnpj')} placeholder="00.000.000/0000-00" style={inp} onFocus={inpFocus} onBlur={inpBlur}/>
+            <input
+              value={empresa.cnpj}
+              onChange={setE('cnpj')}
+              placeholder="CPF ou CNPJ"
+              inputMode="numeric"
+              style={inp}
+              onFocus={inpFocus}
+              onBlur={inpBlur}
+            />
+            {empresa.cnpj.length > 0 && (
+              <p style={{ fontSize:'11px', margin:'3px 0 0 2px', color: empresa.cnpj.replace(/\D/g,'').length <= 11 ? '#6366f1' : '#0891b2', fontWeight:'600' }}>
+                {empresa.cnpj.replace(/\D/g,'').length <= 11 ? '👤 CPF' : '🏢 CNPJ'}
+              </p>
+            )}
           </div>
           <div>
             <label style={{ display:'block', fontSize:'13px', fontWeight:'600', color:'#374151', marginBottom:'5px' }}>Endereço</label>

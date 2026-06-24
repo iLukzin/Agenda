@@ -93,6 +93,22 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
     return () => document.removeEventListener('mousedown', fn)
   }, [agAtivo])
 
+  // Fecha popup ao rolar (qualquer scroll na pagina ou na grade) ou redimensionar
+  // Evita que o popup fique "boiando" desalinhado do card quando o usuario faz scroll
+  useEffect(() => {
+    if (!agAtivo) return
+    const fechar = () => setAgAtivo(null)
+    // capture:true pega eventos de scroll de qualquer elemento descendente (scroll nao bubla)
+    window.addEventListener('scroll', fechar, true)
+    window.addEventListener('resize', fechar)
+    window.addEventListener('orientationchange', fechar)
+    return () => {
+      window.removeEventListener('scroll', fechar, true)
+      window.removeEventListener('resize', fechar)
+      window.removeEventListener('orientationchange', fechar)
+    }
+  }, [agAtivo])
+
   // Fecha mini-calendário ao clicar fora
   useEffect(() => {
     if (!miniCalAberto) return

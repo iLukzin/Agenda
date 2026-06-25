@@ -45,14 +45,14 @@ function paletaFromHex(hex: string) {
   try {
     const [hue,sat,lit]=hexToHSL(h)
     const s=Math.min(sat,80)
-    // Se cor muito clara (lit > 80%), usa texto escuro para legibilidade
-    const textoEscuro = lit > 75
+    // bg sempre muito claro (94%) — o texto DEVE ser sempre escuro para legibilidade
+    // independente da cor da paleta (vermelho claro, amarelo claro, etc.)
     return {
-      bg:          `hsl(${hue},${s}%,94%)`,
-      borda:       `hsl(${hue},${s}%,58%)`,
-      texto:       textoEscuro ? '#1e293b' : `hsl(${hue},${Math.min(s,70)}%,22%)`,
-      dark:        textoEscuro ? '#334155' : `hsl(${hue},${Math.min(s,75)}%,32%)`,
-      textoBlocos: textoEscuro ? '#0f172a' : `hsl(${hue},${Math.min(s,70)}%,18%)`,
+      bg:          `hsl(${hue},${Math.min(s,60)}%,94%)`,
+      borda:       `hsl(${hue},${s}%,55%)`,
+      texto:       '#1e293b', // sempre escuro para legibilidade no bg claro
+      dark:        `hsl(${hue},${Math.min(s,75)}%,30%)`,
+      textoBlocos: '#0f172a', // preto quase total — sempre legível em qualquer fundo claro
     }
   } catch {
     return { bg:'#eff6ff', borda:'#60a5fa', texto:'#1e40af', dark:'#1d4ed8', textoBlocos:'#1e3a8a' }
@@ -428,11 +428,15 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                           {/* Linha 1: horário + serviço na mesma linha */}
                           <div style={{ display:'flex', alignItems:'center', gap:'4px', justifyContent:'space-between' }}>
                             <div style={{ display:'flex', alignItems:'center', gap:'4px', minWidth:0, flex:1 }}>
-                              <span style={{ fontSize:'10px', fontWeight:'800', color: isFin?'rgba(255,255,255,0.9)':p.palette.dark, fontFamily:'monospace', flexShrink:0 }}>
+                              <span style={{ fontSize:'10px', fontWeight:'800',
+                                color: isFin ? 'rgba(255,255,255,0.9)' : isCanc ? '#94a3b8' : p.palette.textoBlocos,
+                                fontFamily:'monospace', flexShrink:0 }}>
                                 {fmtHora(ag.horaInicio)}
                               </span>
                               {ag.servico && (
-                                <span style={{ fontSize:'10px', fontWeight:'600', color: isFin?'rgba(255,255,255,0.75)':isCanc?'#94a3b8':p.palette.texto, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                <span style={{ fontSize:'10px', fontWeight:'600',
+                                  color: isFin ? 'rgba(255,255,255,0.75)' : isCanc ? '#94a3b8' : p.palette.textoBlocos,
+                                  overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', opacity: isFin ? 1 : 0.75 }}>
                                   · {ag.servico}
                                 </span>
                               )}
@@ -442,8 +446,8 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                             )}
                           </div>
                           {/* Linha 2: nome do cliente */}
-                          <p style={{ fontSize:'11px', fontWeight:'700',
-                            color: isFin ? 'white' : isCanc ? '#94a3b8' : p.palette.textoBlocos || p.palette.texto,
+                          <p style={{ fontSize:'11px', fontWeight:'800',
+                            color: isFin ? 'white' : isCanc ? '#94a3b8' : p.palette.textoBlocos,
                             margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                             {ag.cliente}
                           </p>

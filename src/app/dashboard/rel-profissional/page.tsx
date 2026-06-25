@@ -1,4 +1,4 @@
-// BUILD: 1782429841
+// BUILD: 1782430018
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -201,9 +201,9 @@ export default function RelProfissionalPage() {
       <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
         <div style={{ marginBottom:'16px', background:'white' }}>
           <div style={{ marginBottom:'12px' }}>
-          <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'2px' }}>Relatórios</h1>
-          <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos e faturamento</p>
-        </div>
+            <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'2px' }}>Relatórios</h1>
+            <p style={{ fontSize:'13px', color:'#6b7280' }}>Análise de atendimentos e faturamento</p>
+          </div>
 
         {/* Abas com scroll horizontal */}
         <div style={{ display:'flex', gap:'4px', background:'#f8fafc', borderRadius:'10px', padding:'4px', marginBottom:'14px', overflowX:'auto', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>

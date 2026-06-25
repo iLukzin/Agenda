@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
+import StickyPageHeader from '@/components/StickyPageHeader'
 
 type Profissional = {
   id: string; nome: string; email: string; telefone: string
@@ -194,7 +195,8 @@ export default function ProfissionaisPage() {
 
   return (
     <div style={{ padding:'16px 12px' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', flexWrap:'wrap', gap:'12px' }}>
+      <StickyPageHeader>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 12px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Profissionais</h1>
           <p style={{ fontSize:'13px', color:'#9ca3af' }}>
@@ -318,7 +320,6 @@ export default function ProfissionaisPage() {
                   <div style={{ display:'flex', gap:'8px' }}>
                     {CORES.map(cor => (
                       <button key={cor} onClick={() => setForm(p => ({...p, cor}))} style={{ width:'28px', height:'28px', borderRadius:'50%', background:cor, border: form.cor===cor ? '3px solid #1a1a2e' : cor==='#ffffff' ? '2px solid #cbd5e1' : '2px solid transparent', cursor:'pointer', boxShadow: cor==='#ffffff' ? '0 1px 4px rgba(0,0,0,0.15)' : 'none' }}/>
-                    ))}
                     ))}
                   </div>
                 </div>

@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { createClient } from '@/lib/supabase'
+import StickyPageHeader from '@/components/StickyPageHeader'
 import { buscarEmpresa, atualizarConfiguracoes, listarPlanos, criarPlano, atualizarPlano, excluirPlano } from '@/lib/api'
 import { enviarMensagem, aplicarVariaveis } from '@/lib/whatsapp'
 

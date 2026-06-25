@@ -39,18 +39,20 @@ function hexToHSL(hex: string): [number, number, number] {
 // Gera paleta completa a partir da cor hex cadastrada no profissional
 function paletaFromHex(hex: string) {
   const h=(hex||'#6366f1').trim().toLowerCase()
-  // Branco → cinza neutro elegante
+  // Branco → cinza neutro elegante com texto bem escuro
   if(h==='#ffffff'||h==='#fff')
-    return { bg:'#f8fafc', borda:'#94a3b8', texto:'#334155', dark:'#475569', textoBlocos:'#1e293b' }
+    return { bg:'#f8fafc', borda:'#94a3b8', texto:'#334155', dark:'#475569', textoBlocos:'#0f172a' }
   try {
-    const [hue,sat]=hexToHSL(h)
+    const [hue,sat,lit]=hexToHSL(h)
     const s=Math.min(sat,80)
+    // Se cor muito clara (lit > 80%), usa texto escuro para legibilidade
+    const textoEscuro = lit > 75
     return {
       bg:          `hsl(${hue},${s}%,94%)`,
       borda:       `hsl(${hue},${s}%,58%)`,
-      texto:       `hsl(${hue},${Math.min(s,70)}%,22%)`,
-      dark:        `hsl(${hue},${Math.min(s,75)}%,32%)`,
-      textoBlocos: `hsl(${hue},${Math.min(s,70)}%,18%)`,
+      texto:       textoEscuro ? '#1e293b' : `hsl(${hue},${Math.min(s,70)}%,22%)`,
+      dark:        textoEscuro ? '#334155' : `hsl(${hue},${Math.min(s,75)}%,32%)`,
+      textoBlocos: textoEscuro ? '#0f172a' : `hsl(${hue},${Math.min(s,70)}%,18%)`,
     }
   } catch {
     return { bg:'#eff6ff', borda:'#60a5fa', texto:'#1e40af', dark:'#1d4ed8', textoBlocos:'#1e3a8a' }
@@ -423,22 +425,28 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                             boxShadow: popupAberto ? `0 0 0 2px ${p.palette.dark}` : isFin ? 'none' : '0 1px 4px rgba(0,0,0,0.07)',
                             opacity: isCanc ? 0.5 : 1,
                           }}>
-                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                            <p style={{ fontSize:'10px', fontWeight:'800', color: isFin?'rgba(255,255,255,0.9)':p.palette.dark, margin:0, fontFamily:'monospace' }}>
-                              {fmtHora(ag.horaInicio)}
-                            </p>
+                          {/* Linha 1: horário + serviço na mesma linha */}
+                          <div style={{ display:'flex', alignItems:'center', gap:'4px', justifyContent:'space-between' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:'4px', minWidth:0, flex:1 }}>
+                              <span style={{ fontSize:'10px', fontWeight:'800', color: isFin?'rgba(255,255,255,0.9)':p.palette.dark, fontFamily:'monospace', flexShrink:0 }}>
+                                {fmtHora(ag.horaInicio)}
+                              </span>
+                              {ag.servico && (
+                                <span style={{ fontSize:'10px', fontWeight:'600', color: isFin?'rgba(255,255,255,0.75)':isCanc?'#94a3b8':p.palette.texto, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                  · {ag.servico}
+                                </span>
+                              )}
+                            </div>
                             {isFin && (
-                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" style={{ flexShrink:0 }}><polyline points="20 6 9 17 4 12"/></svg>
                             )}
                           </div>
-                          <p style={{ fontSize:'11px', fontWeight:'700', color: isFin?'white':isCanc?'#94a3b8':p.palette.texto, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {/* Linha 2: nome do cliente */}
+                          <p style={{ fontSize:'11px', fontWeight:'700',
+                            color: isFin ? 'white' : isCanc ? '#94a3b8' : p.palette.textoBlocos || p.palette.texto,
+                            margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                             {ag.cliente}
                           </p>
-                          {altPx>42 && ag.servico && (
-                            <p style={{ fontSize:'10px', color: isFin?'rgba(255,255,255,0.7)':isCanc?'#94a3b8':p.palette.dark, margin:'1px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {ag.servico}
-                            </p>
-                          )}
                         </div>
 
                         {/* Popup compacto — position:fixed com posição calculada */}

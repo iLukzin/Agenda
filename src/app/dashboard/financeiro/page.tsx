@@ -5,8 +5,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePermissao } from '@/hooks/usePermissao'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { createClient } from '@/lib/supabase'
-import StickyPageHeader from '@/components/StickyPageHeader'
 import { formatarMoeda } from '@/lib/supabase'
+import StickyPageHeader from '@/components/StickyPageHeader'
 
 type Lancamento = {
   id: string; tipo: 'receita'|'despesa'; descricao: string

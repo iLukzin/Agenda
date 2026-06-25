@@ -134,6 +134,7 @@ export default function ServicosPage() {
         </div>
         <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer', display:perm.criar?'inline-block':'none' }}>+ Novo serviço</button>
       </div>
+      </StickyPageHeader>
 
       <div style={{ position:'relative', maxWidth:'300px', marginBottom:'20px' }}>
         <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>

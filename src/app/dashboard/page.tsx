@@ -6,8 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { createClient } from '@/lib/supabase'
-import { formatarMoeda
-import StickyPageHeader from '@/components/StickyPageHeader', corStatus, labelStatus } from '@/lib/supabase'
+import { formatarMoeda, corStatus, labelStatus } from '@/lib/supabase'
 
 type Metrica = {
   totalAgendamentos: number; finalizados: number; cancelados: number; abertos: number

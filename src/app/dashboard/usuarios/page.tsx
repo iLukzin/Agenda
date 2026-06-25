@@ -180,8 +180,8 @@ export default function UsuariosPage() {
           + Novo usuário
         </button>
       </div>
-      </StickyPageHeader>
 
+      </StickyPageHeader>
       {/* Cards resumo */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px,1fr))', gap:'12px', marginBottom:'20px' }}>
         {[

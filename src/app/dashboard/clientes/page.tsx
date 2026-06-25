@@ -5,7 +5,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
-import StickyPageHeader from '@/components/StickyPageHeader'
 
 type Cliente = {
   id: string
@@ -449,7 +448,6 @@ export default function ClientesPage() {
 
   return (
     <div style={{ padding:'16px 12px' }}>
-      <StickyPageHeader>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 12px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Clientes</h1>

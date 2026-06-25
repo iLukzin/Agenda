@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import StickyPageHeader from '@/components/StickyPageHeader'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { usePermissao } from '@/hooks/usePermissao'
 
@@ -198,7 +197,6 @@ export default function RelProfissionalPage() {
 
   return (
     <div style={{ padding:'12px', maxWidth:'960px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
-      <StickyPageHeader>
       <div style={{ marginBottom:'16px', background:'white' }}>
         <div style={{ marginBottom:'12px' }}>
           <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'2px' }}>Relatórios</h1>

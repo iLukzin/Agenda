@@ -6,7 +6,6 @@ import { usePermissao } from '@/hooks/usePermissao'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { createClient } from '@/lib/supabase'
 import { formatarMoeda } from '@/lib/supabase'
-import StickyPageHeader from '@/components/StickyPageHeader'
 
 type Lancamento = {
   id: string; tipo: 'receita'|'despesa'; descricao: string
@@ -598,7 +597,6 @@ export default function FinanceiroPage() {
 
   return (
     <div style={{ padding:'12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
-      <StickyPageHeader>
       <div style={{ padding:'12px 12px 0' }}>
         <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
         <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>

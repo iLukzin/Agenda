@@ -6,7 +6,6 @@ import { usePermissao } from '@/hooks/usePermissao'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { listarUsuarios, atualizarUsuario, inativarUsuario, excluirUsuario } from '@/lib/api'
 import { createClient } from '@/lib/supabase'
-import StickyPageHeader from '@/components/StickyPageHeader'
 
 type Usuario = {
   id: string; nome: string; email: string; telefone?: string
@@ -170,7 +169,6 @@ export default function UsuariosPage() {
 
   return (
     <div style={{ padding:'16px 12px' }}>
-      <StickyPageHeader>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 12px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Usuários do sistema</h1>
@@ -180,9 +178,7 @@ export default function UsuariosPage() {
           + Novo usuário
         </button>
       </div>
-
-      </StickyPageHeader>
-      {/* Cards resumo */}
+{/* Cards resumo */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px,1fr))', gap:'12px', marginBottom:'20px' }}>
         {[
           { label:'Total',          valor:usuarios.length,                                     cor:'#6b7280', bg:'#f3f4f6' },

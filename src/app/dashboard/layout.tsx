@@ -261,27 +261,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', minHeight:'100vh', display:'flex', flexDirection:'column', minWidth:0 }}>
         {/* Header mobile — position:fixed para nunca mover no scroll do navegador */}
         {isMobile && (
-          <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:30, background:'white', boxShadow:'0 1px 6px rgba(0,0,0,0.08)' }}>
-            {/* Barra de navegação */}
-            <div style={{ borderBottom:'1px solid #f0f0f8', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px', background:'white' }}>
-              <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', color:'#374151' }}>
-                <NavIcon code="MENU" size={22}/>
-              </button>
-              <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                <Image src="/logo-fortitude.png" alt="Logo" width={28} height={28} style={{ borderRadius:'6px', objectFit:'contain' }}/>
-                <span style={{ fontWeight:'700', fontSize:'15px', color:'#1a1a2e' }}>AgendaFortitude</span>
+          <>
+            <div id="mobile-header-fixed" style={{ position:'fixed', top:0, left:0, right:0, zIndex:30, background:'white', boxShadow:'0 1px 6px rgba(0,0,0,0.08)' }}>
+              {/* Barra de navegação */}
+              <div style={{ borderBottom:'1px solid #f0f0f8', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px', background:'white' }}>
+                <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', color:'#374151' }}>
+                  <NavIcon code="MENU" size={22}/>
+                </button>
+                <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  <Image src="/logo-fortitude.png" alt="Logo" width={28} height={28} style={{ borderRadius:'6px', objectFit:'contain' }}/>
+                  <span style={{ fontWeight:'700', fontSize:'15px', color:'#1a1a2e' }}>AgendaFortitude</span>
+                </div>
+                {empresaAtiva && <span style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:'99px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'110px' }}>{empresaAtiva.nome}</span>}
               </div>
-              {empresaAtiva && <span style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:'99px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'110px' }}>{empresaAtiva.nome}</span>}
+              {/* Banner trial dentro do header fixo */}
+              {empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster && (
+                <BannerTrial dataExpiracao={empresaAtiva.data_expiracao_trial} />
+              )}
             </div>
-            {/* Banner trial dentro do header fixo */}
-            {empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster && (
-              <BannerTrial dataExpiracao={empresaAtiva.data_expiracao_trial} />
-            )}
-          </div>
-        )}
-        {/* Espaçador para compensar o header fixo no mobile */}
-        {isMobile && (
-          <div style={{ height: empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster ? '120px' : '56px', flexShrink:0 }}/>
+            {/* Espaçador dinâmico — usa script para medir altura real do header */}
+            <MobileHeaderSpacer hasTrial={!!(empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster)} />
+          </>
         )}
         {/* Banner trial no desktop */}
         {!isMobile && empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster && (
@@ -293,6 +293,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
     </div>
   )
+}
+
+// Componente client-side que mede a altura real do header fixo e aplica o espaçamento correto
+function MobileHeaderSpacer({ hasTrial }: { hasTrial: boolean }) {
+  const [height, setHeight] = useState(hasTrial ? 160 : 56)
+
+  useEffect(() => {
+    function medir() {
+      const el = document.getElementById('mobile-header-fixed')
+      if (el) setHeight(el.offsetHeight)
+    }
+    medir()
+    const t = setTimeout(medir, 100)
+    window.addEventListener('resize', medir)
+    return () => { clearTimeout(t); window.removeEventListener('resize', medir) }
+  }, [hasTrial])
+
+  return <div style={{ height:`${height}px`, flexShrink:0 }}/>
 }
 
 function SidebarConteudo({ sidebarAberta, setSidebarAberta, pathname, handleLogout, isMobile, onClose, usuario, empresaAtiva, empresas, trocarEmpresa, isMaster, dropEmpresa, setDropEmpresa, permMap }: any) {

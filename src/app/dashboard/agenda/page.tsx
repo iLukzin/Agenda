@@ -263,6 +263,8 @@ export default function AgendaPage() {
   const [salvandoCliente, setSalvandoCliente] = useState(false)
   const [intervaloMin, setIntervaloMin] = useState(30)
   const [form, setForm] = useState({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(hojeNoBrasil()), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'', plano_id:'', usar_plano:false })
+  const [servicosSelecionados, setServicosSelecionados] = useState<Array<{id:string;nome:string;valor:number;duracao_min:number}>>([])
+  const [modalServicos, setModalServicos] = useState(false)
   const [pagamentos, setPagamentos] = useState<Array<{forma:string;valor:string}>>([])
   const [modalFinalizar, setModalFinalizar] = useState(false)
   const [descontoFin, setDescontoFin] = useState('')
@@ -431,6 +433,7 @@ export default function AgendaPage() {
     setPlanoCliente(null); setSessaoPlano(null)
     setIntervaloMin(30)
     setForm({ clienteId:'', cliente:'', servico:'', profissional:'', dataISO:toISO(dataRef), horaInicio:'', duracao:'60', status:'aberto', forma_pagamento:'', valor:'', observacoes:'' })
+    setServicosSelecionados([])
     setDesconto(''); setValorOriginal(''); setModalDesconto(false); setPagamentos([])
     setModalAberto(true)
   }
@@ -447,6 +450,12 @@ export default function AgendaPage() {
     const vReal = ag.valor && ag.valor > 0 ? ag.valor : vBruto
     setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(vReal), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
     setValorOriginal(String(vBruto))
+    // Popular servicosSelecionados com o serviço existente (se houver)
+    if (ag.servico && !ehPlano) {
+      const srvExist = servicos.find((s: any) => s.nome === ag.servico)
+      if (srvExist) setServicosSelecionados([{ id:srvExist.id, nome:srvExist.nome, valor:srvExist.valor||0, duracao_min:srvExist.duracao_min||60 }])
+      else setServicosSelecionados([{ id:'', nome:ag.servico, valor:ag.valor||0, duracao_min:ag.duracao||60 }])
+    } else { setServicosSelecionados([]) }
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
     // Carregar pagamentos do banco
     try {
@@ -490,14 +499,14 @@ export default function AgendaPage() {
   }
 
   function fecharModal() {
-    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]); setPagamentos([]); setDesconto(''); setValorOriginal(''); setModalDesconto(false); setModalFinalizar(false); setVerPagamentos(false); setDescontoFin('') }
+    setSessaoEdicao(null); setModalAberto(false); setSelecionado(null); setModoEdicao(false); setClienteSel(null); setBuscaCliente(''); setDropCliente(false); setModalCancelar(false); setMotivoCancelamento(''); setErroForm([]); setPagamentos([]); setDesconto(''); setValorOriginal(''); setModalDesconto(false); setModalFinalizar(false); setVerPagamentos(false); setDescontoFin(''); setServicosSelecionados([]) }
 
   async function salvar() {
     // Validacao completa dos campos obrigatorios
     const erros: string[] = []
     if (!form.clienteId)    erros.push('Cliente e obrigatorio')
     if (!form.profissional) erros.push('Profissional e obrigatorio')
-    if (!form.usar_plano && !form.servico) erros.push('Servico e obrigatorio')
+    if (!form.usar_plano && servicosSelecionados.length === 0) erros.push('Selecione pelo menos um serviço')
     if (!form.dataISO)      erros.push('Data e obrigatoria')
     if (!form.horaInicio) {
       erros.push('Selecione um horario para o agendamento')
@@ -533,7 +542,9 @@ export default function AgendaPage() {
     // Montar data/hora local BRT e converter para UTC (-3h)
     const dataLocalBRT = new Date(form.dataISO + 'T' + String(parts[0]).padStart(2,'0') + ':' + String(parts[1]).padStart(2,'0') + ':00-03:00')
     const dataInicio = dataLocalBRT.toISOString()
-    const srv = servicos.find((s: any) => s.nome === form.servico)
+    const srv = servicosSelecionados.length > 0
+      ? servicos.find((s: any) => s.id === servicosSelecionados[0].id)
+      : servicos.find((s: any) => s.nome === form.servico)
     const prof = profissionais.find((p: any) => p.nome === form.profissional)
     const dataFim = new Date(new Date(dataInicio).getTime() + parseInt(form.duracao) * 60000).toISOString()
     // Valor: na edicao manter o valor original; na criacao calcular pela sessao
@@ -1172,28 +1183,49 @@ export default function AgendaPage() {
                     {profissionais.map((p: any) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
                   </select>
                 </InputField>
-                <InputField label="Servico">
+                <InputField label="Serviços">
                   {form.usar_plano ? (
-                    <div style={{ padding:'10px 13px', background:'#f9fafb', borderRadius:'8px', border:'1.5px solid #e5e7eb', fontSize:'14px', color:'#9ca3af', display:'flex', alignItems:'center', gap:'6px' }}>
+                    <div style={{ padding:'10px 13px', background:'#f9fafb', borderRadius:'8px', border:'1.5px solid #e5e7eb', fontSize:'14px', color:'#9ca3af' }}>
                       Incluso no plano mensal
                     </div>
                   ) : (
-                    <select value={form.servico} onChange={e=>{const srv=servicosDoProf.find((s: any)=>s.nome===e.target.value);const vSrv=srv?.valor?String(srv.valor):form.valor;setValorOriginal(vSrv);setDesconto('');setForm(f=>({...f,servico:e.target.value,duracao:srv?.duracao_min?String(srv.duracao_min):f.duracao,valor:vSrv}))}} style={{ ...selectStyle, background:!form.profissional?'#f9fafb':'white' }} disabled={!form.profissional}>
-                      <option value="">{form.profissional?'Selecione...':'Selecione o profissional primeiro'}</option>
-                      {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
-                    </select>
+                    <div>
+                      {/* Botão para abrir modal de seleção */}
+                      <button type="button" onClick={()=>{ if(form.profissional) setModalServicos(true) }}
+                        disabled={!form.profissional}
+                        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 13px', background:!form.profissional?'#f9fafb':'white', border:`1.5px solid ${servicosSelecionados.length>0?'#6366f1':'#e5e7eb'}`, borderRadius:'8px', cursor:!form.profissional?'not-allowed':'pointer', fontSize:'13px', color:servicosSelecionados.length>0?'#4f46e5':'#9ca3af' }}>
+                        <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {servicosSelecionados.length === 0
+                            ? (form.profissional ? 'Selecionar serviços...' : 'Selecione o profissional primeiro')
+                            : `${servicosSelecionados.length} serviço${servicosSelecionados.length>1?'s':''} selecionado${servicosSelecionados.length>1?'s':''}`}
+                        </span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      </button>
+                      {/* Tags dos serviços selecionados */}
+                      {servicosSelecionados.length > 0 && (
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:'5px', marginTop:'7px' }}>
+                          {servicosSelecionados.map(s => (
+                            <div key={s.id||s.nome} style={{ display:'flex', alignItems:'center', gap:'4px', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'20px', padding:'3px 8px 3px 10px' }}>
+                              <span style={{ fontSize:'12px', fontWeight:'600', color:'#4f46e5' }}>{s.nome}</span>
+                              {s.valor > 0 && <span style={{ fontSize:'11px', color:'#6366f1' }}>R$ {s.valor.toFixed(2).replace('.',',')}</span>}
+                              <button type="button" onClick={()=>{
+                                const novos = servicosSelecionados.filter(x => x.id !== s.id || x.nome !== s.nome)
+                                setServicosSelecionados(novos)
+                                const totalValor = novos.reduce((sum,x)=>sum+x.valor,0)
+                                const totalDur   = novos.reduce((sum,x)=>sum+x.duracao_min,0)
+                                const nomesJoin  = novos.map(x=>x.nome).join(', ')
+                                setForm(f=>({...f, servico:nomesJoin, valor:totalValor>0?String(totalValor):f.valor, duracao:totalDur>0?String(totalDur):'60'}))
+                                setValorOriginal(totalValor>0?String(totalValor):'')
+                              }} style={{ background:'none', border:'none', cursor:'pointer', color:'#818cf8', padding:'0 0 0 2px', display:'flex', lineHeight:1 }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </InputField>
-
-                {form.usar_plano && (
-                  <div>
-                    <label style={{ display:'block', fontSize:'13px', fontWeight:'500', color:'#374151', marginBottom:'6px' }}>Servico (opcional)</label>
-                    <select value={form.servico} onChange={e=>setForm(f=>({...f,servico:e.target.value}))} style={{ ...selectStyle, background:'#f9fafb', color:'#9ca3af' }} disabled={true}>
-                      <option value="">Nenhum servico especifico</option>
-                      {servicosDoProf.map((s: any) => <option key={s.id} value={s.nome}>{s.nome}</option>)}
-                    </select>
-                  </div>
-                )}
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <InputField label="Data">
@@ -1362,6 +1394,101 @@ export default function AgendaPage() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Seleção de Serviços */}
+      {modalServicos && (
+        <div onClick={()=>setModalServicos(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:300, display:'flex', alignItems:'flex-end', justifyContent:'center', backdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'500px', borderRadius:'22px 22px 0 0', maxHeight:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 -8px 40px rgba(15,23,42,0.2)' }}>
+            {/* Header */}
+            <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', flexShrink:0 }}>
+              <div style={{ width:'40px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 14px' }}/>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <h3 style={{ fontSize:'16px', fontWeight:'800', color:'#1e293b', margin:0 }}>Selecionar serviços</h3>
+                  <p style={{ fontSize:'12px', color:'#94a3b8', margin:0 }}>Toque para adicionar ou remover</p>
+                </div>
+                {servicosSelecionados.length > 0 && (
+                  <div style={{ textAlign:'right' }}>
+                    <p style={{ fontSize:'11px', color:'#6366f1', fontWeight:'600', margin:0 }}>{servicosSelecionados.length} selecionado{servicosSelecionados.length>1?'s':''}</p>
+                    <p style={{ fontSize:'14px', fontWeight:'800', color:'#4f46e5', margin:0 }}>
+                      R$ {servicosSelecionados.reduce((s,x)=>s+x.valor,0).toFixed(2).replace('.',',')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Lista de serviços */}
+            <div style={{ overflowY:'auto', flex:1, padding:'10px 16px' }}>
+              {servicosDoProf.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'32px', color:'#94a3b8' }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#e2e8f0" strokeWidth="1.5" style={{ display:'block', margin:'0 auto 10px' }}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                  <p style={{ fontSize:'14px', fontWeight:'600' }}>Nenhum serviço vinculado a este profissional.</p>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                  {servicosDoProf.map((s: any) => {
+                    const sel = servicosSelecionados.some(x => x.id === s.id || x.nome === s.nome)
+                    return (
+                      <button key={s.id} type="button" onClick={()=>{
+                        let novos: typeof servicosSelecionados
+                        if (sel) {
+                          novos = servicosSelecionados.filter(x => x.id !== s.id && x.nome !== s.nome)
+                        } else {
+                          novos = [...servicosSelecionados, { id:s.id, nome:s.nome, valor:s.valor||0, duracao_min:s.duracao_min||60 }]
+                        }
+                        setServicosSelecionados(novos)
+                        const totalValor = novos.reduce((sum,x)=>sum+x.valor,0)
+                        const totalDur   = novos.reduce((sum,x)=>sum+x.duracao_min,0)
+                        const nomesJoin  = novos.map(x=>x.nome).join(', ')
+                        setDesconto('')
+                        setForm(f=>({...f, servico:nomesJoin, valor:totalValor>0?String(totalValor):'0', duracao:totalDur>0?String(totalDur):'60'}))
+                        setValorOriginal(totalValor>0?String(totalValor):'0')
+                      }}
+                        style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'12px', border:`2px solid ${sel?'#6366f1':'#f1f5f9'}`, background:sel?'#eef2ff':'white', cursor:'pointer', textAlign:'left', transition:'all .12s' }}>
+                        {/* Checkbox visual */}
+                        <div style={{ width:'22px', height:'22px', borderRadius:'6px', border:`2px solid ${sel?'#6366f1':'#d1d5db'}`, background:sel?'#6366f1':'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          {sel && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </div>
+                        {/* Info do serviço */}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ fontSize:'14px', fontWeight:'700', color:sel?'#4f46e5':'#1e293b', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.nome}</p>
+                          <p style={{ fontSize:'11px', color:'#94a3b8', margin:0 }}>{s.duracao_min||60} min</p>
+                        </div>
+                        {/* Valor */}
+                        <div style={{ textAlign:'right', flexShrink:0 }}>
+                          <p style={{ fontSize:'14px', fontWeight:'800', color:sel?'#4f46e5':'#374151', margin:0 }}>
+                            {s.valor > 0 ? `R$ ${Number(s.valor).toFixed(2).replace('.',',')}` : 'Grátis'}
+                          </p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Rodapé com totais e confirmar */}
+            <div style={{ padding:'14px 16px', borderTop:'1px solid #f1f5f9', flexShrink:0, background:'white' }}>
+              {servicosSelecionados.length > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px', background:'#f8fafc', borderRadius:'10px', padding:'10px 14px' }}>
+                  <div>
+                    <p style={{ fontSize:'11px', color:'#64748b', margin:0 }}>Total dos serviços</p>
+                    <p style={{ fontSize:'12px', color:'#94a3b8', margin:0 }}>{servicosSelecionados.reduce((s,x)=>s+x.duracao_min,0)} min · {servicosSelecionados.map(x=>x.nome).join(' + ')}</p>
+                  </div>
+                  <p style={{ fontSize:'18px', fontWeight:'800', color:'#4f46e5', margin:0 }}>
+                    R$ {servicosSelecionados.reduce((s,x)=>s+x.valor,0).toFixed(2).replace('.',',')}
+                  </p>
+                </div>
+              )}
+              <button onClick={()=>setModalServicos(false)}
+                style={{ width:'100%', background:'linear-gradient(135deg,#6366f1,#4f46e5)', color:'white', border:'none', borderRadius:'12px', padding:'13px', fontSize:'15px', fontWeight:'700', cursor:'pointer', boxShadow:'0 4px 14px rgba(99,102,241,0.4)' }}>
+                {servicosSelecionados.length === 0 ? 'Fechar' : `Confirmar ${servicosSelecionados.length} serviço${servicosSelecionados.length>1?'s':''}`}
+              </button>
             </div>
           </div>
         </div>

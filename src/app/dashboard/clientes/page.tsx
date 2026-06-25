@@ -1,4 +1,4 @@
-// BUILD: 1782430954
+// BUILD: 1782431772
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -449,26 +449,26 @@ export default function ClientesPage() {
   return (
     <div style={{ padding:'16px 12px' }}>
       <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 12px', flexWrap:'wrap', gap:'12px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 10px', flexWrap:'wrap', gap:'10px' }}>
           <div>
-          <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Clientes</h1>
-          <p style={{ fontSize:'13px', color:'#9ca3af' }}>{clientes.length} cadastrados{empresaAtiva ? ` · ${empresaAtiva.nome}` : ''}</p>
+            <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Clientes</h1>
+            <p style={{ fontSize:'13px', color:'#9ca3af' }}>{clientes.length} cadastrados{empresaAtiva ? ` · ${empresaAtiva.nome}` : ''}</p>
+          </div>
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+            {ehLucas && (
+              <button onClick={exportarClientesExcel}
+                style={{ background:'#16a34a', color:'white', border:'none', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar Excel
+              </button>
+            )}
+            {perm.criar && (
+              <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
+                + Novo cliente
+              </button>
+            )}
+          </div>
         </div>
-        <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-          {ehLucas && (
-            <button onClick={exportarClientesExcel}
-              style={{ background:'#16a34a', color:'white', border:'none', borderRadius:'8px', padding:'9px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar Excel
-            </button>
-          )}
-          {perm.criar && (
-            <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer' }}>
-              + Novo cliente
-            </button>
-          )}
-        </div>
-      </div>
         <div style={{ display:'flex', gap:'10px', padding:'0 12px 12px', flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:'200px', maxWidth:'300px' }}>
             <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>

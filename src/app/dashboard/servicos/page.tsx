@@ -1,4 +1,4 @@
-// BUILD: 1782430954
+// BUILD: 1782431772
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -126,14 +126,14 @@ export default function ServicosPage() {
   return (
     <div style={{ padding:'16px 12px' }}>
       <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 12px', flexWrap:'wrap', gap:'12px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 10px', flexWrap:'wrap', gap:'10px' }}>
           <div>
             <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Serviços</h1>
             <p style={{ fontSize:'13px', color:'#9ca3af' }}>{servicos.filter(s=>s.status==='ativo').length} ativos de {servicos.length}</p>
           </div>
           <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer', display:perm.criar?'inline-block':'none' }}>+ Novo serviço</button>
         </div>
-        <div style={{ position:'relative', maxWidth:'300px', padding:'0 12px 12px' }}>
+        <div style={{ position:'relative', maxWidth:'320px', padding:'0 12px 12px' }}>
           <span style={{ position:'absolute', left:'24px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
           <input style={{ ...inputStyle, paddingLeft:'36px', width:'100%', boxSizing:'border-box' }} placeholder="Buscar serviço..." value={busca} onChange={e => setBusca(e.target.value)}/>
         </div>

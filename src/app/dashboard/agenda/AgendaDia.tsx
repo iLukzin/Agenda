@@ -410,11 +410,11 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                     // Cor de fundo do card: usa a cor hex real do profissional com boa saturação
                     const [hue,sat] = hexToHSL(p.cor||'#6366f1')
                     const cardBg = isCanc ? '#e2e8f0'
-                      : isFin   ? `hsl(${hue},${Math.max(sat,55)}%,32%)`
+                      : isFin   ? p.palette.dark
                       : (p.cor||'#6366f1').toLowerCase()==='#ffffff' ? '#e2e8f0'
                       : `hsl(${hue},${Math.max(sat,60)}%,75%)`
                     const cardBorda = isCanc ? '#94a3b8'
-                      : isFin   ? `hsl(${hue},${Math.max(sat,55)}%,22%)`
+                      : isFin   ? p.palette.dark
                       : (p.cor||'#6366f1').toLowerCase()==='#ffffff' ? '#94a3b8'
                       : `hsl(${hue},${Math.max(sat,60)}%,45%)`
                     return (
@@ -450,11 +450,10 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                                 </span>
                               )}
                             </div>
-                            {/* Badge finalizado */}
+                            {/* Ícone finalizado — círculo verde com check */}
                             {isFin && (
-                              <div style={{ display:'flex', alignItems:'center', gap:'3px', background:'rgba(255,255,255,0.18)', borderRadius:'99px', padding:'2px 7px 2px 5px', flexShrink:0 }}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                <span style={{ fontSize:'10px', fontWeight:'800', color:'white', letterSpacing:'0.03em' }}>Finalizado</span>
+                              <div style={{ width:'18px', height:'18px', borderRadius:'50%', background:'#4caf50', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                               </div>
                             )}
                           </div>

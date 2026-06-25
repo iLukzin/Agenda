@@ -53,6 +53,7 @@ type AgendamentoLocal = {
   cliente: string; clienteId: string; servico: string; profissional: string
   cor: string; status: string; observacoes: string; forma_pagamento: string; pagamentos?: Array<{forma:string;valor:number}>; pagamentos?: Array<{forma:string;valor:number}>
   valor: number; desconto?: number; valor_bruto?: number; motivoCancelamento?: string; planoId?: string; sessaoNumero?: number; sessaoTotal?: number; createdAt?: string
+  servicosJson?: Array<{id:string;nome:string;valor:number;duracao_min:number}> | null
 }
 type HorarioDB = {
   profissional_id: string; dia_semana: number; hora_inicio: string; hora_fim: string
@@ -283,7 +284,7 @@ export default function AgendaPage() {
     // Filtrar por profissional_id do usuario logado (do contexto) se vinculado
     const profIdVinculado = (usuario as any)?.profissional_id || null
     const ehProf = !!profIdVinculado
-    let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,desconto,valor_bruto,forma_pagamento,pagamentos,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total').eq('empresa_id', empresaAtiva.id)
+    let qAgs = sb.from('agendamentos').select('id,data_inicio,created_at,status,valor,desconto,valor_bruto,forma_pagamento,pagamentos,observacoes,cliente_id,servico_id,profissional_id,prof_id,motivo_cancelamento,sessao_numero,sessao_total,servicos_json').eq('empresa_id', empresaAtiva.id)
     if (ehProf) qAgs = qAgs.eq('prof_id', profIdVinculado)
     let qProfs = sb.from('profissionais').select('id,nome,cargo,cor,status,servicos,intervalo_atendimento').eq('empresa_id', empresaAtiva.id).eq('status', 'ativo')
     if (ehProf) qProfs = qProfs.eq('id', profIdVinculado)
@@ -317,14 +318,29 @@ export default function AgendaPage() {
       const dtBRT = dtUTC ? new Date(dtUTC.getTime() - 3 * 60 * 60 * 1000) : null
       const dataISO = dtBRT ? toISO(dtBRT) : toISO(hojeNoBrasil())
       const horaInicio = dtBRT ? dtBRT.getUTCHours() + dtBRT.getUTCMinutes() / 60 : 0
+      // Recuperar servicos_json para múltiplos serviços
+      let servicosJson: Array<{id:string;nome:string;valor:number;duracao_min:number}> | null = null
+      try {
+        if (a.servicos_json) {
+          const parsed = typeof a.servicos_json === 'string' ? JSON.parse(a.servicos_json) : a.servicos_json
+          if (Array.isArray(parsed)) servicosJson = parsed
+        }
+      } catch { servicosJson = null }
+      // Duração: soma dos serviços se multiplos, senão usa o servico principal
+      const duracaoBRT = dtBRT && a.data_fim ? Math.round((new Date(a.data_fim).getTime() - new Date(a.data_inicio).getTime()) / 60000) : null
+      const duracaoFinal = duracaoBRT || (servicosJson ? servicosJson.reduce((s,x)=>s+x.duracao_min,0) : servDur[a.servico_id] || 60)
+      // Nome do serviço: concatena se multiplos
+      const nomeServico = servicosJson && servicosJson.length > 1
+        ? servicosJson.map(s=>s.nome).join(', ')
+        : servNom[a.servico_id] || ''
       return {
       id: a.id,
       dataISO,
       horaInicio,
-      duracao: servDur[a.servico_id] || 60,
+      duracao: duracaoFinal,
       cliente: cliMap[a.cliente_id] || '',
       clienteId: a.cliente_id || '',
-      servico: servNom[a.servico_id] || '',
+      servico: nomeServico,
       profissional: a.prof_id ? (profMap[a.prof_id] || '') : (profMap[a.profissional_id] || ''),
       cor: servCor[a.servico_id] || '#6366f1',
       status: a.status || '',
@@ -339,6 +355,7 @@ export default function AgendaPage() {
       createdAt: a.created_at || a.data_inicio,
       sessaoNumero: a.sessao_numero || undefined,
       sessaoTotal: a.sessao_total || undefined,
+      servicosJson,
       }
     }))
     setCarregando(false)
@@ -450,11 +467,17 @@ export default function AgendaPage() {
     const vReal = ag.valor && ag.valor > 0 ? ag.valor : vBruto
     setForm({ clienteId:ag.clienteId, cliente:ag.cliente, servico:ag.servico, profissional:ag.profissional, dataISO:ag.dataISO, horaInicio:String(hiH).padStart(2,'0') + ':' + String(hiM).padStart(2,'0'), duracao:String(ag.duracao), status:ag.status, forma_pagamento:ag.forma_pagamento, valor:String(vReal), observacoes:ag.observacoes, usar_plano:ehPlano, plano_id:ag.planoId||'' })
     setValorOriginal(String(vBruto))
-    // Popular servicosSelecionados com o serviço existente (se houver)
-    if (ag.servico && !ehPlano) {
-      const srvExist = servicos.find((s: any) => s.nome === ag.servico)
-      if (srvExist) setServicosSelecionados([{ id:srvExist.id, nome:srvExist.nome, valor:srvExist.valor||0, duracao_min:srvExist.duracao_min||60 }])
-      else setServicosSelecionados([{ id:'', nome:ag.servico, valor:ag.valor||0, duracao_min:ag.duracao||60 }])
+    // Popular servicosSelecionados com todos os serviços do agendamento
+    if (!ehPlano) {
+      if (ag.servicosJson && ag.servicosJson.length > 0) {
+        // Múltiplos serviços salvos — restaura todos
+        setServicosSelecionados(ag.servicosJson)
+      } else if (ag.servico) {
+        // Agendamento antigo (antes da feature) — usa o único serviço
+        const srvExist = servicos.find((s: any) => s.nome === ag.servico)
+        if (srvExist) setServicosSelecionados([{ id:srvExist.id, nome:srvExist.nome, valor:srvExist.valor||0, duracao_min:srvExist.duracao_min||60 }])
+        else setServicosSelecionados([{ id:'', nome:ag.servico, valor:ag.valor||0, duracao_min:ag.duracao||60 }])
+      } else { setServicosSelecionados([]) }
     } else { setServicosSelecionados([]) }
     setDesconto(ag.desconto && ag.desconto > 0 ? String(ag.desconto) : '')
     // Carregar pagamentos do banco
@@ -582,7 +605,11 @@ export default function AgendaPage() {
       ? pagsValidos.map(p => p.forma).join('+')
       : (form.usar_plano ? 'plano' : (pagamentos.length === 0 && !form.forma_pagamento ? null : form.forma_pagamento || null))
     const pagsJSON = pagsValidos.length > 0 ? JSON.stringify(pagsValidos.map(p => ({ forma: p.forma, valor: parseFloat(p.valor) }))) : (pagsValidos.length === 0 ? null : null)
-    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:formaResumida, pagamentos:pagsJSON, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null }
+    // Montar servicos_json com todos os serviços selecionados
+    const servicosJsonPayload = servicosSelecionados.length > 1
+      ? JSON.stringify(servicosSelecionados.map(s => ({ id:s.id, nome:s.nome, valor:s.valor, duracao_min:s.duracao_min })))
+      : null
+    const payload: any = { cliente_id:form.clienteId, servico_id:srv?.id||null, profissional_id:null, prof_id:prof?.id||null, data_inicio:dataInicio, data_fim:dataFim, tipo_cobranca:form.usar_plano?'plano':'avulso', valor:valorFinal, valor_bruto:valorBruto, desconto:descontoVal>0?descontoVal:null, forma_pagamento:formaResumida, pagamentos:pagsJSON, sessao_numero:sessaoParaSalvar||null, sessao_total:totalParaSalvar||null, observacoes:form.observacoes||null, servicos_json:servicosJsonPayload }
     if (!modoEdicao) payload.status = 'aberto'
     let error: any
     if (modoEdicao && selecionado) { const res = await atualizarAgendamento(selecionado.id, payload); error = res.error }

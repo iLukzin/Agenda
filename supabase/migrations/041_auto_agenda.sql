@@ -53,3 +53,6 @@ ALTER TABLE empresas ADD COLUMN IF NOT EXISTS is_trial BOOLEAN DEFAULT FALSE;
 
 -- Tipo de agenda padrão timeline, financeiro habilitado
 -- (já aplicado na API de cadastro rápido, aqui só documenta)
+
+-- Armazenar múltiplos serviços por agendamento
+ALTER TABLE agendamentos ADD COLUMN IF NOT EXISTS servicos_json JSONB DEFAULT NULL;

@@ -597,6 +597,7 @@ export default function FinanceiroPage() {
 
   return (
     <div style={{ padding:'12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
+      <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
       <div style={{ padding:'12px 12px 0' }}>
         <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
         <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>

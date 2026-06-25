@@ -258,7 +258,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
       )}
 
-      <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', minHeight:'100vh', display:'flex', flexDirection:'column', minWidth:0 }}>
+      <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', height:'100vh', overflowY:'auto', display:'flex', flexDirection:'column', minWidth:0 }}>
         {/* Header mobile — position:fixed para nunca mover no scroll do navegador */}
         {isMobile && (
           <>
@@ -283,7 +283,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <MobileHeaderSpacer hasTrial={!!(empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster)} />
           </>
         )}
-        {/* Banner trial no desktop */}
+        {/* Banner trial no desktop — sticky no topo do main */}
         {!isMobile && empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster && (
           <div style={{ position:'sticky', top:0, zIndex:29 }}>
             <BannerTrial dataExpiracao={empresaAtiva.data_expiracao_trial} />

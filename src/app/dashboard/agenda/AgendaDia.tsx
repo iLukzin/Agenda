@@ -224,7 +224,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
     <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#f8fafc', overflow:'hidden' }}>
 
       {/* ══════════════════ HEADER SUTIL ══════════════════ */}
-      <div style={{ background:'white', flexShrink:0 }}>
+      <div style={{ background:'white', flexShrink:0, position:'sticky', top:0, zIndex:20, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
 
         {/* Linha superior — label dia + mini-cal trigger + ações */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px 0' }}>

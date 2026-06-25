@@ -197,6 +197,7 @@ export default function RelProfissionalPage() {
 
   return (
     <div style={{ padding:'12px', maxWidth:'960px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
+      <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
       <div style={{ marginBottom:'16px', background:'white' }}>
         <div style={{ marginBottom:'12px' }}>
           <h1 style={{ fontSize:'20px', fontWeight:'700', color:'#0f172a', marginBottom:'2px' }}>Relatórios</h1>

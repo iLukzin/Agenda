@@ -1,4 +1,4 @@
-// BUILD: 1782429392
+// BUILD: 1782429603
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -126,7 +126,7 @@ export default function ServicosPage() {
   return (
     <div style={{ padding:'16px 12px' }}>
       <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 12px', flexWrap:'wrap', gap:'12px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 12px', flexWrap:'wrap', gap:'12px' }}>
         <div>
           <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Serviços</h1>
           <p style={{ fontSize:'13px', color:'#9ca3af' }}>{servicos.filter(s=>s.status==='ativo').length} ativos de {servicos.length}</p>

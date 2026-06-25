@@ -410,10 +410,12 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                     // Cor de fundo do card: usa a cor hex real do profissional com boa saturação
                     const [hue,sat] = hexToHSL(p.cor||'#6366f1')
                     const cardBg = isCanc ? '#e2e8f0'
-                      : isFin   ? p.palette.dark
+                      : isFin   ? `hsl(${hue},${Math.max(sat,55)}%,32%)`
                       : (p.cor||'#6366f1').toLowerCase()==='#ffffff' ? '#e2e8f0'
                       : `hsl(${hue},${Math.max(sat,60)}%,75%)`
-                    const cardBorda = (p.cor||'#6366f1').toLowerCase()==='#ffffff' ? '#94a3b8'
+                    const cardBorda = isCanc ? '#94a3b8'
+                      : isFin   ? `hsl(${hue},${Math.max(sat,55)}%,22%)`
+                      : (p.cor||'#6366f1').toLowerCase()==='#ffffff' ? '#94a3b8'
                       : `hsl(${hue},${Math.max(sat,60)}%,45%)`
                     return (
                       <div key={ag.id}
@@ -434,29 +436,33 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                           <div style={{ display:'flex', alignItems:'center', gap:'4px', justifyContent:'space-between' }}>
                             <div style={{ display:'flex', alignItems:'center', gap:'4px', minWidth:0, flex:1 }}>
                               <span style={{ fontSize:'11px', fontWeight:'900',
-                                color: isFin ? 'white' : '#000000',
+                                color: isFin ? 'rgba(255,255,255,0.85)' : '#000000',
                                 fontFamily:'monospace', flexShrink:0,
                                 textShadow: isFin ? 'none' : '0 0 1px rgba(0,0,0,0.3)' }}>
                                 {fmtHora(ag.horaInicio)}
                               </span>
                               {ag.servico && (
                                 <span style={{ fontSize:'10px', fontWeight:'700',
-                                  color: isFin ? 'rgba(255,255,255,0.85)' : '#1a1a1a',
+                                  color: isFin ? 'rgba(255,255,255,0.7)' : '#1a1a1a',
                                   overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                                   textShadow: isFin ? 'none' : '0 0 1px rgba(0,0,0,0.2)' }}>
                                   · {ag.servico}
                                 </span>
                               )}
                             </div>
+                            {/* Badge finalizado */}
                             {isFin && (
-                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" style={{ flexShrink:0 }}><polyline points="20 6 9 17 4 12"/></svg>
+                              <div style={{ display:'flex', alignItems:'center', gap:'3px', background:'rgba(255,255,255,0.18)', borderRadius:'99px', padding:'2px 7px 2px 5px', flexShrink:0 }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span style={{ fontSize:'10px', fontWeight:'800', color:'white', letterSpacing:'0.03em' }}>Finalizado</span>
+                              </div>
                             )}
                           </div>
                           {/* Linha 2: nome do cliente */}
                           <p style={{ fontSize:'12px', fontWeight:'900',
                             color: isFin ? 'white' : '#000000',
                             margin:'2px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                            textShadow: isFin ? 'none' : '0 0 1px rgba(0,0,0,0.3)',
+                            textShadow: isFin ? '0 1px 3px rgba(0,0,0,0.3)' : '0 0 1px rgba(0,0,0,0.3)',
                             letterSpacing:'-0.2px' }}>
                             {ag.cliente}
                           </p>

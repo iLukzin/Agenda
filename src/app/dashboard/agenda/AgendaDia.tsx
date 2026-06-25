@@ -392,13 +392,13 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                   {!temHoje && (
                     <div style={{ position:'absolute', inset:0, background:'repeating-linear-gradient(45deg,#f8fafc,#f8fafc 6px,#f1f5f9 6px,#f1f5f9 12px)', pointerEvents:'none', opacity:0.8 }}/>
                   )}
-                  {/* Fundo de expediente */}
+                  {/* Fundo de expediente — cinza neutro bem suave, não usa cor do profissional */}
                   {temHoje && horarioDia && (() => {
                     const [hI,mI] = horarioDia.hora_inicio.split(':').map(Number)
                     const [hF,mF] = horarioDia.hora_fim.split(':').map(Number)
                     const topPx = ((hI+mI/60)-HORA_INI)*60*PX_POR_MIN
                     const altPx = ((hF+mF/60)-(hI+mI/60))*60*PX_POR_MIN
-                    return <div style={{ position:'absolute', top:`${topPx}px`, left:0, right:0, height:`${altPx}px`, background:p.palette.bg, opacity:0.2, pointerEvents:'none' }}/>
+                    return <div style={{ position:'absolute', top:`${topPx}px`, left:0, right:0, height:`${altPx}px`, background:'#f8fafc', pointerEvents:'none' }}/>
                   })()}
                   {/* Agendamentos */}
                   {agsProf.map(ag => {
@@ -407,6 +407,14 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                     const isFin  = ag.status==='fechado'
                     const isCanc = ag.status==='cancelado'
                     const popupAberto = agAtivo === ag.id
+                    // Cor de fundo do card: usa a cor hex real do profissional com boa saturação
+                    const [hue,sat] = hexToHSL(p.cor||'#6366f1')
+                    const cardBg = isCanc ? '#e2e8f0'
+                      : isFin   ? p.palette.dark
+                      : (p.cor||'#6366f1').toLowerCase()==='#ffffff' ? '#e2e8f0'
+                      : `hsl(${hue},${Math.max(sat,60)}%,75%)`
+                    const cardBorda = (p.cor||'#6366f1').toLowerCase()==='#ffffff' ? '#94a3b8'
+                      : `hsl(${hue},${Math.max(sat,60)}%,45%)`
                     return (
                       <div key={ag.id}
                         data-popup-ag="true"
@@ -415,12 +423,12 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
                         {/* Bloco do agendamento */}
                         <div onClick={e => abrirPopup(e, ag.id)}
                           style={{ height:`${altPx}px`,
-                            background: isFin ? `${p.palette.dark}dd` : isCanc ? '#f1f5f9' : p.palette.bg,
-                            border:`1.5px solid ${isFin ? p.palette.dark : isCanc ? '#cbd5e1' : p.palette.borda}`,
-                            borderLeft:`4px solid ${isFin ? p.palette.dark : isCanc ? '#94a3b8' : p.palette.dark}`,
+                            background: cardBg,
+                            border:`1.5px solid ${cardBorda}`,
+                            borderLeft:`4px solid ${cardBorda}`,
                             borderRadius:'6px', cursor:'pointer', overflow:'hidden', padding:'3px 5px',
-                            boxShadow: popupAberto ? `0 0 0 2px ${p.palette.dark}` : isFin ? 'none' : '0 1px 4px rgba(0,0,0,0.07)',
-                            opacity: isCanc ? 0.5 : 1,
+                            boxShadow: popupAberto ? `0 0 0 2px ${cardBorda}` : '0 1px 4px rgba(0,0,0,0.12)',
+                            opacity: isCanc ? 0.6 : 1,
                           }}>
                           {/* Linha 1: horário + serviço na mesma linha */}
                           <div style={{ display:'flex', alignItems:'center', gap:'4px', justifyContent:'space-between' }}>

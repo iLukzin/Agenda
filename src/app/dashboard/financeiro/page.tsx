@@ -1,4 +1,4 @@
-// BUILD: 1782430954
+// BUILD: 1782431195
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -598,59 +598,58 @@ export default function FinanceiroPage() {
   return (
     <div style={{ padding:'12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
       <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ padding:'12px 12px 0' }}>
-        <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
-        <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
-      </div>
-
+        <div style={{ padding:'12px 12px 8px' }}>
+          <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>
+          <p style={{ fontSize:'12px', color:'#9ca3af', marginTop:'2px' }}>{labelPeriodo} · {empresaAtiva?.nome}</p>
         </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', padding:'8px 12px', width:'100%' }}>
-        <button onClick={()=>setModalDRE(true)} style={{ background:'#eef2ff', color:'#4338ca', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18.4 8.6 12 15l-3-3-3.6 3.6"/></svg>
-          DRE
-        </button>
-        {podeCriar ? (
-          <>
-            <button onClick={()=>abrirModalCategorias('receita')} style={{ background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
-              Categorias
-            </button>
-            <button onClick={()=>abrirNovo('receita')} style={{ background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              + Receita
-            </button>
-            <button onClick={()=>abrirNovo('despesa')} style={{ background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              + Despesa
-            </button>
-          </>\n        ) : <div/>}
-      </div>
-
-      <div style={{ background:'#f8fafc', borderTop:'1px solid #f1f5f9', padding:'12px' }}>
-        <div style={{ marginBottom:'8px' }}>
-          <span style={{ display:'block', fontSize:'11px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'6px' }}>Período</span>
-          <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
-            {[['hoje','Hoje'],['mes','Este mês'],['ano','Este ano'],['periodo','Personalizado']].map(([v,l])=>(
-              <button key={v} onClick={()=>setFiltroTipo(v as any)} style={{ padding:'5px 12px', borderRadius:'99px', fontSize:'12px', fontWeight:'600', cursor:'pointer', border:filtroTipo===v?'1.5px solid #6366f1':'1px solid #e5e7eb', background:filtroTipo===v?'#eef2ff':'white', color:filtroTipo===v?'#6366f1':'#6b7280' }}>{l}</button>
-            ))}
-          </div>
-          {filtroTipo==='periodo' && (
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginTop:'8px' }}>
-              <input type="date" value={periodoIni} onChange={e=>setPeriodoIni(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'12px', outline:'none', maxWidth:'150px', boxSizing:'border-box' as const }}/>
-              <span style={{ fontSize:'12px', color:'#9ca3af' }}>até</span>
-              <input type="date" value={periodoFim} onChange={e=>setPeriodoFim(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'12px', outline:'none', maxWidth:'150px', boxSizing:'border-box' as const }}/>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', padding:'0 12px 8px', boxSizing:'border-box' }}>
+          <button onClick={()=>setModalDRE(true)} style={{ background:'#eef2ff', color:'#4338ca', border:'1.5px solid #c7d2fe', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M18.4 8.6 12 15l-3-3-3.6 3.6"/></svg>
+            DRE
+          </button>
+          {podeCriar ? (
+            <>
+              <button onClick={()=>abrirModalCategorias('receita')} style={{ background:'#f4f5fb', color:'#6366f1', border:'1.5px solid #e0e3f5', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+                Categorias
+              </button>
+              <button onClick={()=>abrirNovo('receita')} style={{ background:'#ecfdf5', color:'#059669', border:'1.5px solid #6ee7b7', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                + Receita
+              </button>
+              <button onClick={()=>abrirNovo('despesa')} style={{ background:'#fef2f2', color:'#dc2626', border:'1.5px solid #fecaca', borderRadius:'10px', padding:'10px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'5px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                + Despesa
+              </button>
+            </>
+          ) : <div/>}
+        </div>
+        <div style={{ background:'#f8fafc', borderTop:'1px solid #f1f5f9', padding:'10px 12px' }}>
+          <div style={{ marginBottom:'8px' }}>
+            <span style={{ display:'block', fontSize:'11px', fontWeight:'700', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:'6px' }}>Período</span>
+            <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+              {[['hoje','Hoje'],['mes','Este mês'],['ano','Este ano'],['periodo','Personalizado']].map(([v,l])=>(
+                <button key={v} onClick={()=>setFiltroTipo(v as any)} style={{ padding:'5px 12px', borderRadius:'99px', fontSize:'12px', fontWeight:'600', cursor:'pointer', border:filtroTipo===v?'1.5px solid #6366f1':'1px solid #e5e7eb', background:filtroTipo===v?'#eef2ff':'white', color:filtroTipo===v?'#6366f1':'#6b7280' }}>{l}</button>
+              ))}
             </div>
-          )}
-        </div>
-        <div style={{ display:'flex', gap:'4px', background:'#eef2ff', borderRadius:'99px', padding:'3px', width:'fit-content' }}>
-          <button onClick={()=>setFiltroData('vencimento')} style={{ padding:'5px 14px', borderRadius:'99px', fontSize:'12px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='vencimento'?'#6366f1':'transparent', color:filtroData==='vencimento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
-            Data lançamento
-          </button>
-          <button onClick={()=>setFiltroData('pagamento')} style={{ padding:'5px 14px', borderRadius:'99px', fontSize:'12px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='pagamento'?'#6366f1':'transparent', color:filtroData==='pagamento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
-            Data pagamento
-          </button>
+            {filtroTipo==='periodo' && (
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap', marginTop:'8px' }}>
+                <input type="date" value={periodoIni} onChange={e=>setPeriodoIni(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'12px', outline:'none', maxWidth:'150px', boxSizing:'border-box' as const }}/>
+                <span style={{ fontSize:'12px', color:'#9ca3af' }}>até</span>
+                <input type="date" value={periodoFim} onChange={e=>setPeriodoFim(e.target.value)} style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'6px 10px', fontSize:'12px', outline:'none', maxWidth:'150px', boxSizing:'border-box' as const }}/>
+              </div>
+            )}
+          </div>
+          <div style={{ display:'flex', gap:'4px', background:'#eef2ff', borderRadius:'99px', padding:'3px', width:'fit-content' }}>
+            <button onClick={()=>setFiltroData('vencimento')} style={{ padding:'5px 14px', borderRadius:'99px', fontSize:'12px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='vencimento'?'#6366f1':'transparent', color:filtroData==='vencimento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
+              Data lançamento
+            </button>
+            <button onClick={()=>setFiltroData('pagamento')} style={{ padding:'5px 14px', borderRadius:'99px', fontSize:'12px', fontWeight:'600', cursor:'pointer', border:'none', background:filtroData==='pagamento'?'#6366f1':'transparent', color:filtroData==='pagamento'?'white':'#6b7280', whiteSpace:'nowrap' }}>
+              Data pagamento
+            </button>
+          </div>
         </div>
       </div>
-      </div>
+
       {filtroData==='pagamento' && (
         <div style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:'10px', padding:'10px 14px', marginBottom:'18px', fontSize:'12px', color:'#4338ca', lineHeight:'1.5', wordBreak:'break-word' }}>
           Mostrando o que foi pago/recebido dentro do período. Contas a receber e a pagar continuam mostrando os vencimentos do período.

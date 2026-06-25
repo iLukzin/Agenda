@@ -1,4 +1,4 @@
-// BUILD: 1782430018
+// BUILD: 1782430954
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -133,11 +133,10 @@ export default function ServicosPage() {
           </div>
           <button onClick={abrirNovo} style={{ background:'#6366f1', color:'white', border:'none', borderRadius:'8px', padding:'9px 18px', fontSize:'14px', fontWeight:'500', cursor:'pointer', display:perm.criar?'inline-block':'none' }}>+ Novo serviço</button>
         </div>
-      </div>
-
-      <div style={{ position:'relative', maxWidth:'300px', marginBottom:'20px' }}>
-        <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
-        <input style={{ ...inputStyle, paddingLeft:'36px' }} placeholder="Buscar serviço..." value={busca} onChange={e => setBusca(e.target.value)}/>
+        <div style={{ position:'relative', maxWidth:'300px', padding:'0 12px 12px' }}>
+          <span style={{ position:'absolute', left:'24px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
+          <input style={{ ...inputStyle, paddingLeft:'36px', width:'100%', boxSizing:'border-box' }} placeholder="Buscar serviço..." value={busca} onChange={e => setBusca(e.target.value)}/>
+        </div>
       </div>
 
       {carregando ? (

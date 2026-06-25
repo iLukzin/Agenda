@@ -1,4 +1,4 @@
-// BUILD: 1782429841
+// BUILD: 1782430954
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -469,19 +469,17 @@ export default function ClientesPage() {
           )}
         </div>
       </div>
-      </div>
-
-      {/* Filtros */}
-      <div style={{ display:'flex', gap:'10px', marginBottom:'18px', flexWrap:'wrap' }}>
-        <div style={{ position:'relative', flex:1, minWidth:'200px', maxWidth:'300px' }}>
-          <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
-          <input style={{ ...inputStyle, paddingLeft:'36px' }} placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)}/>
+        <div style={{ display:'flex', gap:'10px', padding:'0 12px 12px', flexWrap:'wrap' }}>
+          <div style={{ position:'relative', flex:1, minWidth:'200px', maxWidth:'300px' }}>
+            <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
+            <input style={{ ...inputStyle, paddingLeft:'36px' }} placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)}/>
+          </div>
+          <select style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none' }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+            <option value="todos">Todos</option>
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+          </select>
         </div>
-        <select style={{ border:'1px solid #e5e7eb', borderRadius:'8px', padding:'9px 12px', fontSize:'14px', outline:'none' }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
-          <option value="todos">Todos</option>
-          <option value="ativo">Ativo</option>
-          <option value="inativo">Inativo</option>
-        </select>
       </div>
 
       {/* Tabela */}

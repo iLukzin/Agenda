@@ -1,4 +1,4 @@
-// BUILD: 1782429841
+// BUILD: 1782430954
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -208,11 +208,10 @@ export default function ProfissionaisPage() {
           </button>
         )}
         </div>
-      </div>
-
-      <div style={{ position:'relative', maxWidth:'300px', marginBottom:'20px' }}>
-        <span style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
-        <input style={{ ...inputStyle, paddingLeft:'36px' }} placeholder="Buscar profissional..." value={busca} onChange={e => setBusca(e.target.value)}/>
+        <div style={{ position:'relative', maxWidth:'300px', padding:'0 12px 12px' }}>
+          <span style={{ position:'absolute', left:'24px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
+          <input style={{ ...inputStyle, paddingLeft:'36px', width:'100%', boxSizing:'border-box' }} placeholder="Buscar profissional..." value={busca} onChange={e => setBusca(e.target.value)}/>
+        </div>
       </div>
 
       {carregando ? (

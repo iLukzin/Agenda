@@ -39,23 +39,21 @@ function hexToHSL(hex: string): [number, number, number] {
 // Gera paleta completa a partir da cor hex cadastrada no profissional
 function paletaFromHex(hex: string) {
   const h=(hex||'#6366f1').trim().toLowerCase()
-  // Branco → cinza neutro elegante com texto bem escuro
   if(h==='#ffffff'||h==='#fff')
-    return { bg:'#f8fafc', borda:'#94a3b8', texto:'#334155', dark:'#475569', textoBlocos:'#0f172a' }
+    return { bg:'#f1f5f9', borda:'#94a3b8', texto:'#0f172a', dark:'#475569', textoBlocos:'#0f172a' }
   try {
-    const [hue,sat,lit]=hexToHSL(h)
-    const s=Math.min(sat,80)
-    // bg sempre muito claro (94%) — o texto DEVE ser sempre escuro para legibilidade
-    // independente da cor da paleta (vermelho claro, amarelo claro, etc.)
+    const [hue,sat]=hexToHSL(h)
+    const s=Math.min(sat,90)
+    // bg: saturação moderada e luminosidade 88% — visível mas não ofuscante
     return {
-      bg:          `hsl(${hue},${Math.min(s,60)}%,94%)`,
-      borda:       `hsl(${hue},${s}%,55%)`,
-      texto:       '#1e293b', // sempre escuro para legibilidade no bg claro
-      dark:        `hsl(${hue},${Math.min(s,75)}%,30%)`,
-      textoBlocos: '#0f172a', // preto quase total — sempre legível em qualquer fundo claro
+      bg:          `hsl(${hue},${Math.max(s,40)}%,88%)`,
+      borda:       `hsl(${hue},${s}%,48%)`,
+      texto:       '#000000',
+      dark:        `hsl(${hue},${s}%,28%)`,
+      textoBlocos: '#000000',
     }
   } catch {
-    return { bg:'#eff6ff', borda:'#60a5fa', texto:'#1e40af', dark:'#1d4ed8', textoBlocos:'#1e3a8a' }
+    return { bg:'#dbeafe', borda:'#3b82f6', texto:'#000000', dark:'#1d4ed8', textoBlocos:'#000000' }
   }
 }
 

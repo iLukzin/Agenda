@@ -1401,24 +1401,28 @@ export default function AgendaPage() {
 
       {/* Modal de Seleção de Serviços */}
       {modalServicos && (
-        <div onClick={()=>setModalServicos(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:300, display:'flex', alignItems:'flex-end', justifyContent:'center', backdropFilter:'blur(4px)' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'500px', borderRadius:'22px 22px 0 0', maxHeight:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 -8px 40px rgba(15,23,42,0.2)' }}>
+        <div onClick={()=>setModalServicos(false)} style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'white', width:'100%', maxWidth:'460px', borderRadius:'22px', maxHeight:'82vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 64px rgba(15,23,42,0.25)', overflow:'hidden' }}>
             {/* Header */}
-            <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', flexShrink:0 }}>
-              <div style={{ width:'40px', height:'4px', background:'#e5e7eb', borderRadius:'99px', margin:'0 auto 14px' }}/>
+            <div style={{ padding:'18px 20px 14px', borderBottom:'1px solid #f1f5f9', flexShrink:0 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div>
                   <h3 style={{ fontSize:'16px', fontWeight:'800', color:'#1e293b', margin:0 }}>Selecionar serviços</h3>
-                  <p style={{ fontSize:'12px', color:'#94a3b8', margin:0 }}>Toque para adicionar ou remover</p>
+                  <p style={{ fontSize:'12px', color:'#94a3b8', margin:'2px 0 0' }}>Toque para adicionar ou remover</p>
                 </div>
-                {servicosSelecionados.length > 0 && (
-                  <div style={{ textAlign:'right' }}>
-                    <p style={{ fontSize:'11px', color:'#6366f1', fontWeight:'600', margin:0 }}>{servicosSelecionados.length} selecionado{servicosSelecionados.length>1?'s':''}</p>
-                    <p style={{ fontSize:'14px', fontWeight:'800', color:'#4f46e5', margin:0 }}>
-                      R$ {servicosSelecionados.reduce((s,x)=>s+x.valor,0).toFixed(2).replace('.',',')}
-                    </p>
-                  </div>
-                )}
+                <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                  {servicosSelecionados.length > 0 && (
+                    <div style={{ textAlign:'right' }}>
+                      <p style={{ fontSize:'11px', color:'#6366f1', fontWeight:'600', margin:0 }}>{servicosSelecionados.length} selecionado{servicosSelecionados.length>1?'s':''}</p>
+                      <p style={{ fontSize:'15px', fontWeight:'800', color:'#4f46e5', margin:0 }}>
+                        R$ {servicosSelecionados.reduce((s,x)=>s+x.valor,0).toFixed(2).replace('.',',')}
+                      </p>
+                    </div>
+                  )}
+                  <button onClick={()=>setModalServicos(false)} style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#f1f5f9', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
               </div>
             </div>
 

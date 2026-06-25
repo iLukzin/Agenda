@@ -259,21 +259,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', minHeight:'100vh', display:'flex', flexDirection:'column', minWidth:0 }}>
+        {/* Header mobile + banner trial — bloco sticky fixo no topo */}
         {isMobile && (
-          <div style={{ position:'sticky', top:0, zIndex:30, background:'white', borderBottom:'1px solid #f0f0f8', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px' }}>
-            <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', color:'#374151' }}>
-              <NavIcon code="MENU" size={22}/>
-            </button>
-            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-              <Image src="/logo-fortitude.png" alt="Logo" width={28} height={28} style={{ borderRadius:'6px', objectFit:'contain' }}/>
-              <span style={{ fontWeight:'700', fontSize:'15px', color:'#1a1a2e' }}>AgendaFortitude</span>
+          <div style={{ position:'sticky', top:0, zIndex:30, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+            {/* Barra de navegação */}
+            <div style={{ borderBottom:'1px solid #f0f0f8', padding:'12px 16px', display:'flex', alignItems:'center', gap:'12px', background:'white' }}>
+              <button onClick={() => setMenuMobile(true)} style={{ background:'none', border:'none', cursor:'pointer', color:'#374151' }}>
+                <NavIcon code="MENU" size={22}/>
+              </button>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                <Image src="/logo-fortitude.png" alt="Logo" width={28} height={28} style={{ borderRadius:'6px', objectFit:'contain' }}/>
+                <span style={{ fontWeight:'700', fontSize:'15px', color:'#1a1a2e' }}>AgendaFortitude</span>
+              </div>
+              {empresaAtiva && <span style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:'99px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'110px' }}>{empresaAtiva.nome}</span>}
             </div>
-            {empresaAtiva && <span style={{ marginLeft:'auto', fontSize:'12px', color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:'99px' }}>{empresaAtiva.nome}</span>}
+            {/* Banner trial — dentro do bloco sticky */}
+            {empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster && (
+              <BannerTrial dataExpiracao={empresaAtiva.data_expiracao_trial} />
+            )}
           </div>
         )}
-        {/* Banner de trial ativo — contador regressivo */}
-        {empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster && (
-          <BannerTrial dataExpiracao={empresaAtiva.data_expiracao_trial} />
+        {/* Banner trial no desktop — fora do sticky (desktop tem sidebar fixa) */}
+        {!isMobile && empresaAtiva?.is_trial && empresaAtiva?.data_expiracao_trial && !isMaster && (
+          <div style={{ position:'sticky', top:0, zIndex:29 }}>
+            <BannerTrial dataExpiracao={empresaAtiva.data_expiracao_trial} />
+          </div>
         )}
         {children}
       </main>

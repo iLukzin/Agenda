@@ -340,7 +340,11 @@ html, body {
    ============================================================ */
 
 /* Impede overflow horizontal em toda a aplicação */
-html, body { overflow-x: hidden; }
+html, body {
+  overflow-x: hidden;
+  /* NÃO colocar overflow-y: hidden — deixa o scroll natural do body
+     para que position:fixed funcione corretamente no mobile */
+}
 * { box-sizing: border-box; }
 
 /* Inputs de data nativos — tamanho adequado em iOS/Android */

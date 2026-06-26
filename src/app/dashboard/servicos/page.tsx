@@ -1,4 +1,4 @@
-// BUILD: 1782433025
+// BUILD: 1782433355
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -124,11 +124,12 @@ export default function ServicosPage() {
   }
 
   
-  // Fixar header da página no mobile colado abaixo do header do layout
+  // Fixar header da página no mobile
   useEffect(() => {
     function fixarHeader() {
       const mob = window.innerWidth < 768
       const hdr = document.getElementById('page-header-fixed')
+      const content = document.getElementById('page-content')
       if (!hdr) return
       if (mob) {
         const layoutH = document.getElementById('mobile-header-fixed')?.offsetHeight ?? 56
@@ -137,26 +138,26 @@ export default function ServicosPage() {
         hdr.style.left = '0'
         hdr.style.right = '0'
         hdr.style.zIndex = '25'
-        // Espaçador para compensar o header fixo
-        const spacer = document.getElementById('page-header-spacer')
-        if (spacer) spacer.style.height = hdr.offsetHeight + 'px'
+        setTimeout(() => {
+          const hdrH = hdr.offsetHeight
+          if (content) content.style.paddingTop = (layoutH + hdrH) + 'px'
+        }, 50)
       } else {
         hdr.style.position = 'sticky'
         hdr.style.top = '0'
         hdr.style.left = ''
         hdr.style.right = ''
-        const spacer = document.getElementById('page-header-spacer')
-        if (spacer) spacer.style.height = '0'
+        if (content) content.style.paddingTop = '0'
       }
     }
     fixarHeader()
-    const t = setTimeout(fixarHeader, 100)
+    const t = setTimeout(fixarHeader, 150)
     window.addEventListener('resize', fixarHeader)
     return () => { clearTimeout(t); window.removeEventListener('resize', fixarHeader) }
   }, [])
 
   return (
-    <div style={{ padding:'16px 12px' }}>
+    <div id="page-content" style={{ padding:'16px 12px' }}>
       <div id="page-header-fixed" style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 10px', flexWrap:'wrap', gap:'10px' }}>
           <div>

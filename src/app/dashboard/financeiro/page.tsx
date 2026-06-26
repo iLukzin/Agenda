@@ -1,4 +1,4 @@
-// BUILD: 1782433756
+// BUILD: 1782434095
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -184,6 +184,38 @@ export default function FinanceiroPage() {
 
   useEffect(() => { carregar() }, [carregar])
   useVisibilityRefresh(carregar)
+
+  // Fixar header da página no mobile
+  useEffect(() => {
+    function fixarHeader() {
+      const mob = window.innerWidth < 768
+      const hdr = document.getElementById('page-header-fixed')
+      const content = document.getElementById('page-content')
+      if (!hdr) return
+      if (mob) {
+        const layoutH = document.getElementById('mobile-header-fixed')?.offsetHeight ?? 56
+        hdr.style.position = 'fixed'
+        hdr.style.top = layoutH + 'px'
+        hdr.style.left = '0'
+        hdr.style.right = '0'
+        hdr.style.zIndex = '25'
+        setTimeout(() => {
+          const hdrH = hdr.offsetHeight
+          if (content) content.style.paddingTop = (layoutH + hdrH) + 'px'
+        }, 50)
+      } else {
+        hdr.style.position = 'sticky'
+        hdr.style.top = '0'
+        hdr.style.left = ''
+        hdr.style.right = ''
+        if (content) content.style.paddingTop = '0'
+      }
+    }
+    fixarHeader()
+    const t = setTimeout(fixarHeader, 150)
+    window.addEventListener('resize', fixarHeader)
+    return () => { clearTimeout(t); window.removeEventListener('resize', fixarHeader) }
+  }, [])
 
   // ────────────────────────────────────────────────────────────
   // Guards de acesso — agora depois de todos os hooks
@@ -595,38 +627,6 @@ export default function FinanceiroPage() {
     marginBottom:'-2px', whiteSpace:'nowrap' as const,
   })
 
-
-  // Fixar header da página no mobile
-  useEffect(() => {
-    function fixarHeader() {
-      const mob = window.innerWidth < 768
-      const hdr = document.getElementById('page-header-fixed')
-      const content = document.getElementById('page-content')
-      if (!hdr) return
-      if (mob) {
-        const layoutH = document.getElementById('mobile-header-fixed')?.offsetHeight ?? 56
-        hdr.style.position = 'fixed'
-        hdr.style.top = layoutH + 'px'
-        hdr.style.left = '0'
-        hdr.style.right = '0'
-        hdr.style.zIndex = '25'
-        setTimeout(() => {
-          const hdrH = hdr.offsetHeight
-          if (content) content.style.paddingTop = (layoutH + hdrH) + 'px'
-        }, 50)
-      } else {
-        hdr.style.position = 'sticky'
-        hdr.style.top = '0'
-        hdr.style.left = ''
-        hdr.style.right = ''
-        if (content) content.style.paddingTop = '0'
-      }
-    }
-    fixarHeader()
-    const t = setTimeout(fixarHeader, 150)
-    window.addEventListener('resize', fixarHeader)
-    return () => { clearTimeout(t); window.removeEventListener('resize', fixarHeader) }
-  }, [])
 
   return (
     <div id="page-content" style={{ padding:'12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>

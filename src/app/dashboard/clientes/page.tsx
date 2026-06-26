@@ -1,10 +1,11 @@
-// BUILD: 1782432152
+// BUILD: 1782432799
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
+import PageHeader from '@/components/PageHeader'
 
 type Cliente = {
   id: string
@@ -448,7 +449,7 @@ export default function ClientesPage() {
 
   return (
     <div style={{ padding:'16px 12px' }}>
-      <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+      <PageHeader>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 10px', flexWrap:'wrap', gap:'10px' }}>
           <div>
             <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Clientes</h1>
@@ -480,7 +481,7 @@ export default function ClientesPage() {
             <option value="inativo">Inativo</option>
           </select>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Tabela */}
       {carregando ? (

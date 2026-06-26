@@ -1,10 +1,11 @@
-// BUILD: 1782432152
+// BUILD: 1782432799
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEmpresa } from '@/context/EmpresaContext'
 import { usePermissao } from '@/hooks/usePermissao'
 import { createClient } from '@/lib/supabase'
+import PageHeader from '@/components/PageHeader'
 
 type Servico = {
   id: string; nome: string; descricao: string
@@ -125,7 +126,7 @@ export default function ServicosPage() {
 
   return (
     <div style={{ padding:'16px 12px' }}>
-      <div style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+      <PageHeader>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 10px', flexWrap:'wrap', gap:'10px' }}>
           <div>
             <h1 style={{ fontSize:'22px', fontWeight:'700', color:'#1a1a2e' }}>Serviços</h1>
@@ -137,7 +138,7 @@ export default function ServicosPage() {
           <span style={{ position:'absolute', left:'24px', top:'50%', transform:'translateY(-50%)', color:'#9ca3af' }}>🔍</span>
           <input style={{ ...inputStyle, paddingLeft:'36px', width:'100%', boxSizing:'border-box' }} placeholder="Buscar serviço..." value={busca} onChange={e => setBusca(e.target.value)}/>
         </div>
-      </div>
+      </PageHeader>
 
       {carregando ? (
         <div style={{ textAlign:'center', padding:'60px', color:'#9ca3af' }}>Carregando...</div>

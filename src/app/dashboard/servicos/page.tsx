@@ -1,4 +1,4 @@
-// BUILD: 1782433355
+// BUILD: 1782434510
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -137,7 +137,7 @@ export default function ServicosPage() {
         hdr.style.top = layoutH + 'px'
         hdr.style.left = '0'
         hdr.style.right = '0'
-        hdr.style.zIndex = '25'
+        hdr.style.zIndex = '9990'
         setTimeout(() => {
           const hdrH = hdr.offsetHeight
           if (content) content.style.paddingTop = (layoutH + hdrH) + 'px'
@@ -157,7 +157,7 @@ export default function ServicosPage() {
   }, [])
 
   return (
-    <div id="page-content" style={{ padding:'16px 12px' }}>
+    <div id="page-content" style={{ padding:'16px 12px', background:'#f8f8fc' }}>
       <div id="page-header-fixed" style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 12px 10px', flexWrap:'wrap', gap:'10px' }}>
           <div>

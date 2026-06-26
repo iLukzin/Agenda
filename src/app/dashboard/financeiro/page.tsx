@@ -1,4 +1,4 @@
-// BUILD: 1782434095
+// BUILD: 1782434499
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -198,7 +198,7 @@ export default function FinanceiroPage() {
         hdr.style.top = layoutH + 'px'
         hdr.style.left = '0'
         hdr.style.right = '0'
-        hdr.style.zIndex = '25'
+        hdr.style.zIndex = '9990'
         setTimeout(() => {
           const hdrH = hdr.offsetHeight
           if (content) content.style.paddingTop = (layoutH + hdrH) + 'px'
@@ -629,7 +629,7 @@ export default function FinanceiroPage() {
 
 
   return (
-    <div id="page-content" style={{ padding:'12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden' }}>
+    <div id="page-content" style={{ padding:'12px', maxWidth:'1180px', margin:'0 auto', boxSizing:'border-box', width:'100%', overflowX:'hidden', background:'#f8f8fc' }}>
       <div id="page-header-fixed" style={{ position:'sticky', top:0, zIndex:20, background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
         <div style={{ padding:'12px 12px 8px' }}>
           <h1 style={{ fontSize:'22px', fontWeight:'800', color:'#0f172a', letterSpacing:'-0.02em' }}>Financeiro</h1>

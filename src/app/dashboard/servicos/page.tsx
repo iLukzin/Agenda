@@ -1,4 +1,4 @@
-// BUILD: 1782434510
+// BUILD: 1782435011
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -137,7 +137,7 @@ export default function ServicosPage() {
         hdr.style.top = layoutH + 'px'
         hdr.style.left = '0'
         hdr.style.right = '0'
-        hdr.style.zIndex = '9990'
+        hdr.style.zIndex = '35'
         setTimeout(() => {
           const hdrH = hdr.offsetHeight
           if (content) content.style.paddingTop = (layoutH + hdrH) + 'px'

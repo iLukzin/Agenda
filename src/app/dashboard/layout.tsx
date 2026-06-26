@@ -1,4 +1,4 @@
-// BUILD: 1782429392
+// BUILD: 1782432152
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -258,7 +258,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
       )}
 
-      <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', height:'100vh', overflowY:'auto', display:'flex', flexDirection:'column', minWidth:0 }}>
+      <main style={{ flex:1, marginLeft:isMobile?'0':sidebarW, transition:'margin-left .2s ease', height:'100vh', overflowY:'auto', overflowX:'hidden', display:'flex', flexDirection:'column', minWidth:0 }} id="main-scroll">
         {/* Header mobile — position:fixed para nunca mover no scroll do navegador */}
         {isMobile && (
           <>

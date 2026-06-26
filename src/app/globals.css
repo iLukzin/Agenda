@@ -339,11 +339,10 @@ html, body {
    RESPONSIVIDADE MOBILE — Regras globais para todas as telas
    ============================================================ */
 
-/* Impede overflow horizontal em toda a aplicação */
+/* Impede overflow horizontal e scroll no body — scroll acontece dentro do #main-scroll */
 html, body {
-  overflow-x: hidden;
-  /* NÃO colocar overflow-y: hidden — deixa o scroll natural do body
-     para que position:fixed funcione corretamente no mobile */
+  overflow: hidden;
+  height: 100%;
 }
 * { box-sizing: border-box; }
 

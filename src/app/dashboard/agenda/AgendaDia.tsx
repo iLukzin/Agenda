@@ -359,7 +359,7 @@ export default function AgendaDia({ agendamentos, profissionais, horariosProfiss
           <div style={{ width:'52px', flexShrink:0, position:'sticky', left:0, background:'white', zIndex:2, borderRight:'1px solid #e2e8f0' }}>
             {horas.map(h => (
               <div key={h} style={{ position:'absolute', top:`${(h-HORA_INI)*60*PX_POR_MIN}px`, right:'8px' }}>
-                <span style={{ fontSize:'10px', color:'#cbd5e1', fontWeight:'600' }}>{String(h).padStart(2,'0')}:00</span>
+                <span style={{ fontSize:'10px', color:'#475569', fontWeight:'700' }}>{String(h).padStart(2,'0')}:00</span>
               </div>
             ))}
           </div>
